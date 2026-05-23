@@ -1,0 +1,121 @@
+@model CafeOrders.WebUI.Models.DashboardViewModel
+@{
+    const int pageSize = 10;
+    var searchQuery = Model.SearchQuery;
+    var filteredTables = Model.Tables
+        .Where(table =>
+            string.IsNullOrWhiteSpace(searchQuery) ||
+            table.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+            (!string.IsNullOrWhiteSpace(table.Description) && table.Description.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)) ||
+            (!string.IsNullOrWhiteSpace(table.DeviceHostName) && table.DeviceHostName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)))
+        .OrderBy(table => table.Name)
+        .ToArray();
+    var totalPages = Math.Max(1, (int)Math.Ceiling(filteredTables.Length / (double)pageSize));
+    var currentPage = Math.Min(Model.CurrentPage, totalPages);
+    var tables = filteredTables.Skip((currentPage - 1) * pageSize).Take(pageSize).ToArray();
+    var visiblePages = Enumerable.Range(1, totalPages).Where(pageNumber => pageNumber == 1 || pageNumber == totalPages || Math.Abs(pageNumber - currentPage) <= 1).ToArray();
+}
+
+<section class="content-section section-enter">
+    <div class="section-head">
+        <div>
+            <h2>Masalar</h2>
+            <p>Sistem masalarini olusturun, duzenleyin ve bagli cihaz durumlarini izleyin.</p>
+        </div>
+    </div>
+
+    <div class="management-grid">
+        <article class="panel-card manage-card">
+            <div class="panel-title-row">
+                <h3>Masa Olustur / Duzenle</h3>
+            </div>
+
+            <input id="tableEditorId" type="hidden" />
+
+            <label class="field-row">
+                <span>Masa Adi</span>
+                <input id="tableName" placeholder="Orn: Masa 21" />
+            </label>
+
+            <label class="field-row">
+                <span>Aciklama</span>
+                <input id="tableDescription" placeholder="VIP alan, pencere kenari vb." />
+            </label>
+
+            <div class="toggle-card compact balanced">
+                <div>
+                    <strong>Aktif Masa</strong>
+                    <p>Yeni siparis ve cihaz eslestirmeleri icin kullanilsin.</p>
+                </div>
+                <button id="tableActive" class="switch on" type="button" aria-pressed="true" onclick="toggleGenericSwitch(this)"></button>
+            </div>
+
+            <div class="table-form-actions">
+                <button class="action-button action-button-outline" type="button" onclick="resetTableForm()">Temizle</button>
+                <button class="action-button action-button-primary" type="button" onclick="saveTable()">Masa Kaydet</button>
+            </div>
+        </article>
+
+        <article class="panel-card manage-card">
+            <div class="panel-title-row">
+                <h3>Masa Listesi</h3>
+            </div>
+
+            <div class="list-card-stack">
+                @foreach (var table in tables)
+                {
+                    <article class="wide-table-card card-hover-rise">
+                        <div class="wide-table-main">
+                            <div class="device-square">
+                                <span class="material-symbols-outlined">table_restaurant</span>
+                            </div>
+                            <div class="wide-device-copy">
+                                <strong>@table.Name</strong>
+                                <span>@(string.IsNullOrWhiteSpace(table.Description) ? "Aciklama yok" : table.Description)</span>
+                            </div>
+                            <div class="wide-device-badge @(table.IsActive ? "live" : "dead")">@(table.IsActive ? "AKTIF" : "PASIF")</div>
+                        </div>
+
+                        <div class="wide-device-meta">
+                            <span>Bagli cihaz: @(table.DeviceHostName ?? "Yok")</span>
+                            <span>IP: @(table.DeviceIpAddress ?? "-")</span>
+                            <span>Bekleyen atama: @(table.HasPendingAssignment ? "Var" : "Yok")</span>
+                        </div>
+
+                        <div class="wide-device-actions">
+                            <button class="action-button action-button-muted" type="button"
+                                    data-table-id="@table.Id"
+                                    data-table-name="@table.Name"
+                                    data-table-description="@table.Description"
+                                    data-table-active="@(table.IsActive ? "true" : "false")"
+                                    onclick="editTable(this)">
+                                <span class="material-symbols-outlined">edit_square</span>
+                                <span>Duzenle</span>
+                            </button>
+                        </div>
+                    </article>
+                }
+
+                @if (!tables.Any())
+                {
+                    <article class="wide-table-card">
+                        <div class="wide-device-copy">
+                            <strong>Kayit bulunamadi</strong>
+                            <span>Arama kriterine uygun masa yok.</span>
+                        </div>
+                    </article>
+                }
+            </div>
+
+            <div class="pagination-pillbar">
+                <button class="pagination-nav" type="button" @(currentPage <= 1 ? "disabled" : null) onclick="loadSection('tables', true, { page: @(currentPage - 1), search: getSearchValue() }, true)">Onceki</button>
+                @foreach (var pageNumber in visiblePages)
+                {
+                    <button class="pagination-page @(pageNumber == currentPage ? "active" : string.Empty)" type="button" onclick="loadSection('tables', true, { page: @(pageNumber), search: getSearchValue() }, true)">@pageNumber</button>
+                }
+                <button class="pagination-nav" type="button" @(currentPage >= totalPages ? "disabled" : null) onclick="loadSection('tables', true, { page: @(currentPage + 1), search: getSearchValue() }, true)">Sonraki</button>
+                <span class="pagination-summary">@tables.Length / @filteredTables.Length kayit gosteriliyor</span>
+            </div>
+        </article>
+    </div>
+</section>

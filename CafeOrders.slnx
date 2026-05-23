@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CafeOrders.WebUI/CafeOrders.WebUI.csproj" />
+    <Project Path="src/CafeOrders.API/CafeOrders.API.csproj" />
+    <Project Path="src/CafeOrders.Application/CafeOrders.Application.csproj" />
+    <Project Path="src/CafeOrders.DesktopApp/CafeOrders.DesktopApp.csproj" />
+    <Project Path="src/CafeOrders.Domain/CafeOrders.Domain.csproj" />
+    <Project Path="src/CafeOrders.Infrastructure/CafeOrders.Infrastructure.csproj" />
+  </Folder>
+</Solution>

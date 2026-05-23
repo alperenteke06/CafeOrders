@@ -1,0 +1,6 @@
+@CafeOrders.API_HostAddress = http://localhost:5030
+
+GET {{CafeOrders.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,91 @@
+@model CafeOrders.WebUI.Models.DashboardViewModel
+@{
+    var searchQuery = Model.SearchQuery;
+    var categories = Model.Catalog.Categories
+        .Where(category => string.IsNullOrWhiteSpace(searchQuery) || category.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(category => category.SortOrder)
+        .ThenBy(category => category.Name)
+        .ToArray();
+}
+
+<section class="content-section section-enter">
+    <div class="section-head">
+        <div>
+            <h2>Kategori Yonetimi</h2>
+            <p>Kategorileri olusturun, aktifliklerini yonetin ve urun secim listelerini duzenleyin.</p>
+        </div>
+    </div>
+
+    <div class="management-grid">
+        <article class="panel-card manage-card">
+            <div class="panel-title-row">
+                <h3>Kategori Formu</h3>
+            </div>
+
+            <input id="categoryEditorId" type="hidden" />
+
+            <label class="field-row">
+                <span>Kategori Adi</span>
+                <input id="categoryName" placeholder="Orn: Sicak Icecekler" />
+            </label>
+
+            <label class="field-row">
+                <span>Siralama</span>
+                <input id="categorySortOrder" type="number" min="0" value="0" />
+            </label>
+
+            <div class="toggle-card compact balanced">
+                <div>
+                    <strong>Aktif Kategori</strong>
+                    <p>Urun olustururken secilebilir olsun.</p>
+                </div>
+                <button id="categoryActive" class="switch on" type="button" aria-pressed="true" onclick="toggleGenericSwitch(this)"></button>
+            </div>
+
+            <div class="table-form-actions">
+                <button class="action-button action-button-outline" type="button" onclick="resetCategoryForm()">Temizle</button>
+                <button class="action-button action-button-primary" type="button" onclick="saveCategory()">Kategori Kaydet</button>
+            </div>
+        </article>
+
+        <article class="panel-card manage-card">
+            <div class="panel-title-row">
+                <h3>Kategori Listesi</h3>
+            </div>
+
+            <div class="list-card-stack">
+                @foreach (var category in categories)
+                {
+                    <article class="wide-table-card card-hover-rise">
+                        <div class="wide-table-main">
+                            <div class="device-square">
+                                <span class="material-symbols-outlined">category</span>
+                            </div>
+                            <div class="wide-device-copy">
+                                <strong>@category.Name</strong>
+                                <span>Sira: @category.SortOrder</span>
+                            </div>
+                            <div class="wide-device-badge @(category.IsActive ? "live" : "dead")">@(category.IsActive ? "AKTIF" : "PASIF")</div>
+                        </div>
+
+                        <div class="wide-device-actions">
+                            <button class="action-button action-button-muted" type="button"
+                                    data-category-id="@category.Id"
+                                    data-category-name="@category.Name"
+                                    data-category-sort="@category.SortOrder"
+                                    data-category-active="@(category.IsActive ? "true" : "false")"
+                                    onclick="editCategory(this)">
+                                <span class="material-symbols-outlined">edit_square</span>
+                                <span>Duzenle</span>
+                            </button>
+                            <button class="action-button action-button-outline" type="button" onclick="deleteCategory(@category.Id)">
+                                <span class="material-symbols-outlined">delete</span>
+                                <span>Sil</span>
+                            </button>
+                        </div>
+                    </article>
+                }
+            </div>
+        </article>
+    </div>
+</section>

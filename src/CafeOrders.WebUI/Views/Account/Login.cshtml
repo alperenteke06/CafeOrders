@@ -1,0 +1,38 @@
+@model CafeOrders.WebUI.Models.LoginViewModel
+@{
+    ViewData["Title"] = "Admin Girisi";
+}
+
+<section class="login-shell">
+    <div class="login-backdrop"></div>
+    <div class="login-card">
+        <div class="login-brand">
+            <span class="material-symbols-outlined">stadia_controller</span>
+            <div>
+                <h1>Admin Girisi</h1>
+                <p>LAN Cafe operasyon paneline giris yapin.</p>
+            </div>
+        </div>
+
+        <form method="post" class="login-form">
+            @Html.AntiForgeryToken()
+
+            <label class="field-row">
+                <span>Kullanici Adi</span>
+                <input asp-for="UserName" autocomplete="username" placeholder="administrator" />
+            </label>
+
+            <label class="field-row">
+                <span>Sifre</span>
+                <input asp-for="Password" type="password" autocomplete="current-password" placeholder="••••••••" />
+            </label>
+
+            @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+            {
+                <div class="login-error">@Model.ErrorMessage</div>
+            }
+
+            <button class="action-button action-button-primary login-submit" type="submit">Panele Giris Yap</button>
+        </form>
+    </div>
+</section>
