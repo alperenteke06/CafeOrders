@@ -16,7 +16,6 @@ namespace CafeOrders.WebUI.Controllers;
 public sealed class DashboardController(
     IDashboardService dashboardService,
     ICatalogService catalogService,
-    IDeviceService deviceService,
     IOrderService orderService,
     ISettingsService settingsService,
     ITableService tableService,
@@ -25,6 +24,15 @@ public sealed class DashboardController(
     IConfiguration configuration) : Controller
 {
     private static readonly JsonSerializerOptions ApiJsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp",
+        ".gif"
+    };
+
     private static readonly HashSet<string> ValidSections =
     [
         "dashboard",
@@ -104,15 +112,8 @@ public sealed class DashboardController(
     [HttpPost("/dashboard/devices/approve")]
     public async Task<IActionResult> ApproveDevice([FromBody] ApproveDeviceRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var result = await deviceService.ApproveAsync(request, cancellationToken);
-            return result is null ? NotFound() : Json(result);
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
+        var response = await CreateApiClient().PostAsJsonAsync("/api/v1/devices/approve", request, cancellationToken);
+        return await ToApiActionResultAsync(response, cancellationToken);
     }
 
     [HttpPost("/dashboard/orders/{orderId:int}/accept")]
@@ -194,31 +195,29 @@ public sealed class DashboardController(
             return BadRequest(new { message = "Gorsel dosyasi secilmedi." });
         }
 
-        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        var extension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
+        var hasAllowedExtension = !string.IsNullOrWhiteSpace(extension) && AllowedImageExtensions.Contains(extension);
+        var hasImageContentType = HasExpectedContentType(file.ContentType, "image/");
+        if (!hasAllowedExtension && !hasImageContentType)
         {
-            return BadRequest(new { message = "Yalnizca gorsel dosyalari yuklenebilir." });
+            return BadRequest(new { message = "Yalnizca JPG, PNG, WEBP veya GIF gorselleri yuklenebilir." });
         }
 
-        var uploadsDirectory = Path.Combine(webHostEnvironment.WebRootPath, "uploads", "products");
+        extension = hasAllowedExtension ? extension : ".png";
+        var uploadsDirectory = Path.Combine(ResolveWebRootPath(), "uploads", "products");
         Directory.CreateDirectory(uploadsDirectory);
-
-        var extension = Path.GetExtension(file.FileName);
-        if (string.IsNullOrWhiteSpace(extension))
-        {
-            extension = ".png";
-        }
 
         var fileName = $"{Guid.NewGuid():N}{extension}";
         var physicalPath = Path.Combine(uploadsDirectory, fileName);
 
-        await using (var stream = System.IO.File.Create(physicalPath))
+        await using (var stream = new FileStream(physicalPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
         {
             await file.CopyToAsync(stream, cancellationToken);
         }
 
         return Json(new
         {
-            url = $"{Request.Scheme}://{Request.Host}/uploads/products/{fileName}",
+            url = $"{Request.Scheme}://{Request.Host}/uploads/products/{Uri.EscapeDataString(fileName)}",
             fileName = file.FileName
         });
     }
@@ -362,6 +361,20 @@ public sealed class DashboardController(
 
     private async Task<IActionResult> UpdateInfoMessageCore(UpdateInfoMessageRequest request, CancellationToken cancellationToken)
         => await ToApiActionResultAsync(await CreateApiClient().PutAsJsonAsync("/api/v1/settings/info-message", request, cancellationToken), cancellationToken);
+
+    private string ResolveWebRootPath()
+    {
+        if (!string.IsNullOrWhiteSpace(webHostEnvironment.WebRootPath))
+        {
+            return webHostEnvironment.WebRootPath;
+        }
+
+        return Path.Combine(webHostEnvironment.ContentRootPath, "wwwroot");
+    }
+
+    private static bool HasExpectedContentType(string? contentType, string expectedContentTypePrefix)
+        => !string.IsNullOrWhiteSpace(contentType) &&
+           contentType.StartsWith(expectedContentTypePrefix, StringComparison.OrdinalIgnoreCase);
 
     private HttpClient CreateApiClient()
     {

@@ -235,6 +235,19 @@ public sealed partial class MainViewModel : ObservableObject
                 BlockingTitle = "Sistem Hazirlaniyor";
                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadApprovedStateAsync);
             },
+            message =>
+            {
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    IsBusy = false;
+                    IsApproved = false;
+                    IsAwaitingApproval = true;
+                    BlockingTitle = "Cihaz Talebi Reddedildi";
+                    StatusText = message;
+                    ShowStatusPopup("Cihaz talebi reddedildi", "Lutfen yonetici ile gorusun.", "warning");
+                    OnPropertyChanged(nameof(IsBlockingOverlayVisible));
+                });
+            },
             (eventName, message) =>
             {
                 System.Windows.Application.Current.Dispatcher.Invoke(() => HandleRealtimeOrderEvent(eventName, message));
@@ -1048,8 +1061,13 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
+            if (!File.Exists(sharedFilePath))
+            {
+                return false;
+            }
+
             var sharedFileUri = new Uri(sharedFilePath, UriKind.Absolute).AbsoluteUri;
-            sharedMediaUri = AppendVersionToken(sharedFileUri, version);
+            sharedMediaUri = sharedFileUri;
             return true;
         }
         catch
@@ -1069,7 +1087,14 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            localFileUri = AppendVersionToken(new Uri(imageUrl, UriKind.Absolute).AbsoluteUri, version);
+            localFileUri = File.Exists(imageUrl)
+                ? new Uri(imageUrl, UriKind.Absolute).AbsoluteUri
+                : null;
+            if (localFileUri is null)
+            {
+                return false;
+            }
+
             return true;
         }
         catch

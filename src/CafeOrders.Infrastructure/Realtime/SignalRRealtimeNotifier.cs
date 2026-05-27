@@ -22,8 +22,13 @@ public sealed class SignalRRealtimeNotifier(IHubContext<CafeHub> hubContext) : I
             hubContext.Clients.Group("admin").SendAsync(CafeHubEvents.DeviceApproved, payload, cancellationToken));
     }
 
-    public Task NotifyDeviceRejectedAsync(Guid deviceId, CancellationToken cancellationToken = default)
-        => hubContext.Clients.Group("admin").SendAsync(CafeHubEvents.DeviceRejected, new { deviceId }, cancellationToken);
+    public Task NotifyDeviceRejectedAsync(Device device, CancellationToken cancellationToken = default)
+    {
+        var payload = new { deviceId = device.Id, message = "Cihaz talebi reddedildi." };
+        return Task.WhenAll(
+            hubContext.Clients.Group(device.DeviceKey).SendAsync(CafeHubEvents.DeviceRejected, payload, cancellationToken),
+            hubContext.Clients.Group("admin").SendAsync(CafeHubEvents.DeviceRejected, payload, cancellationToken));
+    }
 
     public Task NotifyDeviceMappedAsync(Device device, CancellationToken cancellationToken = default)
     {
@@ -32,6 +37,9 @@ public sealed class SignalRRealtimeNotifier(IHubContext<CafeHub> hubContext) : I
             hubContext.Clients.Group("admin").SendAsync(CafeHubEvents.DeviceMapped, payload, cancellationToken),
             hubContext.Clients.Group(device.DeviceKey).SendAsync(CafeHubEvents.DeviceMapped, payload, cancellationToken));
     }
+
+    public Task NotifyDevicesUpdatedAsync(CancellationToken cancellationToken = default)
+        => hubContext.Clients.Group("admin").SendAsync(CafeHubEvents.DevicesUpdated, RealtimeVersion(), cancellationToken);
 
     public Task NotifyOrderCreatedAsync(OrderDto order, CancellationToken cancellationToken = default)
         => hubContext.Clients.Group("admin").SendAsync(CafeHubEvents.OrderCreated, order, cancellationToken);

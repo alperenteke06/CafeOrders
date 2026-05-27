@@ -5,6 +5,7 @@ public static class CafeHubEvents
     public const string DeviceApproved = nameof(DeviceApproved);
     public const string DeviceRejected = nameof(DeviceRejected);
     public const string DeviceMapped = nameof(DeviceMapped);
+    public const string DevicesUpdated = nameof(DevicesUpdated);
     public const string OrderCreated = nameof(OrderCreated);
     public const string OrderAccepted = nameof(OrderAccepted);
     public const string OrderRejected = nameof(OrderRejected);

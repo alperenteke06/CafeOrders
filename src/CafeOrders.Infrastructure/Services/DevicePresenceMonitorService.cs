@@ -48,6 +48,7 @@ public sealed class DevicePresenceMonitorService(IServiceScopeFactory scopeFacto
         if (changedRows > 0)
         {
             await realtimeNotifier.NotifyTablesUpdatedAsync(cancellationToken);
+            await realtimeNotifier.NotifyDevicesUpdatedAsync(cancellationToken);
         }
     }
 }

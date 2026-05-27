@@ -523,6 +523,9 @@
                 showToast('Masa ve cihaz eslestirmesi guncellendi.', 'info');
                 requestSnapshotRefresh();
             });
+            connection.on('DevicesUpdated', () => {
+                requestSnapshotRefresh();
+            });
             connection.on('CatalogUpdated', () => {
                 requestSnapshotRefresh();
             });

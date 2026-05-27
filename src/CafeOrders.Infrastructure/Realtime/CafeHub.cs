@@ -32,6 +32,7 @@ public sealed class CafeHub(CafeOrdersDbContext dbContext, IRealtimeNotifier rea
         if (wasOffline)
         {
             await realtimeNotifier.NotifyTablesUpdatedAsync();
+            await realtimeNotifier.NotifyDevicesUpdatedAsync();
         }
     }
 
@@ -51,6 +52,7 @@ public sealed class CafeHub(CafeOrdersDbContext dbContext, IRealtimeNotifier rea
                 device.Status = DeviceStatus.Offline;
                 await dbContext.SaveChangesAsync();
                 await realtimeNotifier.NotifyTablesUpdatedAsync();
+                await realtimeNotifier.NotifyDevicesUpdatedAsync();
             }
             else
             {

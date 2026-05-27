@@ -16,6 +16,8 @@ public sealed class DeviceService(
     {
         var normalizedMac = NormalizeMac(request.MacAddress);
         var device = await dbContext.Devices.FirstOrDefaultAsync(x => x.MacAddress == normalizedMac, cancellationToken);
+        var isNewDevice = device is null;
+        var wasOnline = device?.Status == DeviceStatus.Online;
 
         if (device is null)
         {
@@ -41,6 +43,10 @@ public sealed class DeviceService(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        if (isNewDevice || wasOnline != (device.Status == DeviceStatus.Online))
+        {
+            await realtimeNotifier.NotifyDevicesUpdatedAsync(cancellationToken);
+        }
 
         var token = device.IsApproved ? jwtTokenService.CreateDeviceToken(device) : null;
         return new DeviceRegistrationResponse(device.Id, device.IsApproved, device.DeviceKey, token, device.IsApproved ? "Cihaz dogrulandi." : "Cihaz onay bekliyor.", device.TableId);
@@ -71,6 +77,7 @@ public sealed class DeviceService(
 
         var token = jwtTokenService.CreateDeviceToken(device);
         await realtimeNotifier.NotifyDeviceApprovedAsync(device, token, cancellationToken);
+        await realtimeNotifier.NotifyDevicesUpdatedAsync(cancellationToken);
         return new DeviceRegistrationResponse(device.Id, true, device.DeviceKey, token, "Cihaz onaylandi.", device.TableId);
     }
 
@@ -103,6 +110,7 @@ public sealed class DeviceService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await realtimeNotifier.NotifyDeviceMappedAsync(device, cancellationToken);
+        await realtimeNotifier.NotifyDevicesUpdatedAsync(cancellationToken);
 
         if (!wasApproved && device.IsApproved)
         {
@@ -125,7 +133,8 @@ public sealed class DeviceService(
 
         dbContext.Devices.Remove(device);
         await dbContext.SaveChangesAsync(cancellationToken);
-        await realtimeNotifier.NotifyDeviceRejectedAsync(deviceId, cancellationToken);
+        await realtimeNotifier.NotifyDeviceRejectedAsync(device, cancellationToken);
+        await realtimeNotifier.NotifyDevicesUpdatedAsync(cancellationToken);
         return true;
     }
 
@@ -145,6 +154,7 @@ public sealed class DeviceService(
         if (statusChanged)
         {
             await realtimeNotifier.NotifyTablesUpdatedAsync(cancellationToken);
+            await realtimeNotifier.NotifyDevicesUpdatedAsync(cancellationToken);
         }
 
         return true;

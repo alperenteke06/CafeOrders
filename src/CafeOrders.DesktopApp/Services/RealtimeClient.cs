@@ -13,6 +13,7 @@ public sealed class RealtimeClient
         string hubUrl,
         string deviceKey,
         Func<string, string?, int?, Task> onApproved,
+        Action<string> onRejected,
         Action<string, string> onOrderEvent,
         Action<InfoMessageDto> onInfoMessageUpdated,
         Action<AppSettingsDto> onAppSettingsUpdated,
@@ -32,6 +33,14 @@ public sealed class RealtimeClient
                 ? tableElement.GetInt32()
                 : null;
             return onApproved(token ?? string.Empty, message, tableId);
+        });
+
+        _connection.On<JsonElement>(CafeHubEvents.DeviceRejected, payload =>
+        {
+            var message = payload.TryGetProperty("message", out var messageElement)
+                ? messageElement.GetString()
+                : "Cihaz talebi reddedildi.";
+            onRejected(message ?? "Cihaz talebi reddedildi.");
         });
 
         _connection.On<JsonElement>(CafeHubEvents.OrderAccepted, payload =>
