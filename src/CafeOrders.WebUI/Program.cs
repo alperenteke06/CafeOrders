@@ -2,14 +2,26 @@ using CafeOrders.Infrastructure;
 using CafeOrders.Infrastructure.Persistence;
 using CafeOrders.Infrastructure.Realtime;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 var adminCookieDays = builder.Configuration.GetValue<int?>("SessionSettings:AdminCookieDays") ?? 3650;
 var slidingExpiration = builder.Configuration.GetValue<bool?>("SessionSettings:SlidingExpiration") ?? true;
 var adminCookieLifetime = TimeSpan.FromDays(Math.Max(adminCookieDays, 1));
+var dataProtectionApplicationName = builder.Configuration["SessionSettings:DataProtectionApplicationName"] ?? "CafeOrders.WebUI";
+var dataProtectionKeysPath = builder.Configuration["SessionSettings:DataProtectionKeysPath"];
 
 builder.Services.AddCafeOrdersInfrastructure(builder.Configuration);
+var dataProtectionBuilder = builder.Services.AddDataProtection()
+    .SetApplicationName(dataProtectionApplicationName);
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    var expandedKeysPath = Environment.ExpandEnvironmentVariables(dataProtectionKeysPath);
+    Directory.CreateDirectory(expandedKeysPath);
+    dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(expandedKeysPath));
+}
+
 builder.Services.AddHttpClient();
 builder.Services.AddControllersWithViews();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -23,6 +35,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.Name = "CafeOrders.Admin";
         options.Cookie.HttpOnly = true;
         options.Cookie.IsEssential = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     });
 builder.Services.AddAuthorization();
 

@@ -186,6 +186,9 @@ DocProject/Help/html
 
 # Click-Once directory
 publish/
+!publishes/
+!publishes/**
+publishes/**/*.pdb
 
 # Publish Web Output
 *.[Pp]ublish.xml

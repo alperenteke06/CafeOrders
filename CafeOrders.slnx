@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/docs/" />
+  <Folder Name="/publishes/" />
+  <Folder Name="/scripts/" />
   <Folder Name="/src/">
     <Project Path="src/CafeOrders.WebUI/CafeOrders.WebUI.csproj" />
     <Project Path="src/CafeOrders.API/CafeOrders.API.csproj" />

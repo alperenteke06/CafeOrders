@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CafeOrders.WebUI.Controllers;
 
 [AllowAnonymous]
-public sealed class AccountController(IAdminAuthService adminAuthService) : Controller
+public sealed class AccountController(IAdminAuthService adminAuthService, IConfiguration configuration) : Controller
 {
     [HttpGet("/account/login")]
     public IActionResult Login([FromQuery] string? returnUrl = null)
@@ -49,6 +49,8 @@ public sealed class AccountController(IAdminAuthService adminAuthService) : Cont
         };
 
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
+        var adminCookieDays = configuration.GetValue<int?>("SessionSettings:AdminCookieDays") ?? 3650;
+        var cookieLifetime = TimeSpan.FromDays(Math.Max(adminCookieDays, 1));
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
@@ -57,7 +59,7 @@ public sealed class AccountController(IAdminAuthService adminAuthService) : Cont
                 IsPersistent = true,
                 AllowRefresh = true,
                 IssuedUtc = DateTimeOffset.UtcNow,
-                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(3650)
+                ExpiresUtc = DateTimeOffset.UtcNow.Add(cookieLifetime)
             });
         await adminAuthService.RecordLoginAsync(user.Id, cancellationToken);
 
