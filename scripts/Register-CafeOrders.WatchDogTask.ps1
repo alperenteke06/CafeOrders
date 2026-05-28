@@ -1,7 +1,7 @@
 param(
     [string]$TaskName = "CafeOrders WatchDog",
     [string]$ScriptPath = "C:\Scripts\CafeOrders.WatchDog.ps1",
-    [string]$WebUiUrl = "http://192.168.2.11:5002/",
+    [string]$WebUiUrl = "http://192.168.1.104:5002/",
     [string]$ApiAppPoolName = "CafeOrders.API",
     [string]$WebUiAppPoolName = "CafeOrders.WebUI",
     [string]$ApiSiteName = "CafeOrders.API",
