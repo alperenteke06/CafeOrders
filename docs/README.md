@@ -1,38 +1,84 @@
-# CafeOrders Docs
+# CafeOrders Dokümantasyonu
 
-Bu klasor, proje yapisini hizli anlamak ve kurulum / gelistirme surecini standartlastirmak icin hazirlandi.
+Bu klasör, proje yapısını hızlı şekilde anlamak, geliştirme süreçlerini standartlaştırmak ve kurulum/deployment adımlarını merkezi olarak yönetmek amacıyla hazırlanmıştır.
 
-## Icerik
+---
 
-- [Teknik Mimari](C:\AllActivities\SoftwareDev\CafeOrders\docs\technical-architecture.md)
-- [Islevsel Dokuman](C:\AllActivities\SoftwareDev\CafeOrders\docs\functional-overview.md)
-- [Deployment Rehberi](C:\AllActivities\SoftwareDev\CafeOrders\docs\deployment-guide.md)
-- [API Referansi](C:\AllActivities\SoftwareDev\CafeOrders\docs\api-reference.md)
-- [Realtime Event Sozlugu](C:\AllActivities\SoftwareDev\CafeOrders\docs\realtime-events.md)
+# Doküman İçeriği
 
-## Cozum Yapisi
+* Teknik Mimari
+  `docs/technical-architecture.md`
 
-Ana klasorler:
+* İşlevsel Doküman
+  `docs/functional-overview.md`
 
-- `src/`: uygulama kaynak kodlari
-- `tests/`: test projeleri
-- `publishes/`: publish ciktilari
-- `artifacts/`: build ve dogrulama ciktilari
-- `docs/`: teknik ve islevsel dokumanlar
+* Deployment Rehberi
+  `docs/deployment-guide.md`
 
-`src/` altindaki projeler:
+* API Referansı
+  `docs/api-reference.md`
 
-- `CafeOrders.API`: istemci ve yonetim islemleri icin REST API + SignalR hub
-- `CafeOrders.WebUI`: admin paneli / MVC yonetim arayuzu
-- `CafeOrders.DesktopApp`: masa/kiosk icin WPF istemci
-- `CafeOrders.Application`: servis abstraksiyonlari ve contract DTO katmani
-- `CafeOrders.Domain`: temel entity ve enum tanimlari
-- `CafeOrders.Infrastructure`: EF Core, servis implementasyonlari, guvenlik ve realtime katmani
+* Realtime Event Sözlüğü
+  `docs/realtime-events.md`
 
-## Hangi Dokuman Ne Icin?
+---
 
-- Teknik mimari: klasor yapisi, veri akisi, konfigurasyon, deployment ve realtime baglantilari
-- Islevsel dokuman: sistemin kullanici tarafindaki davranisi, modul bazli sorumluluklar ve temel senaryolar
-- Deployment rehberi: publish, IIS, SQL ve istemci dagitimi adimlari
-- API referansi: temel endpoint listesi ve beklenen kullanim amaci
-- Realtime event sozlugu: SignalR uzerinden yayinlanan olaylar ve tuketici davranislari
+# Çözüm Yapısı
+
+## Ana Klasörler
+
+| Klasör       | Açıklama                         |
+| ------------ | -------------------------------- |
+| `src/`       | Uygulama kaynak kodları          |
+| `tests/`     | Test projeleri                   |
+| `publishes/` | Publish çıktıları                |
+| `artifacts/` | Build ve doğrulama çıktıları     |
+| `docs/`      | Teknik ve işlevsel dokümantasyon |
+
+---
+
+# Proje Katmanları
+
+`src/` altında yer alan projeler:
+
+| Proje                       | Açıklama                                                           |
+| --------------------------- | ------------------------------------------------------------------ |
+| `CafeOrders.API`            | REST API ve SignalR tabanlı realtime iletişim katmanı              |
+| `CafeOrders.WebUI`          | Yönetim paneli ve MVC tabanlı admin arayüzü                        |
+| `CafeOrders.DesktopApp`     | Masa/kiosk kullanım senaryoları için WPF istemci uygulaması        |
+| `CafeOrders.Application`    | Uygulama servis kontratları, DTO yapıları ve abstraction katmanı   |
+| `CafeOrders.Domain`         | Temel entity, enum ve domain modelleri                             |
+| `CafeOrders.Infrastructure` | EF Core, güvenlik, servis implementasyonları ve realtime altyapısı |
+
+---
+
+# Doküman Rehberi
+
+## Teknik Mimari
+
+Sistem mimarisi, katmanlar arası veri akışı, konfigürasyon yapısı, deployment mimarisi ve realtime iletişim bileşenlerini içerir.
+
+## İşlevsel Doküman
+
+Sistemin kullanıcı tarafındaki davranışlarını, modül sorumluluklarını ve temel kullanım senaryolarını açıklar.
+
+## Deployment Rehberi
+
+Publish alma, IIS yapılandırması, SQL Server kurulumu ve istemci dağıtım süreçlerini içerir.
+
+## API Referansı
+
+REST endpoint listesi, kullanım amaçları, request/response yapıları ve temel entegrasyon bilgilerini içerir.
+
+## Realtime Event Sözlüğü
+
+SignalR üzerinden yayınlanan event tiplerini, payload yapılarını ve istemci davranışlarını tanımlar.
+
+---
+
+# Genel Notlar
+
+* Tüm projeler `.NET` tabanlı çok katmanlı mimari yaklaşımı ile geliştirilmiştir.
+* Realtime iletişim altyapısında `SignalR` kullanılmaktadır.
+* Veri erişim katmanında `Entity Framework Core` tercih edilmiştir.
+* Dokümantasyon içerikleri proje geliştikçe güncellenmelidir.
