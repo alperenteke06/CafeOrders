@@ -1475,6 +1475,24 @@ textarea {
   background: linear-gradient(180deg, #ffe08a, #ffb800);
 }
 
+.modal-picker-menu[hidden],
+.product-category-picker-menu[hidden] {
+  display: none !important;
+}
+
+.product-category-picker-menu {
+  display: block;
+  max-height: 252px !important;
+  overflow-y: scroll !important;
+  padding-right: 10px;
+  z-index: 140;
+  align-content: start;
+}
+
+.product-category-picker-menu .modal-picker-option + .modal-picker-option {
+  margin-top: 8px;
+}
+
 .modal-picker-option {
   min-height: 56px;
   display: flex;

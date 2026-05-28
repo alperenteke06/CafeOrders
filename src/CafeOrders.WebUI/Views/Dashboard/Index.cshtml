@@ -214,7 +214,7 @@
                             <span id="productEditorCategoryLabel">Kategori secin</span>
                             <span class="material-symbols-outlined modal-select-icon">expand_more</span>
                         </button>
-                        <div id="productEditorCategoryMenu" class="modal-picker-menu" hidden role="listbox">
+                        <div id="productEditorCategoryMenu" class="modal-picker-menu product-category-picker-menu" hidden role="listbox">
                             @foreach (var category in Model.Catalog.Categories.Where(x => x.IsActive).OrderBy(x => x.SortOrder))
                             {
                                 <button class="modal-picker-option"
@@ -528,6 +528,7 @@
                 requestSnapshotRefresh();
             });
             connection.on('CatalogUpdated', () => {
+                syncProductCategoryOptionsFromSection(true);
                 requestSnapshotRefresh();
             });
             connection.on('TablesUpdated', () => {
@@ -886,8 +887,8 @@
             });
         }
 
-        function startCreateProduct() {
-            syncProductCategoryOptionsFromSection();
+        async function startCreateProduct() {
+            await syncProductCategoryOptionsFromSection(true);
             const modal = document.getElementById('productEditorModal');
             document.getElementById('productEditorId').value = '';
             document.getElementById('productEditorName').value = '';
@@ -908,8 +909,8 @@
             modal.hidden = false;
         }
 
-        function openProductEditor(button) {
-            syncProductCategoryOptionsFromSection();
+        async function openProductEditor(button) {
+            await syncProductCategoryOptionsFromSection(true);
             const modal = document.getElementById('productEditorModal');
             const preview = document.getElementById('productEditorPreview');
             const image = document.getElementById('productEditorImage');
@@ -1138,20 +1139,43 @@
             closeProductCategoryPicker();
         }
 
-        function syncProductCategoryOptionsFromSection() {
+        async function syncProductCategoryOptionsFromSection(forceRemote = false) {
             const seed = document.querySelector('#sectionHost #productCategorySeed');
             const select = document.getElementById('productEditorCategory');
             const menu = document.getElementById('productEditorCategoryMenu');
-            if (!seed || !select || !menu) {
+            if (!select || !menu) {
                 return;
             }
 
-            const categories = Array.from(seed.querySelectorAll('[data-category-id]'))
+            let categories = seed
+                ? Array.from(seed.querySelectorAll('[data-category-id]'))
                 .map(node => ({
                     id: String(node.dataset.categoryId ?? ''),
                     name: node.dataset.categoryName ?? 'Kategori'
                 }))
-                .filter(category => category.id);
+                    .filter(category => category.id)
+                : [];
+
+            if (forceRemote || categories.length === 0) {
+                try {
+                    const response = await fetch('/dashboard/catalog/categories', {
+                        cache: 'no-store',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+
+                    if (response.ok) {
+                        const payload = await response.json();
+                        categories = (payload.categories ?? [])
+                            .map(category => ({
+                                id: String(category.id ?? ''),
+                                name: category.name ?? 'Kategori'
+                            }))
+                            .filter(category => category.id);
+                    }
+                } catch {
+                    // The section seed keeps the picker usable if the live category endpoint is unavailable.
+                }
+            }
 
             if (categories.length === 0) {
                 return;

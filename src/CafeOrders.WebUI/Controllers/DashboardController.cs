@@ -263,6 +263,20 @@ public sealed class DashboardController(
     public async Task<IActionResult> DeleteProduct(int productId, CancellationToken cancellationToken)
         => await ToApiActionResultAsync(await CreateApiClient().DeleteAsync($"/api/v1/catalog/products/{productId}", cancellationToken), cancellationToken);
 
+    [HttpGet("/dashboard/catalog/categories")]
+    public async Task<IActionResult> GetProductCategoryOptions(CancellationToken cancellationToken)
+    {
+        var catalog = await catalogService.GetCatalogAsync(includeInactive: true, cancellationToken: cancellationToken);
+        var categories = catalog.Categories
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Name)
+            .Select(x => new { id = x.Id, name = x.Name })
+            .ToArray();
+
+        return Json(new { categories });
+    }
+
     [HttpPost("/dashboard/categories")]
     public async Task<IActionResult> UpsertCategory([FromBody] UpsertCategoryRequest request, CancellationToken cancellationToken)
     {
