@@ -366,6 +366,7 @@
             hydrateSettingsMediaState();
             syncSettingsTonePicker('clientInfoBoxType');
             syncSettingsTonePicker('messageType');
+            syncProductCategoryOptionsFromSection();
             startAdminHub();
             document.addEventListener('click', handleGlobalUiClick);
         });
@@ -886,6 +887,7 @@
         }
 
         function startCreateProduct() {
+            syncProductCategoryOptionsFromSection();
             const modal = document.getElementById('productEditorModal');
             document.getElementById('productEditorId').value = '';
             document.getElementById('productEditorName').value = '';
@@ -907,6 +909,7 @@
         }
 
         function openProductEditor(button) {
+            syncProductCategoryOptionsFromSection();
             const modal = document.getElementById('productEditorModal');
             const preview = document.getElementById('productEditorPreview');
             const image = document.getElementById('productEditorImage');
@@ -989,6 +992,9 @@
             const shouldOpen = menu.hidden;
             menu.hidden = !shouldOpen;
             button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            if (shouldOpen) {
+                menu.querySelector('.modal-picker-option.active')?.scrollIntoView({ block: 'nearest' });
+            }
         }
 
         function closeProductCategoryPicker() {
@@ -1130,6 +1136,60 @@
             });
 
             closeProductCategoryPicker();
+        }
+
+        function syncProductCategoryOptionsFromSection() {
+            const seed = document.querySelector('#sectionHost #productCategorySeed');
+            const select = document.getElementById('productEditorCategory');
+            const menu = document.getElementById('productEditorCategoryMenu');
+            if (!seed || !select || !menu) {
+                return;
+            }
+
+            const categories = Array.from(seed.querySelectorAll('[data-category-id]'))
+                .map(node => ({
+                    id: String(node.dataset.categoryId ?? ''),
+                    name: node.dataset.categoryName ?? 'Kategori'
+                }))
+                .filter(category => category.id);
+
+            if (categories.length === 0) {
+                return;
+            }
+
+            const currentValue = select.value;
+            select.replaceChildren();
+            menu.replaceChildren();
+
+            for (const category of categories) {
+                select.add(new Option(category.name, category.id));
+
+                const option = document.createElement('button');
+                option.className = 'modal-picker-option';
+                option.type = 'button';
+                option.dataset.categoryId = category.id;
+                option.dataset.categoryName = category.name;
+                option.setAttribute('role', 'option');
+                option.addEventListener('click', () => selectProductCategory(category.id, category.name));
+
+                const dot = document.createElement('span');
+                dot.className = 'modal-picker-dot';
+                option.appendChild(dot);
+
+                const label = document.createElement('span');
+                label.textContent = category.name;
+                option.appendChild(label);
+
+                menu.appendChild(option);
+            }
+
+            if (categories.some(category => category.id === currentValue)) {
+                select.value = currentValue;
+            } else {
+                select.selectedIndex = 0;
+            }
+
+            syncProductCategoryPicker();
         }
 
         function syncProductCategoryPicker() {
@@ -1449,6 +1509,10 @@
                 hydrateSettingsMediaState();
                 syncSettingsTonePicker('clientInfoBoxType');
                 syncSettingsTonePicker('messageType');
+            }
+
+            if (section === 'products') {
+                syncProductCategoryOptionsFromSection();
             }
 
             if (section === 'notifications') {

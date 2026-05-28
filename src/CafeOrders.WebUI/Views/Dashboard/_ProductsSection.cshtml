@@ -127,6 +127,14 @@
         }
     </div>
 
+    <div id="productCategorySeed" hidden>
+        @foreach (var category in Model.Catalog.Categories.Where(x => x.IsActive).OrderBy(x => x.SortOrder).ThenBy(x => x.Name))
+        {
+            <div data-category-id="@category.Id"
+                 data-category-name="@category.Name"></div>
+        }
+    </div>
+
     <div class="pagination-pillbar">
         <button class="pagination-nav" type="button" @(currentPage <= 1 ? "disabled" : null) onclick="loadSection('products', true, { page: @(currentPage - 1), search: getSearchValue(), category: '@categoryFilter' }, true)">Onceki</button>
         @foreach (var pageNumber in visiblePages)
