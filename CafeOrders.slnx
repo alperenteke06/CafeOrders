@@ -30,6 +30,7 @@
     <File Path="scripts/CafeOrders.WatchDog.README.md" />
     <File Path="scripts/CafeOrders.WatchDog.ps1" />
     <File Path="scripts/Register-CafeOrders.WatchDogTask.ps1" />
+    <File Path="scripts/Run-CafeOrders.WatchDogHidden.vbs" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/CafeOrders.WebUI/CafeOrders.WebUI.csproj" />

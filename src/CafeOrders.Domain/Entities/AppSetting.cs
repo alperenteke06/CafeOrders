@@ -5,14 +5,14 @@ namespace CafeOrders.Domain.Entities;
 public sealed class AppSetting
 {
     public int Id { get; set; }
-    public string CafeName { get; set; } = "NightByte Lounge";
+    public string CafeName { get; set; } = "JetNet E-Spor Arena";
     public string AppDeveloperName { get; set; } = "Alperen TEKE";
     public string AppDeveloperPhone { get; set; } = "0 (541) 688 88 06";
-    public string OrderAcceptedMessage { get; set; } = "Siparisiniz mutfaga iletildi.";
+    public string OrderAcceptedMessage { get; set; } = "Siparişiniz başarıyla alınmıştır.";
     public string OrderRejectedMessage { get; set; } = "Siparisiniz su an isleme alinamadi.";
-    public string ClientInfoBoxMessage { get; set; } = "Hos geldiniz. Masaniz hazir oldugunda ekran otomatik acilacak.";
-    public InfoMessageType ClientInfoBoxType { get; set; } = InfoMessageType.Info;
-    public string ClientInfoBoxIcon { get; set; } = "campaign";
+    public string ClientInfoBoxMessage { get; set; } = "İşletme kuralları gereği dışarıdan yiyecek ve içecek getirilmesi yasaktır.";
+    public InfoMessageType ClientInfoBoxType { get; set; } = InfoMessageType.Warning;
+    public string ClientInfoBoxIcon { get; set; } = "warning";
     public bool EnableNewOrderSound { get; set; } = true;
     public bool EnableQuickApproveMode { get; set; } = true;
     public bool EnableLiveAnnouncements { get; set; } = true;

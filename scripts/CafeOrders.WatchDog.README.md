@@ -8,6 +8,7 @@ Bu script, IIS uzerindeki `CafeOrders.API` ve `CafeOrders.WebUI` AppPool/Site du
 
 - `CafeOrders.WatchDog.ps1`: asil izleme ve kurtarma scripti
 - `Register-CafeOrders.WatchDogTask.ps1`: Task Scheduler gorevini olusturan yardimci script
+- `Run-CafeOrders.WatchDogHidden.vbs`: PowerShell penceresinin ekrana gelmesini engelleyen gizli calistirici
 
 ## Onerilen Konum
 
@@ -16,6 +17,7 @@ Production makinede:
 ```powershell
 C:\Scripts\CafeOrders.WatchDog.ps1
 C:\Scripts\Register-CafeOrders.WatchDogTask.ps1
+C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs
 ```
 
 ## Task Scheduler Kurulum
@@ -26,12 +28,20 @@ PowerShell'i yonetici olarak acin ve calistirin:
 powershell.exe -ExecutionPolicy Bypass -NoProfile -File "C:\Scripts\Register-CafeOrders.WatchDogTask.ps1"
 ```
 
-IIS AppPool ve Site baslatma islemleri icin task `RunLevel Highest` ile olusturulur. Chrome/default browser acilisi ise varsayilan olarak `explorer.exe` uzerinden yapilir. Bu, URL'nin normal kullanici oturumundaki default browser profilinde acilmasini saglar.
+IIS AppPool ve Site baslatma islemleri icin task `RunLevel Highest` ile olusturulur. Task action `wscript.exe` uzerinden `Run-CafeOrders.WatchDogHidden.vbs` dosyasini calistirir; bu nedenle her dakika tetiklemede PowerShell/CMD penceresi ekrana gelip gitmez. Chrome/default browser acilisi ise varsayilan olarak `explorer.exe` uzerinden yapilir. Bu, URL'nin normal kullanici oturumundaki default browser profilinde acilmasini saglar.
 
 ## Manuel Test
 
+Gorunur PowerShell ile debug etmek icin:
+
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -NoProfile -File "C:\Scripts\CafeOrders.WatchDog.ps1"
+```
+
+Task Scheduler ile ayni gizli calisma davranisini test etmek icin:
+
+```powershell
+wscript.exe "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs" "C:\Scripts\CafeOrders.WatchDog.ps1" "http://192.168.1.104:5002/" "CafeOrders.API" "CafeOrders.WebUI" "CafeOrders.API" "CafeOrders.WebUI" "C:\Scripts\CafeOrders.WatchDog.log"
 ```
 
 ## Parametreler

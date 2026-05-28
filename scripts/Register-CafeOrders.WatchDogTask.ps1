@@ -1,6 +1,7 @@
 param(
     [string]$TaskName = "CafeOrders WatchDog",
     [string]$ScriptPath = "C:\Scripts\CafeOrders.WatchDog.ps1",
+    [string]$HiddenRunnerPath = "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs",
     [string]$WebUiUrl = "http://192.168.1.104:5002/",
     [string]$ApiAppPoolName = "CafeOrders.API",
     [string]$WebUiAppPoolName = "CafeOrders.WebUI",
@@ -15,22 +16,24 @@ if (-not (Test-Path $ScriptPath)) {
     throw "WatchDog script not found: $ScriptPath"
 }
 
-$scriptDirectory = Split-Path -Parent $ScriptPath
+if (-not (Test-Path $HiddenRunnerPath)) {
+    throw "Hidden WatchDog runner not found: $HiddenRunnerPath"
+}
+
+$scriptDirectory = Split-Path -Parent $HiddenRunnerPath
 $arguments = @(
-    "-ExecutionPolicy Bypass",
-    "-NoProfile",
-    "-WindowStyle Hidden",
-    "-File `"$ScriptPath`"",
-    "-WebUiUrl `"$WebUiUrl`"",
-    "-ApiAppPoolName `"$ApiAppPoolName`"",
-    "-WebUiAppPoolName `"$WebUiAppPoolName`"",
-    "-ApiSiteName `"$ApiSiteName`"",
-    "-WebUiSiteName `"$WebUiSiteName`"",
-    "-LogPath `"$LogPath`""
+    "`"$HiddenRunnerPath`"",
+    "`"$ScriptPath`"",
+    "`"$WebUiUrl`"",
+    "`"$ApiAppPoolName`"",
+    "`"$WebUiAppPoolName`"",
+    "`"$ApiSiteName`"",
+    "`"$WebUiSiteName`"",
+    "`"$LogPath`""
 ) -join " "
 
 $action = New-ScheduledTaskAction `
-    -Execute "powershell.exe" `
+    -Execute "wscript.exe" `
     -Argument $arguments `
     -WorkingDirectory $scriptDirectory
 

@@ -66,7 +66,14 @@ public static class DbSeeder
 
         if (!dbContext.AppSettings.Any())
         {
-            await dbContext.AppSettings.AddAsync(new AppSetting(), cancellationToken);
+            await dbContext.AppSettings.AddAsync(new AppSetting
+            {
+                CafeName = "JetNet E-Spor Arena",
+                OrderAcceptedMessage = "Siparişiniz başarıyla alınmıştır.",
+                ClientInfoBoxMessage = "İşletme kuralları gereği dışarıdan yiyecek ve içecek getirilmesi yasaktır.",
+                ClientInfoBoxType = InfoMessageType.Warning,
+                ClientInfoBoxIcon = "warning"
+            }, cancellationToken);
         }
 
         if (!dbContext.AdminUsers.Any())
@@ -85,10 +92,10 @@ public static class DbSeeder
         {
             await dbContext.InfoMessages.AddAsync(new InfoMessage
             {
-                Message = "Bu aksam 22:00 sonrasi turnuva indirimi aktif.",
-                Type = InfoMessageType.Info,
-                IconKey = "campaign",
-                IsActive = true,
+                Message = "İşletme kuralları gereği dışarıdan yiyecek ve içecek getirilmesi yasaktır.",
+                Type = InfoMessageType.Warning,
+                IconKey = "warning",
+                IsActive = false,
                 StartDate = DateTime.UtcNow.AddMinutes(-5)
             }, cancellationToken);
         }
