@@ -2,6 +2,7 @@
   <Folder Name="/docs/">
     <File Path="docs/README.md" />
     <File Path="docs/api-reference.md" />
+    <File Path="docs/cafe-management-transition-plan.md" />
     <File Path="docs/deployment-guide.md" />
     <File Path="docs/functional-overview.md" />
     <File Path="docs/realtime-events.md" />
