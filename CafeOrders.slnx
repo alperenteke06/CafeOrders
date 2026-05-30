@@ -41,4 +41,7 @@
     <Project Path="src/CafeOrders.Domain/CafeOrders.Domain.csproj" />
     <Project Path="src/CafeOrders.Infrastructure/CafeOrders.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CafeOrders.Tests/CafeOrders.Tests.csproj" />
+  </Folder>
 </Solution>
