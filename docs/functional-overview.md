@@ -2,7 +2,7 @@
 
 ## 1. Sistem Amaci
 
-CafeOrders, masa/kiosk istemcileri ile yonetim panelini ayni siparis ekosisteminde birlestiren bir siparis ve operasyon yonetim sistemidir.
+CafeManagement, masa/kiosk istemcileri ile yonetim panelini ayni siparis ekosisteminde birlestiren bir siparis ve operasyon yonetim sistemidir.
 
 Ana hedefler:
 

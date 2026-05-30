@@ -2,40 +2,40 @@
 
 ## 1. Genel Bakis
 
-CafeOrders, bir LAN cafe / gaming center siparis yonetim sistemi olarak tasarlanmis cok katmanli bir .NET 8 cozumudur.
+CafeManagement, bir LAN cafe / gaming center siparis yonetim sistemi olarak tasarlanmis cok katmanli bir .NET 8 cozumudur.
 
 Ana bilesenler:
 
-- `CafeOrders.WebUI`: yonetim paneli
-- `CafeOrders.API`: istemci ve yonetim entegrasyon API'si
-- `CafeOrders.DesktopApp`: kiosk / masa istemcisi
-- `CafeOrders.Infrastructure`: veri erisim, guvenlik ve SignalR
-- `CafeOrders.Application`: servis ve contract arabirimleri
-- `CafeOrders.Domain`: entity ve is kurallari
+- `CafeManagement.Manager`: yonetim paneli
+- `CafeManagement.Api`: istemci ve yonetim entegrasyon API'si
+- `CafeManagement.Kiosk`: kiosk / masa istemcisi
+- `CafeManagement.Infrastructure`: veri erisim, guvenlik ve SignalR
+- `CafeManagement.Application`: servis ve contract arabirimleri
+- `CafeManagement.Core`: entity ve is kurallari
 
 ## 2. Klasor Mimarisi
 
 Kok dizin:
 
 ```text
-CafeOrders/
+CafeManagement/
 |-- docs/
 |-- publishes/
 |-- artifacts/
 |-- src/
-|   |-- CafeOrders.API/
-|   |-- CafeOrders.Application/
-|   |-- CafeOrders.DesktopApp/
-|   |-- CafeOrders.Domain/
-|   |-- CafeOrders.Infrastructure/
-|   |-- CafeOrders.WebUI/
+|   |-- CafeManagement.Api/
+|   |-- CafeManagement.Application/
+|   |-- CafeManagement.Kiosk/
+|   |-- CafeManagement.Core/
+|   |-- CafeManagement.Infrastructure/
+|   |-- CafeManagement.Manager/
 |-- tests/
-|   |-- CafeOrders.Tests/
+|   |-- CafeManagement.Tests/
 ```
 
 Kaynak katmanlar:
 
-### `src/CafeOrders.Domain`
+### `src/CafeManagement.Core`
 
 Domain entity ve enum tanimlari burada yer alir.
 
@@ -51,7 +51,7 @@ Temel entity dosyalari:
 - `OrderLine`
 - `Product`
 
-### `src/CafeOrders.Application`
+### `src/CafeManagement.Application`
 
 Uygulama servis contract'lari ve DTO tanimlari burada yer alir.
 
@@ -68,13 +68,13 @@ Temel arabirimler:
 
 Bu katman, UI veya persistence detaylarini bilmez.
 
-### `src/CafeOrders.Infrastructure`
+### `src/CafeManagement.Infrastructure`
 
 Teknik implementasyon katmanidir.
 
 Ana alt klasorler:
 
-- `Persistence/`: `CafeOrdersDbContext`, migration'lar, seed
+- `Persistence/`: `CafeManagementDbContext`, migration'lar, seed
 - `Services/`: katalog, cihaz, siparis, ayarlar, dashboard ve table servisleri
 - `Realtime/`: `CafeHub`, `SignalRRealtimeNotifier`
 - `Security/`: admin auth ve JWT servisi
@@ -90,7 +90,7 @@ Ana alt klasorler:
 
 kayitlari yapilir.
 
-### `src/CafeOrders.API`
+### `src/CafeManagement.Api`
 
 REST API ve realtime hub host katmanidir.
 
@@ -110,7 +110,7 @@ Baslangicta:
 - seed uygulanir
 - `CafeHub` `/hubs/cafe` altinda acilir
 
-### `src/CafeOrders.WebUI`
+### `src/CafeManagement.Manager`
 
 MVC tabanli admin panelidir.
 
@@ -129,7 +129,7 @@ Alt yapida:
 - API ile HTTP uzerinden yazma islemleri
 - SignalR ile admin tarafi canli guncelleme
 
-### `src/CafeOrders.DesktopApp`
+### `src/CafeManagement.Kiosk`
 
 WPF kiosk istemcisidir.
 
@@ -200,12 +200,12 @@ Not:
 
 Dosya:
 
-- `src/CafeOrders.API/appsettings.json`
+- `src/CafeManagement.Api/appsettings.json`
 
 Temel alanlar:
 
 - `Urls`
-- `ConnectionStrings:CafeOrders`
+- `ConnectionStrings:CafeManagement`
 - `Jwt`
 - `Branding`
 
@@ -217,12 +217,12 @@ Mevcut port:
 
 Dosya:
 
-- `src/CafeOrders.WebUI/appsettings.json`
+- `src/CafeManagement.Manager/appsettings.json`
 
 Temel alanlar:
 
 - `Urls`
-- `ConnectionStrings:CafeOrders`
+- `ConnectionStrings:CafeManagement`
 - `Jwt`
 - `ApiBaseUrl`
 - `Branding`
@@ -235,7 +235,7 @@ Mevcut port:
 
 Dosya:
 
-- `src/CafeOrders.DesktopApp/appsettings.json`
+- `src/CafeManagement.Kiosk/appsettings.json`
 
 Temel alanlar:
 
@@ -278,8 +278,8 @@ Bu sayede kurulum makinesinde Visual Studio olmadan da DB guncellenebilir.
 
 WebUI static upload klasorleri:
 
-- `src/CafeOrders.WebUI/wwwroot/uploads/products`
-- `src/CafeOrders.WebUI/wwwroot/uploads/sounds`
+- `src/CafeManagement.Manager/wwwroot/uploads/products`
+- `src/CafeManagement.Manager/wwwroot/uploads/sounds`
 
 Uretimde bunlar publish klasoru altinda ilgili `wwwroot/uploads/...` yollarina tasinir.
 
@@ -292,7 +292,7 @@ DesktopApp tarafi:
 
 Test projesi:
 
-- `tests/CafeOrders.Tests`
+- `tests/CafeManagement.Tests`
 
 Mevcut ornek test kapsami:
 

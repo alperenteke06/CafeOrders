@@ -1,0 +1,147 @@
+@model CafeManagement.Manager.Models.DashboardViewModel
+@{
+    const int pageSize = 20;
+    var categoryFilter = Model.CategoryFilter;
+    var searchQuery = Model.SearchQuery;
+    var filteredProducts = Model.ProductCards
+        .Where(product => categoryFilter == "all" || product.CategoryId.ToString() == categoryFilter)
+        .Where(product =>
+            string.IsNullOrWhiteSpace(searchQuery) ||
+            product.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+            product.CategoryName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+            (!string.IsNullOrWhiteSpace(product.Description) && product.Description.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)))
+        .OrderByDescending(product => product.InStock)
+        .ThenBy(product => product.CategoryName)
+        .ThenBy(product => product.Name)
+        .ToArray();
+    var totalPages = Math.Max(1, (int)Math.Ceiling(filteredProducts.Length / (double)pageSize));
+    var currentPage = Math.Min(Model.CurrentPage, totalPages);
+    var products = filteredProducts.Skip((currentPage - 1) * pageSize).Take(pageSize).ToArray();
+    var visiblePages = Enumerable.Range(1, totalPages).Where(pageNumber => pageNumber == 1 || pageNumber == totalPages || Math.Abs(pageNumber - currentPage) <= 1).ToArray();
+}
+
+<section class="content-section section-enter">
+    <div class="section-head">
+        <div>
+            <h2>Urun Yonetimi</h2>
+            <p>Menu ogelerini yonetin, stok durumlarini duzenleyin ve gorselleri guncelleyin.</p>
+        </div>
+
+        <div class="section-actions">
+            <button class="action-button action-button-muted quick-price-launch" type="button" onclick="openQuickPriceModal()">
+                <span class="material-symbols-outlined">table_rows</span>
+                <span>Hizli Fiyat Girisi</span>
+            </button>
+
+            <button class="action-button action-button-primary" type="button" onclick="startCreateProduct()">
+                <span class="material-symbols-outlined">add_circle</span>
+                <span>Yeni Urun Ekle</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="category-pills">
+        <button class="category-pill @(categoryFilter == "all" ? "active" : string.Empty)" type="button" onclick="loadSection('products', true, { category: 'all', page: 1, search: getSearchValue() }, true)">Tumu</button>
+        @foreach (var category in Model.Catalog.Categories.OrderBy(x => x.SortOrder).ThenBy(x => x.Name))
+        {
+            <button class="category-pill @(!category.IsActive ? "category-pill-muted" : string.Empty) @(categoryFilter == category.Id.ToString() ? "active" : string.Empty)"
+                    type="button"
+                    onclick="loadSection('products', true, { category: '@category.Id', page: 1, search: getSearchValue() }, true)">
+                @category.Name
+            </button>
+        }
+    </div>
+
+    <div class="product-grid paged">
+        @foreach (var product in products)
+        {
+            <article class="product-card card-hover-rise @(product.InStock ? string.Empty : "product-card-out")">
+                <div class="product-hero @product.VisualClass">
+                    @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
+                    {
+                        <img class="product-hero-image" src="@product.ImageUrl" alt="@product.Name" />
+                    }
+                    <button class="hero-edit-button"
+                            type="button"
+                            aria-label="Urunu duzenle"
+                            data-product-id="@product.Id"
+                            data-product-name="@product.Name"
+                            data-product-category-id="@product.CategoryId"
+                            data-product-category-name="@product.CategoryName"
+                            data-product-price="@product.Price.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                            data-product-description="@product.Description"
+                            data-product-image="@product.ImageUrl"
+                            data-product-visual="@product.VisualClass"
+                            data-product-stock="@(product.InStock ? "true" : "false")"
+                            onclick="openProductEditor(this)">
+                        <span class="material-symbols-outlined">edit</span>
+                    </button>
+                </div>
+
+                <div class="product-content">
+                    <div class="product-meta-row">
+                        <span>@product.CategoryName</span>
+                        <strong>@product.Price.ToString("C0")</strong>
+                    </div>
+
+                    <h3>@product.Name</h3>
+
+                    <div class="product-description">@(!string.IsNullOrWhiteSpace(product.Description) ? product.Description : "Aciklama eklenmemis.")</div>
+
+                    <div class="product-stock-row">
+                        <div class="product-stock-copy">
+                            <span>Stok Durumu</span>
+                            <small>@(product.InStock ? "Listede ve secilebilir" : "Listede kalir, kioskta pasif olur")</small>
+                        </div>
+                        <div class="product-stock-actions">
+                            <button class="switch @(product.InStock ? "on" : "off")"
+                                    type="button"
+                                    aria-pressed="@(product.InStock ? "true" : "false")"
+                                    onclick="toggleProductAvailability(@product.Id, this, @product.CategoryId, '@product.Name.Replace("'", "\\'")', @product.Price.ToString(System.Globalization.CultureInfo.InvariantCulture), '@(product.Description?.Replace("'", "\\'") ?? string.Empty)', '@(product.ImageUrl?.Replace("'", "\\'") ?? string.Empty)')"></button>
+                            <button class="delete-link" type="button" onclick="deleteProduct(@product.Id)">
+                                <span class="material-symbols-outlined">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        }
+
+        @for (var index = products.Length; index < pageSize; index++)
+        {
+            <article class="product-card product-card-placeholder"></article>
+        }
+    </div>
+
+    <div id="quickPriceSeed" hidden>
+        @foreach (var product in filteredProducts)
+        {
+            <div data-product-id="@product.Id"
+                 data-product-name="@product.Name"
+                 data-product-category-id="@product.CategoryId"
+                 data-product-category-name="@product.CategoryName"
+                 data-product-price="@product.Price.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                 data-product-description="@product.Description"
+                 data-product-image="@product.ImageUrl"
+                 data-product-stock="@(product.InStock ? "true" : "false")"></div>
+        }
+    </div>
+
+    <div id="productCategorySeed" hidden>
+        @foreach (var category in Model.Catalog.Categories.Where(x => x.IsActive).OrderBy(x => x.SortOrder).ThenBy(x => x.Name))
+        {
+            <div data-category-id="@category.Id"
+                 data-category-name="@category.Name"></div>
+        }
+    </div>
+
+    <div class="pagination-pillbar">
+        <button class="pagination-nav" type="button" @(currentPage <= 1 ? "disabled" : null) onclick="loadSection('products', true, { page: @(currentPage - 1), search: getSearchValue(), category: '@categoryFilter' }, true)">Onceki</button>
+        @foreach (var pageNumber in visiblePages)
+        {
+            <button class="pagination-page @(pageNumber == currentPage ? "active" : string.Empty)" type="button" onclick="loadSection('products', true, { page: @(pageNumber), search: getSearchValue(), category: '@categoryFilter' }, true)">@pageNumber</button>
+        }
+        <button class="pagination-nav" type="button" @(currentPage >= totalPages ? "disabled" : null) onclick="loadSection('products', true, { page: @(currentPage + 1), search: getSearchValue(), category: '@categoryFilter' }, true)">Sonraki</button>
+        <span class="pagination-summary">@products.Length / @filteredProducts.Length kayit gosteriliyor</span>
+    </div>
+</section>

@@ -1,0 +1,117 @@
+@model CafeManagement.Manager.Models.DashboardViewModel
+@{
+    const int pageSize = 8;
+    var allOrders = Model.RecentOrders
+        .OrderBy(order => order.Status == "Pending" ? 0 : order.Status == "Accepted" ? 1 : 2)
+        .ThenByDescending(order => order.CreatedAt)
+        .ToArray();
+    var totalOrders = allOrders.Length;
+    var completedOrders = allOrders.Where(x => x.Status == "Completed").ToArray();
+    var pendingOrders = allOrders.Where(x => x.Status == "Pending").ToArray();
+    var totalPages = Math.Max(1, (int)Math.Ceiling(totalOrders / (double)pageSize));
+    var currentPage = Math.Min(Model.CurrentPage, totalPages);
+    var orderShowcase = allOrders.Skip((currentPage - 1) * pageSize).Take(pageSize).ToArray();
+    var completionRate = totalOrders == 0 ? 0 : (int)Math.Round((double)completedOrders.Length / totalOrders * 100d);
+    var recentCompleted = completedOrders.OrderByDescending(x => x.CompletedAt ?? x.CreatedAt).FirstOrDefault();
+    var visiblePages = Enumerable.Range(1, totalPages).Where(pageNumber => pageNumber == 1 || pageNumber == totalPages || Math.Abs(pageNumber - currentPage) <= 1).ToArray();
+}
+
+<section class="content-section section-enter orders-section-fixed">
+    <div class="section-head">
+        <div>
+            <h2>Siparisler</h2>
+            <p>Bekleyen siparisler ustte olacak sekilde tum siparis akislarini yonetin.</p>
+        </div>
+
+        <div class="section-pills">
+            <div class="status-chip"><span class="status-dot amber"></span>@pendingOrders.Length Bekleyen</div>
+            <div class="status-chip"><span class="status-dot cyan"></span>@completedOrders.Length Tamamlanan</div>
+        </div>
+    </div>
+
+    <div class="orders-grid fixed-height">
+        @foreach (var order in orderShowcase)
+        {
+            var isPending = order.Status == "Pending";
+            var isCompleted = order.Status == "Completed";
+            var statusLabel = isPending ? "Bekliyor" : isCompleted ? "Tamamlandi" : order.Status;
+            <article class="order-card @(isPending ? "order-card-pending" : isCompleted ? "order-card-complete" : "order-card-approved")">
+                <div class="order-card-head">
+                    <div>
+                        <span class="order-label">MASA</span>
+                        <h3>Masa @order.TableId</h3>
+                        <small class="order-time">@order.CreatedAt.ToLocalTime().ToString("HH:mm")</small>
+                    </div>
+                    <span class="order-badge @(isPending ? "pending" : isCompleted ? "complete" : "approved")">@statusLabel</span>
+                </div>
+
+                <div class="order-lines">
+                    @foreach (var line in order.Lines)
+                    {
+                        <div class="order-line">
+                            <span class="qty-badge">@line.Quantity x</span>
+                            <span class="order-line-name">@line.ProductName</span>
+                            <strong>@line.LineTotal.ToString("C0")</strong>
+                        </div>
+                    }
+                </div>
+
+                <div class="order-actions">
+                    @if (isPending)
+                    {
+                        <button class="action-button action-button-outline fill" type="button" onclick="rejectOrder(@order.Id)">Reddet</button>
+                        <button class="action-button action-button-primary fill" type="button" onclick="acceptOrder(@order.Id)">Onayla</button>
+                    }
+                    else
+                    {
+                        <div class="order-complete-note"
+                             data-notification-order="@order.Id"
+                             data-notification-title="Masa @order.TableId siparisi tamamlandi"
+                             data-notification-meta="@((order.CompletedAt ?? order.CreatedAt).ToLocalTime().ToString("dd.MM.yyyy HH:mm"))"
+                             data-notification-amount="@order.TotalPrice.ToString("C0")">
+                            @(isCompleted ? "Siparis teslim edildi." : "Siparis islemi kapatildi.")
+                        </div>
+                    }
+                </div>
+            </article>
+        }
+
+        @for (var index = orderShowcase.Length; index < pageSize; index++)
+        {
+            <article class="order-card order-card-placeholder"></article>
+        }
+    </div>
+
+    <div class="pagination-pillbar">
+        <button class="pagination-nav" type="button" @(currentPage <= 1 ? "disabled" : null) onclick="loadSection('orders', true, { page: @(currentPage - 1), search: getSearchValue() }, true)">Onceki</button>
+        @foreach (var pageNumber in visiblePages)
+        {
+            <button class="pagination-page @(pageNumber == currentPage ? "active" : string.Empty)" type="button" onclick="loadSection('orders', true, { page: @(pageNumber), search: getSearchValue() }, true)">@pageNumber</button>
+        }
+        <button class="pagination-nav" type="button" @(currentPage >= totalPages ? "disabled" : null) onclick="loadSection('orders', true, { page: @(currentPage + 1), search: getSearchValue() }, true)">Sonraki</button>
+        <span class="pagination-summary">@orderShowcase.Length / @totalOrders kayit gosteriliyor</span>
+    </div>
+
+    <div class="orders-summary-grid anchored">
+        <div class="mini-summary-card">
+            <span>Toplam Kazanc</span>
+            <strong>@completedOrders.Sum(x => x.TotalPrice).ToString("C0")</strong>
+        </div>
+        <div class="mini-summary-card">
+            <span>Tamamlanan Siparis / Toplam Siparis</span>
+            <strong>@completedOrders.Length / @totalOrders</strong>
+            <em class="mini-summary-note">@completionRate% tamamlanma</em>
+        </div>
+        <div class="mini-summary-card">
+            <span>Siparis Yogunlugu</span>
+            <div class="mini-progress">
+                <div class="mini-progress-bar" style="background: linear-gradient(90deg, var(--accent-strong) @(Math.Min(100, pendingOrders.Length * 10))%, rgba(255, 255, 255, 0.08) @(Math.Min(100, pendingOrders.Length * 10))%);"></div>
+                <strong>@pendingOrders.Length aktif</strong>
+            </div>
+        </div>
+        <div class="mini-summary-card">
+            <span>Son Tamamlanan Siparis</span>
+            <strong>@(recentCompleted is null ? "-" : $"Masa {recentCompleted.TableId}")</strong>
+        </div>
+    </div>
+</section>

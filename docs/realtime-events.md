@@ -22,7 +22,7 @@ Event sabitleri:
 
 Kaynak:
 
-- `src/CafeOrders.Application/Contracts/Realtime/CafeHubEvents.cs`
+- `src/CafeManagement.Application/Contracts/Realtime/CafeHubEvents.cs`
 
 ## 2. Grup Mantigi
 

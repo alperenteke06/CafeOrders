@@ -1,4 +1,4 @@
-# CafeOrders Dokümantasyonu
+# CafeManagement Dokümantasyonu
 
 Bu klasör, proje yapısını hızlı şekilde anlamak, geliştirme süreçlerini standartlaştırmak ve kurulum/deployment adımlarını merkezi olarak yönetmek amacıyla hazırlanmıştır.
 
@@ -43,12 +43,12 @@ Bu klasör, proje yapısını hızlı şekilde anlamak, geliştirme süreçlerin
 
 | Proje                       | Açıklama                                                           |
 | --------------------------- | ------------------------------------------------------------------ |
-| `CafeOrders.API`            | REST API ve SignalR tabanlı realtime iletişim katmanı              |
-| `CafeOrders.WebUI`          | Yönetim paneli ve MVC tabanlı admin arayüzü                        |
-| `CafeOrders.DesktopApp`     | Masa/kiosk kullanım senaryoları için WPF istemci uygulaması        |
-| `CafeOrders.Application`    | Uygulama servis kontratları, DTO yapıları ve abstraction katmanı   |
-| `CafeOrders.Domain`         | Temel entity, enum ve domain modelleri                             |
-| `CafeOrders.Infrastructure` | EF Core, güvenlik, servis implementasyonları ve realtime altyapısı |
+| `CafeManagement.Api`            | REST API ve SignalR tabanlı realtime iletişim katmanı              |
+| `CafeManagement.Manager`          | Yönetim paneli ve MVC tabanlı admin arayüzü                        |
+| `CafeManagement.Kiosk`     | Masa/kiosk kullanım senaryoları için WPF istemci uygulaması        |
+| `CafeManagement.Application`    | Uygulama servis kontratları, DTO yapıları ve abstraction katmanı   |
+| `CafeManagement.Core`         | Temel entity, enum ve domain modelleri                             |
+| `CafeManagement.Infrastructure` | EF Core, güvenlik, servis implementasyonları ve realtime altyapısı |
 
 ---
 

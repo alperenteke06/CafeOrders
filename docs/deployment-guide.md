@@ -4,9 +4,9 @@
 
 Onerilen kurulum:
 
-- `CafeOrders.API` -> sunucu uzerinde `5001`
-- `CafeOrders.WebUI` -> sunucu uzerinde `5002`
-- `CafeOrders.DesktopApp` -> client makinelere dagitilan WPF istemci
+- `CafeManagement.Api` -> sunucu uzerinde `5001`
+- `CafeManagement.Manager` -> sunucu uzerinde `5002`
+- `CafeManagement.Kiosk` -> client makinelere dagitilan WPF istemci
 - SQL Server -> ayni sunucu veya ayri veritabani sunucusu
 
 ## 2. Sunucu Gereksinimleri
@@ -49,19 +49,19 @@ Ornek publish komutlari:
 ### API
 
 ```powershell
-dotnet publish C:\AllActivities\SoftwareDev\CafeOrders\src\CafeOrders.API\CafeOrders.API.csproj -c Release --self-contained false /p:UseSharedCompilation=false -o C:\AllActivities\SoftwareDev\CafeOrders\publishes\API
+dotnet publish C:\AllActivities\SoftwareDev\CafeManagement\src\CafeManagement.Api\CafeManagement.Api.csproj -c Release --self-contained false /p:UseSharedCompilation=false -o C:\AllActivities\SoftwareDev\CafeManagement\publishes\API
 ```
 
 ### WebUI
 
 ```powershell
-dotnet publish C:\AllActivities\SoftwareDev\CafeOrders\src\CafeOrders.WebUI\CafeOrders.WebUI.csproj -c Release --self-contained false /p:UseSharedCompilation=false -o C:\AllActivities\SoftwareDev\CafeOrders\publishes\WebUI
+dotnet publish C:\AllActivities\SoftwareDev\CafeManagement\src\CafeManagement.Manager\CafeManagement.Manager.csproj -c Release --self-contained false /p:UseSharedCompilation=false -o C:\AllActivities\SoftwareDev\CafeManagement\publishes\WebUI
 ```
 
 ### DesktopApp
 
 ```powershell
-dotnet publish C:\AllActivities\SoftwareDev\CafeOrders\src\CafeOrders.DesktopApp\CafeOrders.DesktopApp.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=false /p:IncludeNativeLibrariesForSelfExtract=true -o C:\AllActivities\SoftwareDev\CafeOrders\publishes\DesktopApp
+dotnet publish C:\AllActivities\SoftwareDev\CafeManagement\src\CafeManagement.Kiosk\CafeManagement.Kiosk.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=false /p:IncludeNativeLibrariesForSelfExtract=true -o C:\AllActivities\SoftwareDev\CafeManagement\publishes\DesktopApp
 ```
 
 ## 5. Konfigurasyon Dosyalari
@@ -70,12 +70,12 @@ dotnet publish C:\AllActivities\SoftwareDev\CafeOrders\src\CafeOrders.DesktopApp
 
 Dosya:
 
-- `src/CafeOrders.API/appsettings.json`
+- `src/CafeManagement.Api/appsettings.json`
 
 Temel alanlar:
 
 - `Urls`
-- `ConnectionStrings:CafeOrders`
+- `ConnectionStrings:CafeManagement`
 - `Jwt`
 - `Branding`
 
@@ -83,12 +83,12 @@ Temel alanlar:
 
 Dosya:
 
-- `src/CafeOrders.WebUI/appsettings.json`
+- `src/CafeManagement.Manager/appsettings.json`
 
 Temel alanlar:
 
 - `Urls`
-- `ConnectionStrings:CafeOrders`
+- `ConnectionStrings:CafeManagement`
 - `ApiBaseUrl`
 - `Jwt`
 - `Branding`
@@ -97,7 +97,7 @@ Temel alanlar:
 
 Dosya:
 
-- `src/CafeOrders.DesktopApp/appsettings.json`
+- `src/CafeManagement.Kiosk/appsettings.json`
 
 Temel alanlar:
 
@@ -113,7 +113,7 @@ Temel alanlar:
 {
   "Urls": "http://0.0.0.0:5001",
   "ConnectionStrings": {
-    "CafeOrders": "Server=.\\SQLEXPRESS;Database=CafeOrders;User Id=CafeOrdersAdmin;Password=sa@CafeOrders!;TrustServerCertificate=True;MultipleActiveResultSets=True"
+    "CafeManagement": "Server=.\\SQLEXPRESS;Database=CafeManagement;User Id=CafeManagementAdmin;Password=sa@CafeManagement!;TrustServerCertificate=True;MultipleActiveResultSets=True"
   }
 }
 ```
@@ -145,8 +145,8 @@ Temel alanlar:
 
 Iki ayri site onerilir:
 
-- `CafeOrders.API` -> `*:5001`
-- `CafeOrders.WebUI` -> `*:5002`
+- `CafeManagement.Api` -> `*:5001`
+- `CafeManagement.Manager` -> `*:5002`
 
 App Pool:
 

@@ -1,0 +1,81 @@
+@model CafeManagement.Manager.Models.DashboardViewModel
+@{
+    var searchQuery = Model.SearchQuery;
+    var devices = Model.Snapshot.Devices
+        .Where(device =>
+            string.IsNullOrWhiteSpace(searchQuery) ||
+            device.HostName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+            device.IpAddress.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+            device.MacAddress.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+            (device.TableId?.ToString().Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ?? false))
+        .OrderBy(device => device.IsApproved ? 1 : 0)
+        .ThenBy(device => device.TableId ?? int.MaxValue)
+        .ThenBy(device => device.HostName)
+        .ToArray();
+}
+
+<section class="content-section section-enter">
+    <div class="section-head">
+        <div>
+            <h2>Cihazlar</h2>
+            <p>Kayitli cihazlari onaylayin, reddedin ve masa atamalarini popup uzerinden yonetin.</p>
+        </div>
+    </div>
+
+    <div class="list-card-stack">
+        @foreach (var device in devices)
+        {
+            var isPending = !device.IsApproved;
+            var isOnline = device.IsApproved && string.Equals(device.Status, "Online", StringComparison.OrdinalIgnoreCase);
+            <article class="wide-device-card card-hover-rise">
+                <div class="wide-device-main">
+                    <div class="device-square">
+                        <span class="material-symbols-outlined">computer</span>
+                    </div>
+                    <div class="wide-device-copy">
+                        <strong>@device.HostName</strong>
+                        <span>@device.IpAddress</span>
+                    </div>
+                    <div class="wide-device-badge @(isPending ? "waiting" : isOnline ? "live" : "dead")">
+                        @(isPending ? "ONAY BEKLIYOR" : isOnline ? "CEVRIMICI" : "CEVRIMDISI")
+                    </div>
+                </div>
+
+                <div class="wide-device-meta">
+                    <span>MAC: @device.MacAddress</span>
+                    <span>Masa: @(device.TableId?.ToString() ?? "-")</span>
+                    <span>Son gorulme: @(device.LastSeenAt?.ToLocalTime().ToString("dd.MM HH:mm") ?? "-")</span>
+                </div>
+
+                <div class="wide-device-actions">
+                    <button class="action-button action-button-muted" type="button" onclick="openDeviceAssignModal('@device.Id', '@device.HostName.Replace("'", "\\'")', '@(device.TableId?.ToString() ?? string.Empty)')">
+                        <span class="material-symbols-outlined">table_restaurant</span>
+                        <span>Masa Ata</span>
+                    </button>
+                    @if (isPending)
+                    {
+                        <button class="action-button action-button-primary" type="button" onclick="approveDevice('@device.Id', getAssignedTableSelection())">Onayla</button>
+                        <button class="action-button action-button-outline" type="button" onclick="rejectDevice('@device.Id')">Reddet</button>
+                    }
+                </div>
+            </article>
+        }
+
+        @if (!devices.Any())
+        {
+            <article class="wide-table-card">
+                <div class="wide-device-copy">
+                    <strong>Kayitli cihaz bulunamadi</strong>
+                    <span>Aramaniza uygun cihaz eslesmedi.</span>
+                </div>
+            </article>
+        }
+    </div>
+
+    <div id="deviceTableSeed" hidden>
+        @foreach (var table in Model.Tables.Where(x => x.IsActive).OrderBy(x => x.Name))
+        {
+            <button type="button" class="seed-table-item" data-table-id="@table.Id" data-table-name="@table.Name">@table.Name</button>
+        }
+    </div>
+</section>

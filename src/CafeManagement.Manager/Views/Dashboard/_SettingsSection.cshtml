@@ -1,0 +1,286 @@
+@model CafeManagement.Manager.Models.DashboardViewModel
+@{
+    var infoMessage = Model.Snapshot.ActiveInfoMessage?.Message ?? Model.AppSettings.ClientInfoBoxMessage;
+    var infoMessageType = Model.Snapshot.ActiveInfoMessage?.Type ?? "Info";
+    var infoMessageIcon = Model.Snapshot.ActiveInfoMessage?.IconKey ?? "campaign";
+    static string ToneChipClass(string? value) => value switch
+    {
+        "Warning" => "warning",
+        "Success" => "success",
+        _ => "info"
+    };
+    static string ToneLabel(string? value) => value switch
+    {
+        "Warning" => "Onemli",
+        "Success" => "Genel",
+        _ => "Duyuru"
+    };
+}
+
+<section class="content-section section-enter">
+    <div class="settings-intro">
+        <div class="settings-mark">
+            <span class="material-symbols-outlined">settings_suggest</span>
+        </div>
+        <div>
+            <h2>Sistem Ayarlari</h2>
+            <p>Mesaj akislari, kiosk duyurulari ve operasyon kurallarini buradan yonetin.</p>
+        </div>
+    </div>
+
+    <div class="settings-grid">
+        <article class="panel-card settings-card wide">
+            <div class="panel-title-row">
+                <h3>Mesaj ve Isletme Ayarlari</h3>
+            </div>
+
+            <label class="field-row">
+                <span>Kafe Adi</span>
+                <input id="cafeName" value="@Model.AppSettings.CafeName" />
+            </label>
+
+            <div class="toggle-card balanced">
+                <div>
+                    <strong>Yazilim Gelistirici</strong>
+                    <p>Bu alan proje icindeki appsettings.json dosyasindan okunur.</p>
+                </div>
+                <div class="developer-static-copy">
+                    <strong>@Model.AppSettings.AppDeveloperName</strong>
+                    <span>@Model.AppSettings.AppDeveloperPhone</span>
+                </div>
+            </div>
+
+            <label class="field-row">
+                <span>Siparis Onay Mesaji</span>
+                <input id="acceptedMessage" value="@Model.AppSettings.OrderAcceptedMessage" />
+                <small>Musteri siparisi onaylandiginda kiosk ekraninda gorunecek metin.</small>
+            </label>
+
+            <label class="field-row">
+                <span>Siparis Red Mesaji</span>
+                <input id="rejectedMessage" value="@Model.AppSettings.OrderRejectedMessage" />
+                <small>Siparis iptal edildiginde gonderilecek varsayilan mesaj.</small>
+            </label>
+
+            <label class="field-row">
+                <span>Varsayilan Kiosk Bilgi Metni</span>
+                <textarea id="clientInfoBoxMessage" rows="4">@Model.AppSettings.ClientInfoBoxMessage</textarea>
+            </label>
+
+            <div class="modal-form-grid">
+                <label class="field-row">
+                    <span>Kiosk Bilgi Onemi</span>
+                    <div class="modal-picker-shell settings-tone-picker">
+                        <select id="clientInfoBoxType" class="modal-input modal-select modal-select-native" hidden>
+                            <option value="Warning" selected="@(Model.AppSettings.ClientInfoBoxType == "Warning" ? "selected" : null)">Onemli</option>
+                            <option value="Info" selected="@(Model.AppSettings.ClientInfoBoxType == "Info" ? "selected" : null)">Duyuru</option>
+                            <option value="Success" selected="@(Model.AppSettings.ClientInfoBoxType == "Success" ? "selected" : null)">Genel</option>
+                        </select>
+                        <button id="clientInfoBoxTypeButton"
+                                class="modal-picker-button settings-tone-button"
+                                type="button"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                                onclick="toggleSettingsTonePicker('clientInfoBoxType')">
+                            <span class="settings-tone-value">
+                                <span id="clientInfoBoxTypeChip" class="settings-tone-chip @ToneChipClass(Model.AppSettings.ClientInfoBoxType)"></span>
+                                <span id="clientInfoBoxTypeLabel">@ToneLabel(Model.AppSettings.ClientInfoBoxType)</span>
+                            </span>
+                            <span class="material-symbols-outlined modal-select-icon">expand_more</span>
+                        </button>
+                        <div id="clientInfoBoxTypeMenu" class="modal-picker-menu settings-tone-menu" hidden role="listbox">
+                            <button class="modal-picker-option settings-tone-option"
+                                    type="button"
+                                    data-tone-value="Warning"
+                                    data-tone-label="Onemli"
+                                    onclick="selectSettingsTone('clientInfoBoxType', 'Warning', 'Onemli')">
+                                <span class="settings-tone-chip warning"></span>
+                                <span>Onemli</span>
+                            </button>
+                            <button class="modal-picker-option settings-tone-option"
+                                    type="button"
+                                    data-tone-value="Info"
+                                    data-tone-label="Duyuru"
+                                    onclick="selectSettingsTone('clientInfoBoxType', 'Info', 'Duyuru')">
+                                <span class="settings-tone-chip info"></span>
+                                <span>Duyuru</span>
+                            </button>
+                            <button class="modal-picker-option settings-tone-option"
+                                    type="button"
+                                    data-tone-value="Success"
+                                    data-tone-label="Genel"
+                                    onclick="selectSettingsTone('clientInfoBoxType', 'Success', 'Genel')">
+                                <span class="settings-tone-chip success"></span>
+                                <span>Genel</span>
+                            </button>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="field-row">
+                    <span>Kiosk Bilgi Ikonu</span>
+                    <input id="clientInfoBoxIcon" value="@Model.AppSettings.ClientInfoBoxIcon" placeholder="campaign" />
+                </label>
+            </div>
+
+            <label class="field-row">
+                <span>Yeni Siparis Ses Dosyasi</span>
+                <input id="newOrderSoundUrl" value="@Model.AppSettings.NewOrderSoundUrl" placeholder="https://.../new-order.mp3" oninput="updateSoundPreviewFromUrl(this.value)" />
+                <small>Hub uzerinden yeni siparis geldiginde panelde bu ses calinir.</small>
+            </label>
+
+            <div id="soundDropzone"
+                 class="product-dropzone sound-dropzone"
+                 onclick="document.getElementById('newOrderSoundFile').click()"
+                 ondragover="handleSoundDropOver(event)"
+                 ondragleave="handleSoundDropLeave(event)"
+                 ondrop="handleSoundDrop(event)">
+                <input id="newOrderSoundFile" type="file" accept="audio/*" hidden onchange="handleSoundFileChange(event)" />
+                <span class="material-symbols-outlined">audio_file</span>
+                <strong>Ses Dosyasini Surukle Birak</strong>
+                <small>Yerel dosya secin veya URL alanina baglanti girin</small>
+                <em id="newOrderSoundFileName" class="dropzone-meta">Secili dosya yok</em>
+            </div>
+
+            <div class="sound-preview-card">
+                <div class="sound-preview-copy">
+                    <span class="material-symbols-outlined sound-preview-icon">music_note</span>
+                    <div>
+                        <strong>Ses Onizleme</strong>
+                        <p id="soundPreviewLabel">Kayitli siparis sesi burada test edilir.</p>
+                    </div>
+                </div>
+
+                <div class="sound-preview-wave" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span><span></span>
+                </div>
+
+                <div class="sound-preview-actions">
+                    <button class="action-button action-button-primary sound-preview-button" type="button" onclick="playPreviewSound()">
+                        <span class="material-symbols-outlined">play_arrow</span>
+                        <span>Oynat</span>
+                    </button>
+                    <button class="action-button action-button-outline sound-preview-button" type="button" onclick="stopPreviewSound()">
+                        <span class="material-symbols-outlined">stop</span>
+                        <span>Durdur</span>
+                    </button>
+                </div>
+            </div>
+
+            <audio id="newOrderSoundPreview" class="settings-audio-preview" preload="none" hidden src="@Model.AppSettings.NewOrderSoundUrl"></audio>
+
+            <div class="table-form-actions">
+                <button class="action-button action-button-primary" type="button" onclick="saveAppSettings()">Genel Ayarlari Kaydet</button>
+            </div>
+        </article>
+
+        <article class="panel-card settings-card">
+            <div class="panel-title-row">
+                <h3>Operasyon Anahtarlari</h3>
+            </div>
+
+            <div class="toggle-card">
+                <div>
+                    <strong>Yeni Siparis Sesli Uyari</strong>
+                    <p>Admin paneline yeni siparis geldiginde dikkat cekici bildirim goster.</p>
+                </div>
+                <button id="settingEnableNewOrderSound" class="switch @(Model.AppSettings.EnableNewOrderSound ? "on" : "off")" type="button" aria-pressed="@(Model.AppSettings.EnableNewOrderSound ? "true" : "false")" onclick="toggleGenericSwitch(this)"></button>
+            </div>
+
+            <div class="toggle-card">
+                <div>
+                    <strong>Hizli Onay Modu</strong>
+                    <p>Bekleyen siparis ve cihaz taleplerini tek tikla yonetin.</p>
+                </div>
+                <button id="settingEnableQuickApproveMode" class="switch @(Model.AppSettings.EnableQuickApproveMode ? "on" : "off")" type="button" aria-pressed="@(Model.AppSettings.EnableQuickApproveMode ? "true" : "false")" onclick="toggleGenericSwitch(this)"></button>
+            </div>
+
+            <div class="toggle-card">
+                <div>
+                    <strong>Kiosk Duyurusu Canli</strong>
+                    <p>Duyuru guncellendiginde tum istemcilere aninda ilet.</p>
+                </div>
+                <button id="settingEnableLiveAnnouncements" class="switch @(Model.AppSettings.EnableLiveAnnouncements ? "on" : "off")" type="button" aria-pressed="@(Model.AppSettings.EnableLiveAnnouncements ? "true" : "false")" onclick="toggleGenericSwitch(this)"></button>
+            </div>
+        </article>
+    </div>
+
+    <article class="panel-card announce-card">
+        <div class="announce-copy">
+            <div class="panel-title-row">
+                <h3>Kiosk Duyuru</h3>
+            </div>
+            <p>Tum kiosk ekranlarinin ust kisminda kayan yazi veya sabit banner olarak gorunecek duyuru metnini duzenleyin.</p>
+
+            <div class="announce-preview">
+                <span>ONIZLEME</span>
+                <strong>"@infoMessage"</strong>
+            </div>
+        </div>
+
+        <div class="announce-editor">
+            <div class="modal-form-grid announcement-meta-grid">
+                <label class="field-row">
+                    <span>Duyuru Onemi</span>
+                    <div class="modal-picker-shell settings-tone-picker">
+                        <select id="messageType" class="modal-input modal-select modal-select-native" hidden>
+                            <option value="Warning" selected="@(infoMessageType == "Warning" ? "selected" : null)">Onemli</option>
+                            <option value="Info" selected="@(infoMessageType == "Info" ? "selected" : null)">Duyuru</option>
+                            <option value="Success" selected="@(infoMessageType == "Success" ? "selected" : null)">Genel</option>
+                        </select>
+                        <button id="messageTypeButton"
+                                class="modal-picker-button settings-tone-button"
+                                type="button"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                                onclick="toggleSettingsTonePicker('messageType')">
+                            <span class="settings-tone-value">
+                                <span id="messageTypeChip" class="settings-tone-chip @ToneChipClass(infoMessageType)"></span>
+                                <span id="messageTypeLabel">@ToneLabel(infoMessageType)</span>
+                            </span>
+                            <span class="material-symbols-outlined modal-select-icon">expand_more</span>
+                        </button>
+                        <div id="messageTypeMenu" class="modal-picker-menu settings-tone-menu" hidden role="listbox">
+                            <button class="modal-picker-option settings-tone-option"
+                                    type="button"
+                                    data-tone-value="Warning"
+                                    data-tone-label="Onemli"
+                                    onclick="selectSettingsTone('messageType', 'Warning', 'Onemli')">
+                                <span class="settings-tone-chip warning"></span>
+                                <span>Onemli</span>
+                            </button>
+                            <button class="modal-picker-option settings-tone-option"
+                                    type="button"
+                                    data-tone-value="Info"
+                                    data-tone-label="Duyuru"
+                                    onclick="selectSettingsTone('messageType', 'Info', 'Duyuru')">
+                                <span class="settings-tone-chip info"></span>
+                                <span>Duyuru</span>
+                            </button>
+                            <button class="modal-picker-option settings-tone-option"
+                                    type="button"
+                                    data-tone-value="Success"
+                                    data-tone-label="Genel"
+                                    onclick="selectSettingsTone('messageType', 'Success', 'Genel')">
+                                <span class="settings-tone-chip success"></span>
+                                <span>Genel</span>
+                            </button>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="field-row">
+                    <span>Duyuru Ikonu</span>
+                    <input id="messageIconKey" value="@infoMessageIcon" placeholder="campaign" />
+                </label>
+            </div>
+
+            <textarea id="messageText" rows="5">@infoMessage</textarea>
+
+            <div class="announce-actions">
+                <button class="action-button action-button-outline" type="button" onclick="document.getElementById('messageText').value='';">Sifirla</button>
+                <button class="action-button action-button-primary" type="button" onclick="saveInfoMessage()">Duyuruyu Kaydet</button>
+            </div>
+        </div>
+    </article>
+</section>

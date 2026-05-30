@@ -2,26 +2,26 @@
 
 ## Amac
 
-Bu dokuman, mevcut `CafeOrders` uygulamasini calisan ozellikleri bozmadan internet kafe ve gaming center odakli `CafeManagement` platformuna evirmek icin ilk teknik yol haritasini tanimlar.
+Bu dokuman, mevcut `CafeManagement` uygulamasini calisan ozellikleri bozmadan internet kafe ve gaming center odakli `CafeManagement` platformuna evirmek icin ilk teknik yol haritasini tanimlar.
 
 Gecis stratejisi:
 
 - Once mevcut siparis, cihaz onay, kiosk ve realtime akislari korunur.
-- Yeni domain modelleri once mevcut katmanlara kontrollu olarak eklenir.
-- Moduller buyudukce fiziksel proje ayrimi yapilir.
-- Buyuk isim/namespace degisimleri, davranis testleri guclenmeden yapilmaz.
+- Yeni domain modelleri mevcut katmanlara kontrollu olarak eklenir.
+- Rename Sprint ile solution, proje ve namespace isimleri `CafeManagement.*` standardina alinmistir.
+- Yeni moduller buyudukce davranis testleri korunarak ayrilir.
 
 ## Mevcut Solution Durumu
 
 Mevcut projeler:
 
-- `CafeOrders.Domain`: Entity ve enum cekirdegi.
-- `CafeOrders.Application`: Use-case arayuzleri ve request/response kontratlari.
-- `CafeOrders.Infrastructure`: EF Core, servis implementasyonlari, SignalR notifier, seed ve migration.
-- `CafeOrders.API`: REST API ve SignalR hub yayin noktasi.
-- `CafeOrders.WebUI`: Manager paneli benzeri MVC web arayuzu.
-- `CafeOrders.DesktopApp`: Client kiosk/siparis WPF uygulamasi.
-- `CafeOrders.Tests`: Mevcut unit/integration testleri.
+- `CafeManagement.Core`: Entity ve enum cekirdegi.
+- `CafeManagement.Application`: Use-case arayuzleri ve request/response kontratlari.
+- `CafeManagement.Infrastructure`: EF Core, servis implementasyonlari, SignalR notifier, seed ve migration.
+- `CafeManagement.Api`: REST API ve SignalR hub yayin noktasi.
+- `CafeManagement.Manager`: Manager paneli benzeri MVC web arayuzu.
+- `CafeManagement.Kiosk`: Client kiosk/siparis WPF uygulamasi.
+- `CafeManagement.Tests`: Mevcut unit/integration testleri.
 
 Mevcut urun yetenekleri:
 
@@ -35,16 +35,16 @@ Mevcut urun yetenekleri:
 
 ## Hedef Modul Haritasi
 
-Ilk asamada fiziksel proje adlari korunur; hedef modul sorumluluklari asagidaki gibi mevcut katmanlara yerlestirilir.
+Rename Sprint sonrasinda aktif proje adlari asagidaki sorumluluk haritasi ile ilerler.
 
 | Hedef Modul | Ilk Konum | Not |
 | --- | --- | --- |
-| Core | `CafeOrders.Domain` | Branch ilerledikce `CafeManagement.Core` adina tasinabilir. |
-| Application | `CafeOrders.Application` | Session, pricing, payment ve command use-case kontratlari burada baslar. |
-| Infrastructure | `CafeOrders.Infrastructure` | EF Core, persistence, file storage ve realtime implementasyonlari burada kalir. |
-| Api | `CafeOrders.API` | Device, session, payment, command, screenshot endpointleri buraya eklenir. |
-| Manager | `CafeOrders.WebUI` | Mevcut admin paneli Manager UI'a evrilir. |
-| Kiosk | `CafeOrders.DesktopApp` | Kiosk UI simdilik WPF projesinde kalir. |
+| Core | `CafeManagement.Core` | Entity ve enum cekirdegi. |
+| Application | `CafeManagement.Application` | Session, pricing, payment ve command use-case kontratlari burada baslar. |
+| Infrastructure | `CafeManagement.Infrastructure` | EF Core, persistence, file storage ve realtime implementasyonlari burada kalir. |
+| Api | `CafeManagement.Api` | Device, session, payment, command, screenshot endpointleri buraya eklenir. |
+| Manager | `CafeManagement.Manager` | Mevcut admin paneli Manager UI'a evrilir. |
+| Kiosk | `CafeManagement.Kiosk` | Kiosk UI simdilik WPF projesinde kalir. |
 | Agent | Yeni proje adayi | Process, command, screenshot, file transfer icin ayrilacak servis katmani. |
 | Watchdog | Yeni proje adayi | Agent/Kiosk saglik izleme ve restart sorumlulugu. |
 | Orders | Mevcut domain/application | Urun ve siparis akisi session bazli hale getirilir. |
@@ -69,11 +69,24 @@ Tamamlanacaklar:
 
 Sprint 1 disinda birakilanlar:
 
-- Namespace toplu rename.
+- Namespace toplu rename. Rename Sprint kapsaminda tamamlandi.
 - Solution dosyasinda coklu yeni proje acma.
 - Database migration ile yeni modeller ekleme.
 - Kiosk shell replacement davranisi.
 - Remote control, screenshot ve file transfer implementasyonu.
+
+## Rename Sprint Kapsami
+
+Rename Sprint hedefi mevcut davranisi bozmadan proje kimligini `CafeManagement` standardina tasimaktir.
+
+Tamamlananlar:
+
+- Solution dosyasi `CafeManagement.slnx` olarak yeniden adlandirildi.
+- Proje klasorleri ve `.csproj` adlari `CafeManagement.Core`, `CafeManagement.Application`, `CafeManagement.Infrastructure`, `CafeManagement.Api`, `CafeManagement.Manager`, `CafeManagement.Kiosk` ve `CafeManagement.Tests` olarak tasindi.
+- Namespace ve assembly referanslari yeni proje adlariyla hizalandi.
+- EF Core context adi `CafeManagementDbContext` olarak guncellendi.
+- WatchDog scriptleri `CafeManagement` isimlendirmesine tasindi.
+- Publish ciktilari yeni assembly adlariyla yeniden olusturuldu.
 
 ## Gecis Ilkeleri
 
