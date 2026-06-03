@@ -50,7 +50,13 @@
                     <span>MAC: @device.MacAddress</span>
                     <span>Masa: @(device.TableId?.ToString() ?? "-")</span>
                     <span>Son gorulme: @(device.LastSeenAt?.ToLocalTime().ToString("dd.MM HH:mm") ?? "-")</span>
-                    <span>Kalan oturum: @FormatSessionRemaining(device)</span>
+                    @if (ShouldShowSessionRemaining(device))
+                    {
+                        var remaining = Math.Max(0, device.SessionRemainingSeconds!.Value);
+                        <span class="device-session-remaining" data-session-remaining="@remaining">
+                            Kalan oturum: <strong>@FormatSessionRemaining(remaining)</strong>
+                        </span>
+                    }
                 </div>
 
                 <div class="wide-device-actions">
@@ -100,24 +106,11 @@
 </section>
 
 @functions {
-    private static string FormatSessionRemaining(CafeOrders.Application.Contracts.Dashboard.DeviceDto device)
-    {
-        if (!device.IsApproved)
-        {
-            return "Onay bekliyor";
-        }
+    private static bool ShouldShowSessionRemaining(CafeOrders.Application.Contracts.Dashboard.DeviceDto device)
+        => device.IsApproved
+            && string.Equals(device.Status, "Online", StringComparison.OrdinalIgnoreCase)
+            && device.SessionRemainingSeconds.HasValue;
 
-        if (!string.Equals(device.Status, "Online", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Cevrimdisi";
-        }
-
-        if (!device.SessionRemainingSeconds.HasValue)
-        {
-            return "Bekleniyor";
-        }
-
-        var remaining = Math.Max(0, device.SessionRemainingSeconds.Value);
-        return $"{remaining / 60:00}:{remaining % 60:00}";
-    }
+    private static string FormatSessionRemaining(int remaining)
+        => $"{remaining / 60:00}:{remaining % 60:00}";
 }

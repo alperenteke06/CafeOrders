@@ -160,8 +160,9 @@ public sealed class DeviceService(
         if (statusChanged)
         {
             await realtimeNotifier.NotifyTablesUpdatedAsync(cancellationToken);
-            await realtimeNotifier.NotifyDevicesUpdatedAsync(cancellationToken);
         }
+
+        await realtimeNotifier.NotifyDevicesUpdatedAsync(cancellationToken);
 
         return true;
     }

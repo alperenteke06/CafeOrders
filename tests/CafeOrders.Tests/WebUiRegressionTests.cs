@@ -8,6 +8,9 @@ public sealed class WebUiRegressionTests
         var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
 
         Assert.Contains("queueNewOrderSound(order)", index);
+        Assert.Contains("newOrderSoundQueue", index);
+        Assert.Contains("drainNewOrderSoundQueue", index);
+        Assert.Contains("waitForAudioEnd", index);
         Assert.Contains("pendingNewOrderSound", index);
         Assert.Contains("prepareNewOrderSoundGuard", index);
         Assert.Contains("visibilitychange", index);
@@ -15,6 +18,18 @@ public sealed class WebUiRegressionTests
         Assert.Contains("playFallbackOrderBeep", index);
         Assert.Contains("AcknowledgeOrderSound", index);
         Assert.Contains("OrderSoundAcknowledged", index);
+    }
+
+    [Fact]
+    public void DevicesSection_HidesOfflineSessionLabelAndRunsClientCountdown()
+    {
+        var devices = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "_DevicesSection.cshtml");
+        var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
+
+        Assert.Contains("ShouldShowSessionRemaining(device)", devices);
+        Assert.Contains("device-session-remaining", devices);
+        Assert.Contains("startDeviceSessionCountdowns", index);
+        Assert.Contains("formatSessionRemaining", index);
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 Option Explicit
 
-Dim args, scriptPath, webUiUrl, apiAppPoolName, webUiAppPoolName, apiSiteName, webUiSiteName, logPath
+Dim args, scriptPath, webUiUrl, apiAppPoolName, webUiAppPoolName, apiSiteName, webUiSiteName, logPath, adminAudioAgentPath
 Set args = WScript.Arguments
 
 scriptPath = ReadArg(args, 0, "C:\Scripts\CafeOrders.WatchDog.ps1")
@@ -10,6 +10,7 @@ webUiAppPoolName = ReadArg(args, 3, "CafeOrders.WebUI")
 apiSiteName = ReadArg(args, 4, "CafeOrders.API")
 webUiSiteName = ReadArg(args, 5, "CafeOrders.WebUI")
 logPath = ReadArg(args, 6, "C:\Scripts\CafeOrders.WatchDog.log")
+adminAudioAgentPath = ReadArg(args, 7, "C:\CafeOrders\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe")
 
 Dim powershellCommand
 powershellCommand = "powershell.exe -ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File " & Quote(scriptPath) & _
@@ -18,7 +19,8 @@ powershellCommand = "powershell.exe -ExecutionPolicy Bypass -NoProfile -WindowSt
     " -WebUiAppPoolName " & Quote(webUiAppPoolName) & _
     " -ApiSiteName " & Quote(apiSiteName) & _
     " -WebUiSiteName " & Quote(webUiSiteName) & _
-    " -LogPath " & Quote(logPath)
+    " -LogPath " & Quote(logPath) & _
+    " -AdminAudioAgentPath " & Quote(adminAudioAgentPath)
 
 Dim shell
 Set shell = CreateObject("WScript.Shell")

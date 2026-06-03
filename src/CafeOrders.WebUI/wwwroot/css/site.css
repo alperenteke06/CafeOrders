@@ -1987,6 +1987,25 @@ textarea {
   font-size: 0.84rem;
 }
 
+.wide-device-meta .device-session-remaining {
+  color: #ffe0a5;
+}
+
+.wide-device-meta .device-session-remaining strong {
+  display: inline-flex;
+  align-items: center;
+  min-width: 54px;
+  justify-content: center;
+  margin-left: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 184, 0, 0.14);
+  color: var(--accent);
+  border: 1px solid rgba(255, 184, 0, 0.26);
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 0.82rem;
+}
+
 .product-stock-actions .switch,
 .toggle-card .switch,
 .modal-stock-row .switch {

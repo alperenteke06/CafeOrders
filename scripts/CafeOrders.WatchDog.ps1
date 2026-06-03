@@ -5,6 +5,7 @@ param(
     [string]$WebUiSiteName = "CafeOrders.WebUI",
     [string]$WebUiUrl = "http://192.168.11.24:5002/",
     [string]$LogPath = "C:\Scripts\CafeOrders.WatchDog.log",
+    [string]$AdminAudioAgentPath = "C:\CafeOrders\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe",
     [string]$BrowserPath = "",
     [bool]$LaunchThroughExplorerShell = $true,
     [int]$HealthTimeoutSeconds = 10
@@ -211,6 +212,54 @@ function Test-CafeOrdersAlreadyOpen {
     return $false
 }
 
+function Ensure-AdminAudioAgentRunning {
+    if ([string]::IsNullOrWhiteSpace($AdminAudioAgentPath)) {
+        Write-Log "AdminAudioAgent path is empty. Agent check skipped." "WARN"
+        return $false
+    }
+
+    if (-not (Test-Path $AdminAudioAgentPath)) {
+        Write-Log "AdminAudioAgent executable not found: $AdminAudioAgentPath" "WARN"
+        return $false
+    }
+
+    $resolvedPath = (Resolve-Path $AdminAudioAgentPath).Path
+    $agentName = [System.IO.Path]::GetFileName($resolvedPath)
+    try {
+        $agentProcesses = Get-CimInstance Win32_Process -Filter "name = '$agentName'" -ErrorAction Stop
+        foreach ($process in $agentProcesses) {
+            if ($process.ExecutablePath -eq $resolvedPath -or ($process.CommandLine -and $process.CommandLine.Contains($resolvedPath))) {
+                Write-Log "AdminAudioAgent OK. PID: $($process.ProcessId)"
+                return $true
+            }
+        }
+    }
+    catch {
+        Write-Log "AdminAudioAgent process check failed. $($_.Exception.Message)" "WARN"
+    }
+
+    $workingDirectory = Split-Path -Parent $resolvedPath
+    Write-Log "Starting AdminAudioAgent: $resolvedPath"
+    Start-Process -FilePath $resolvedPath -WorkingDirectory $workingDirectory -WindowStyle Hidden
+    Start-Sleep -Seconds 2
+
+    try {
+        $agentProcesses = Get-CimInstance Win32_Process -Filter "name = '$agentName'" -ErrorAction Stop
+        foreach ($process in $agentProcesses) {
+            if ($process.ExecutablePath -eq $resolvedPath -or ($process.CommandLine -and $process.CommandLine.Contains($resolvedPath))) {
+                Write-Log "AdminAudioAgent started. PID: $($process.ProcessId)"
+                return $true
+            }
+        }
+    }
+    catch {
+        Write-Log "AdminAudioAgent post-start check failed. $($_.Exception.Message)" "WARN"
+    }
+
+    Write-Log "AdminAudioAgent could not be verified after start." "WARN"
+    return $false
+}
+
 function Open-CafeOrders {
     if ($LaunchThroughExplorerShell) {
         Write-Log "Opening CafeOrders through Windows shell: $WebUiUrl"
@@ -243,6 +292,8 @@ if (-not (Test-WebUiHealth)) {
     Write-Log "WebUI is not healthy. Browser launch skipped." "ERROR"
     exit 3
 }
+
+Ensure-AdminAudioAgentRunning | Out-Null
 
 if (Test-CafeOrdersAlreadyOpen) {
     Write-Log "CafeOrders is already open. Browser launch skipped."

@@ -66,7 +66,8 @@ public sealed class DeviceServiceRealtimeTests
         });
         await dbContext.SaveChangesAsync();
 
-        var service = new DeviceService(dbContext, new FakeJwtTokenService(), new FakeRealtimeNotifier());
+        var notifier = new FakeRealtimeNotifier();
+        var service = new DeviceService(dbContext, new FakeJwtTokenService(), notifier);
 
         var result = await service.HeartbeatAsync(new HeartbeatRequest(deviceId, 150));
 
@@ -74,6 +75,7 @@ public sealed class DeviceServiceRealtimeTests
         Assert.True(result);
         Assert.NotNull(device.SessionExpiresAtUtc);
         Assert.InRange((device.SessionExpiresAtUtc!.Value - DateTime.UtcNow).TotalSeconds, 120, 151);
+        Assert.Equal(1, notifier.DevicesUpdatedCount);
     }
 
     private static CafeOrdersDbContext CreateDbContext()

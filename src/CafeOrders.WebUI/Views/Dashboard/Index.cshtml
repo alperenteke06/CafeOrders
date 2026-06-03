@@ -359,9 +359,13 @@
         let quickPriceRowsState = [];
         let pendingNewOrderSound = false;
         let pendingNewOrderSoundOrderId = null;
+        let newOrderSoundQueue = [];
+        let isNewOrderSoundPlaying = false;
+        let activeNewOrderSoundOrderId = null;
         let soundUnlocked = false;
         let lastNewOrderSoundAttemptAt = 0;
         let newOrderAudioContext = null;
+        let deviceSessionCountdownTimer = null;
         const deviceAssignPageSize = 50;
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -505,9 +509,14 @@
             });
             connection.on('OrderSoundAcknowledged', orderId => {
                 const acknowledgedOrderId = Number(orderId);
+                if (activeNewOrderSoundOrderId === acknowledgedOrderId) {
+                    return;
+                }
+
+                newOrderSoundQueue = newOrderSoundQueue.filter(item => Number(item.orderId) !== acknowledgedOrderId);
                 if (pendingNewOrderSoundOrderId === acknowledgedOrderId) {
-                    pendingNewOrderSound = false;
-                    pendingNewOrderSoundOrderId = null;
+                    pendingNewOrderSound = newOrderSoundQueue.length > 0;
+                    pendingNewOrderSoundOrderId = newOrderSoundQueue[0]?.orderId ?? null;
                 }
             });
             connection.on('OrderAccepted', order => {
@@ -1610,6 +1619,50 @@
             if (section === 'notifications') {
                 syncNotificationSectionState();
             }
+
+            if (section === 'devices') {
+                startDeviceSessionCountdowns();
+            } else {
+                stopDeviceSessionCountdowns();
+            }
+        }
+
+        function startDeviceSessionCountdowns() {
+            stopDeviceSessionCountdowns();
+            const countdowns = document.querySelectorAll('.device-session-remaining[data-session-remaining]');
+            if (!countdowns.length) {
+                return;
+            }
+
+            deviceSessionCountdownTimer = window.setInterval(() => {
+                document.querySelectorAll('.device-session-remaining[data-session-remaining]').forEach(element => {
+                    const value = Number(element.dataset.sessionRemaining ?? '0');
+                    if (!Number.isFinite(value)) {
+                        return;
+                    }
+
+                    const remaining = Math.max(0, value - 1);
+                    element.dataset.sessionRemaining = String(remaining);
+                    const target = element.querySelector('strong');
+                    if (target) {
+                        target.textContent = formatSessionRemaining(remaining);
+                    }
+                });
+            }, 1000);
+        }
+
+        function stopDeviceSessionCountdowns() {
+            if (deviceSessionCountdownTimer) {
+                window.clearInterval(deviceSessionCountdownTimer);
+                deviceSessionCountdownTimer = null;
+            }
+        }
+
+        function formatSessionRemaining(totalSeconds) {
+            const remaining = Math.max(0, Number(totalSeconds) || 0);
+            const minutes = Math.floor(remaining / 60);
+            const seconds = remaining % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         }
 
         function openConfirmModal(title, message, action) {
@@ -1981,14 +2034,16 @@
         }
 
         function queueNewOrderSound(order) {
+            const orderId = extractOrderId(order);
+            newOrderSoundQueue.push({ orderId, attempts: 0 });
             pendingNewOrderSound = true;
-            pendingNewOrderSoundOrderId = extractOrderId(order);
-            playNewOrderSound('order-created');
+            pendingNewOrderSoundOrderId = orderId;
+            drainNewOrderSoundQueue('order-created');
         }
 
         function flushPendingNewOrderSound(reason) {
-            if (pendingNewOrderSound) {
-                playNewOrderSound(reason);
+            if (pendingNewOrderSound || newOrderSoundQueue.length) {
+                drainNewOrderSoundQueue(reason);
             }
         }
 
@@ -2039,36 +2094,94 @@
             }
         }
 
-        function playNewOrderSound(reason) {
+        async function drainNewOrderSoundQueue(reason) {
+            if (isNewOrderSoundPlaying) {
+                return;
+            }
+
+            if (!newOrderSoundQueue.length) {
+                pendingNewOrderSound = false;
+                pendingNewOrderSoundOrderId = null;
+                return;
+            }
+
+            isNewOrderSoundPlaying = true;
+            try {
+                while (newOrderSoundQueue.length) {
+                    const item = newOrderSoundQueue[0];
+                    pendingNewOrderSound = true;
+                    pendingNewOrderSoundOrderId = item.orderId;
+                    activeNewOrderSoundOrderId = item.orderId;
+                    const played = await playNewOrderSound(reason, item.orderId);
+                    activeNewOrderSoundOrderId = null;
+                    if (!played) {
+                        item.attempts += 1;
+                        window.setTimeout(() => flushPendingNewOrderSound(reason ?? 'retry'), 1500);
+                        break;
+                    }
+
+                    newOrderSoundQueue = newOrderSoundQueue.filter(queued => queued.orderId !== item.orderId);
+                    await delay(180);
+                }
+            } finally {
+                isNewOrderSoundPlaying = false;
+                pendingNewOrderSound = newOrderSoundQueue.length > 0;
+                pendingNewOrderSoundOrderId = newOrderSoundQueue[0]?.orderId ?? null;
+            }
+        }
+
+        async function playNewOrderSound(reason, orderId) {
             const audio = document.getElementById('newOrderAudio');
             const url = normalizeMediaUrl(audio?.dataset.soundUrl ?? '', 'audio');
             const enabled = audio?.dataset.soundEnabled === 'true';
             if (!audio || !enabled || !url) {
-                pendingNewOrderSound = false;
-                return;
+                pendingNewOrderSound = newOrderSoundQueue.length > 0;
+                return true;
             }
 
             const now = Date.now();
             if (now - lastNewOrderSoundAttemptAt < 350) {
-                return;
+                await delay(350 - (now - lastNewOrderSoundAttemptAt));
             }
             lastNewOrderSoundAttemptAt = now;
 
             syncNewOrderAudioSource(url);
             audio.pause();
             audio.currentTime = 0;
-            audio.play()
-                .then(() => {
-                    const acknowledgedOrderId = pendingNewOrderSoundOrderId;
-                    pendingNewOrderSound = false;
-                    pendingNewOrderSoundOrderId = null;
-                    acknowledgeNewOrderSound(acknowledgedOrderId);
-                })
-                .catch(() => {
-                    pendingNewOrderSound = true;
-                    playFallbackOrderBeep();
-                    window.setTimeout(() => flushPendingNewOrderSound(reason ?? 'retry'), 1500);
-                });
+            try {
+                await audio.play();
+                acknowledgeNewOrderSound(orderId);
+                await waitForAudioEnd(audio, 12000);
+                return true;
+            } catch {
+                pendingNewOrderSound = true;
+                playFallbackOrderBeep();
+                return false;
+            }
+        }
+
+        function waitForAudioEnd(audio, timeoutMilliseconds) {
+            return new Promise(resolve => {
+                let finished = false;
+                const complete = () => {
+                    if (finished) {
+                        return;
+                    }
+
+                    finished = true;
+                    audio.removeEventListener('ended', complete);
+                    audio.removeEventListener('error', complete);
+                    resolve();
+                };
+
+                audio.addEventListener('ended', complete, { once: true });
+                audio.addEventListener('error', complete, { once: true });
+                window.setTimeout(complete, timeoutMilliseconds);
+            });
+        }
+
+        function delay(milliseconds) {
+            return new Promise(resolve => window.setTimeout(resolve, milliseconds));
         }
 
         function extractOrderId(order) {

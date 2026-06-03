@@ -3,29 +3,33 @@ using CafeOrders.Application.Contracts.Settings;
 
 namespace CafeOrders.AdminAudioAgent;
 
-public sealed class AdminAudioService(HttpClient httpClient, AgentOptions options, IAudioPlayer audioPlayer)
+public sealed class AdminAudioService(HttpClient httpClient, AgentOptions options, IAudioPlayer audioPlayer, AgentLogger? logger = null)
 {
     public async Task<bool> PlayNewOrderSoundAsync(CancellationToken cancellationToken = default)
     {
         var settings = await httpClient.GetFromJsonAsync<AppSettingsDto>("api/v1/settings/app", cancellationToken);
         if (settings is null || !settings.EnableNewOrderSound)
         {
+            logger?.Warning("New order sound is disabled or settings could not be loaded.");
             return false;
         }
 
         var source = AudioSourceResolver.Resolve(settings.NewOrderSoundUrl, options.WebUiBaseUrl, options.FallbackSoundPath);
         if (string.IsNullOrWhiteSpace(source))
         {
+            logger?.Warning("New order sound source is empty. Trying system beep fallback.");
             return options.UseSystemBeepFallback && await audioPlayer.PlayFallbackAsync(cancellationToken);
         }
 
         try
         {
             var localSource = await ResolveLocalSourceAsync(source, cancellationToken);
+            logger?.Info($"Playing new order sound: {localSource}");
             return await audioPlayer.PlayAsync(localSource, cancellationToken);
         }
-        catch
+        catch (Exception exception)
         {
+            logger?.Error("New order sound playback failed. Trying fallback.", exception);
             return options.UseSystemBeepFallback && await audioPlayer.PlayFallbackAsync(cancellationToken);
         }
     }

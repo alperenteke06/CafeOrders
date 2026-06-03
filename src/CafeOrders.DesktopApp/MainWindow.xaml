@@ -323,43 +323,35 @@
                            Foreground="{StaticResource AccentBrush}"
                            VerticalAlignment="Center" />
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Margin="0,0,10,0"
-                            Style="{StaticResource WindowButtonStyle}"
-                            Click="MinimizeButton_OnClick">
-                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE921;" FontSize="14" />
-                    </Button>
-                    <Button Margin="0,0,18,0"
-                            Style="{StaticResource WindowButtonStyle}"
-                            Click="CloseButton_OnClick">
-                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BB;" FontSize="14" />
-                    </Button>
-
-                    <Border Margin="0,0,18,0"
-                            Width="270"
-                            Height="72"
-                            Padding="18,10"
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top">
+                    <Border Margin="0,0,16,0"
+                            Width="236"
+                            Height="58"
+                            Padding="12,8"
                             Background="#252E42"
-                            CornerRadius="17"
+                            CornerRadius="16"
                             BorderBrush="#817A68"
-                            BorderThickness="3"
+                            BorderThickness="2"
                             Visibility="{Binding IsSessionCountdownVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <Grid>
+                        <Grid ClipToBounds="True">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="58" />
+                                <ColumnDefinition Width="48" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
-                            <Border Width="46"
-                                    Height="46"
+                            <Border Width="38"
+                                    Height="38"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
-                                    CornerRadius="23"
+                                    CornerRadius="19"
                                     BorderBrush="{StaticResource AccentBrush}"
-                                    BorderThickness="4">
+                                    BorderThickness="3">
                                 <TextBlock FontFamily="Segoe MDL2 Assets"
                                            Text="&#xE121;"
-                                           FontSize="21"
+                                           FontSize="17"
                                            Foreground="{StaticResource AccentBrush}"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center" />
@@ -367,12 +359,13 @@
 
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Text="KALAN SURE"
-                                           FontSize="19"
+                                           FontSize="13"
                                            FontWeight="Bold"
-                                           Foreground="#D8CBB4" />
+                                           Foreground="#D8CBB4"
+                                           TextTrimming="CharacterEllipsis" />
                                 <TextBlock Text="{Binding SessionRemainingText}"
-                                           Margin="0,2,0,0"
-                                           FontSize="36"
+                                           Margin="0,-1,0,0"
+                                           FontSize="30"
                                            FontWeight="Bold"
                                            Foreground="{StaticResource AccentBrush}"
                                            FontFamily="Consolas" />
@@ -380,14 +373,21 @@
                         </Grid>
                     </Border>
 
-                    <Border Margin="0,0,18,0" Padding="26,12" Background="#252E42" CornerRadius="16">
+                    <Border Margin="0,0,16,0"
+                            MinWidth="118"
+                            Height="58"
+                            Padding="20,0"
+                            Background="#252E42"
+                            CornerRadius="16">
                         <TextBlock Text="{Binding DisplayTableName}"
                                    FontSize="18"
                                    FontWeight="SemiBold"
-                                   Foreground="{StaticResource AccentBrush}" />
+                                   Foreground="{StaticResource AccentBrush}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
                     </Border>
 
-                    <Grid>
+                    <Grid Width="52" Height="52" Margin="0,3,16,0">
                         <Button Style="{StaticResource GhostIconButtonStyle}"
                                 Command="{Binding ToggleCartCommand}">
                             <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7BF;" FontSize="22" />
@@ -407,6 +407,17 @@
                                        Foreground="#1D2433" />
                         </Border>
                     </Grid>
+
+                    <Button Margin="0,8,10,0"
+                            Style="{StaticResource WindowButtonStyle}"
+                            Click="MinimizeButton_OnClick">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE921;" FontSize="14" />
+                    </Button>
+                    <Button Margin="0,8,0,0"
+                            Style="{StaticResource WindowButtonStyle}"
+                            Click="CloseButton_OnClick">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BB;" FontSize="14" />
+                    </Button>
                 </StackPanel>
             </Grid>
 

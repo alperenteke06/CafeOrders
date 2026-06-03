@@ -7,7 +7,8 @@ param(
     [string]$WebUiAppPoolName = "CafeOrders.WebUI",
     [string]$ApiSiteName = "CafeOrders.API",
     [string]$WebUiSiteName = "CafeOrders.WebUI",
-    [string]$LogPath = "C:\Scripts\CafeOrders.WatchDog.log"
+    [string]$LogPath = "C:\Scripts\CafeOrders.WatchDog.log",
+    [string]$AdminAudioAgentPath = "C:\CafeOrders\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,7 +30,8 @@ $arguments = @(
     "`"$WebUiAppPoolName`"",
     "`"$ApiSiteName`"",
     "`"$WebUiSiteName`"",
-    "`"$LogPath`""
+    "`"$LogPath`"",
+    "`"$AdminAudioAgentPath`""
 ) -join " "
 
 $action = New-ScheduledTaskAction `

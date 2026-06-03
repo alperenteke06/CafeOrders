@@ -39,6 +39,7 @@ public sealed class AdminAudioAgentTests
                     "ApiBaseUrl": "http://192.168.11.24:5001/",
                     "HubUrl": "http://192.168.11.24:5001/hubs/cafe",
                     "WebUiBaseUrl": "http://192.168.11.24:5002/",
+                    "LogPath": "C:\\Temp\\CafeOrders.AdminAudioAgent.log",
                     "FallbackDelayMilliseconds": 900,
                     "Volume": 75,
                     "UseSystemBeepFallback": false
@@ -51,6 +52,7 @@ public sealed class AdminAudioAgentTests
             Assert.Equal("http://192.168.11.24:5001/", options.ApiBaseUrl);
             Assert.Equal("http://192.168.11.24:5001/hubs/cafe", options.HubUrl);
             Assert.Equal("http://192.168.11.24:5002/", options.WebUiBaseUrl);
+            Assert.Equal(@"C:\Temp\CafeOrders.AdminAudioAgent.log", options.LogPath);
             Assert.Equal(900, options.FallbackDelayMilliseconds);
             Assert.Equal(75, options.Volume);
             Assert.False(options.UseSystemBeepFallback);
@@ -59,5 +61,52 @@ public sealed class AdminAudioAgentTests
         {
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    [Fact]
+    public void AgentProgram_UsesSingleReaderPlaybackQueueForBurstOrders()
+    {
+        var program = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "Program.cs");
+
+        Assert.Contains("Channel.CreateUnbounded<int>", program);
+        Assert.Contains("SingleReader = true", program);
+        Assert.Contains("ProcessPlaybackQueueAsync", program);
+        Assert.Contains("ReadAllAsync", program);
+        Assert.Contains("OrderSoundAcknowledged", program);
+    }
+
+    [Fact]
+    public void WatchDogScript_StartsAdminAudioAgentWhenMissing()
+    {
+        var script = ReadRepoFile("scripts", "CafeOrders.WatchDog.ps1");
+        var hiddenRunner = ReadRepoFile("scripts", "Run-CafeOrders.WatchDogHidden.vbs");
+        var registerScript = ReadRepoFile("scripts", "Register-CafeOrders.WatchDogTask.ps1");
+
+        Assert.Contains("Ensure-AdminAudioAgentRunning", script);
+        Assert.Contains("Start-Process -FilePath $resolvedPath", script);
+        Assert.Contains("-AdminAudioAgentPath", hiddenRunner);
+        Assert.Contains("AdminAudioAgentPath", registerScript);
+    }
+
+    private static string ReadRepoFile(params string[] segments)
+    {
+        var root = FindRepoRoot();
+        return File.ReadAllText(Path.Combine(new[] { root }.Concat(segments).ToArray()));
+    }
+
+    private static string FindRepoRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "CafeOrders.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("CafeOrders repository root could not be resolved.");
     }
 }
