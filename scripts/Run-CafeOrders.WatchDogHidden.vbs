@@ -10,7 +10,7 @@ webUiAppPoolName = ReadArg(args, 3, "CafeOrders.WebUI")
 apiSiteName = ReadArg(args, 4, "CafeOrders.API")
 webUiSiteName = ReadArg(args, 5, "CafeOrders.WebUI")
 logPath = ReadArg(args, 6, "C:\Scripts\CafeOrders.WatchDog.log")
-adminAudioAgentPath = ReadArg(args, 7, "C:\CafeOrders\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe")
+adminAudioAgentPath = ReadArg(args, 7, "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe")
 
 Dim powershellCommand
 powershellCommand = "powershell.exe -ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File " & Quote(scriptPath) & _

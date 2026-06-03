@@ -8,7 +8,7 @@ param(
     [string]$ApiSiteName = "CafeOrders.API",
     [string]$WebUiSiteName = "CafeOrders.WebUI",
     [string]$LogPath = "C:\Scripts\CafeOrders.WatchDog.log",
-    [string]$AdminAudioAgentPath = "C:\CafeOrders\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"
+    [string]$AdminAudioAgentPath = "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"
 )
 
 $ErrorActionPreference = "Stop"

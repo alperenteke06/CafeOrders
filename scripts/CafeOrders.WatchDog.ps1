@@ -5,7 +5,7 @@ param(
     [string]$WebUiSiteName = "CafeOrders.WebUI",
     [string]$WebUiUrl = "http://192.168.11.24:5002/",
     [string]$LogPath = "C:\Scripts\CafeOrders.WatchDog.log",
-    [string]$AdminAudioAgentPath = "C:\CafeOrders\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe",
+    [string]$AdminAudioAgentPath = "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe",
     [string]$BrowserPath = "",
     [bool]$LaunchThroughExplorerShell = $true,
     [int]$HealthTimeoutSeconds = 10

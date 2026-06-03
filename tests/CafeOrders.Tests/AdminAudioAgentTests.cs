@@ -84,6 +84,7 @@ public sealed class AdminAudioAgentTests
 
         Assert.Contains("Ensure-AdminAudioAgentRunning", script);
         Assert.Contains("Start-Process -FilePath $resolvedPath", script);
+        Assert.Contains(@"C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe", script);
         Assert.Contains("-AdminAudioAgentPath", hiddenRunner);
         Assert.Contains("AdminAudioAgentPath", registerScript);
     }

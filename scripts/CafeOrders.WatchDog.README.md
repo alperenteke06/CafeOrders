@@ -18,7 +18,7 @@ Production makinede:
 C:\Scripts\CafeOrders.WatchDog.ps1
 C:\Scripts\Register-CafeOrders.WatchDogTask.ps1
 C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs
-C:\CafeOrders\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe
+C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe
 ```
 
 ## Task Scheduler Kurulum
@@ -42,7 +42,7 @@ powershell.exe -ExecutionPolicy Bypass -NoProfile -File "C:\Scripts\CafeOrders.W
 Task Scheduler ile ayni gizli calisma davranisini test etmek icin:
 
 ```powershell
-wscript.exe "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs" "C:\Scripts\CafeOrders.WatchDog.ps1" "http://192.168.11.24:5002/" "CafeOrders.API" "CafeOrders.WebUI" "CafeOrders.API" "CafeOrders.WebUI" "C:\Scripts\CafeOrders.WatchDog.log" "C:\CafeOrders\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"
+wscript.exe "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs" "C:\Scripts\CafeOrders.WatchDog.ps1" "http://192.168.11.24:5002/" "CafeOrders.API" "CafeOrders.WebUI" "CafeOrders.API" "CafeOrders.WebUI" "C:\Scripts\CafeOrders.WatchDog.log" "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"
 ```
 
 ## Parametreler
@@ -54,7 +54,7 @@ wscript.exe "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs" "C:\Scripts\CafeOrder
 -WebUiSiteName "CafeOrders.WebUI"
 -WebUiUrl "http://192.168.11.24:5002/"
 -LogPath "C:\Scripts\CafeOrders.WatchDog.log"
--AdminAudioAgentPath "C:\CafeOrders\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"
+-AdminAudioAgentPath "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"
 ```
 
 ## AdminAudioAgent Kontrolu
