@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\CafeOrders.Application\CafeOrders.Application.csproj" />
     <ProjectReference Include="..\..\src\CafeOrders.Domain\CafeOrders.Domain.csproj" />
     <ProjectReference Include="..\..\src\CafeOrders.Infrastructure\CafeOrders.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\CafeOrders.WebUI\CafeOrders.WebUI.csproj" />
   </ItemGroup>
 
 </Project>

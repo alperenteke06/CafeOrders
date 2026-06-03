@@ -1,11 +1,16 @@
 @model CafeOrders.WebUI.Models.DashboardViewModel
 @{
+    const int pageSize = 10;
     var searchQuery = Model.SearchQuery;
-    var categories = Model.Catalog.Categories
+    var filteredCategories = Model.Catalog.Categories
         .Where(category => string.IsNullOrWhiteSpace(searchQuery) || category.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
         .OrderBy(category => category.SortOrder)
         .ThenBy(category => category.Name)
         .ToArray();
+    var totalPages = Math.Max(1, (int)Math.Ceiling(filteredCategories.Length / (double)pageSize));
+    var currentPage = Math.Clamp(Model.CurrentPage, 1, totalPages);
+    var categories = filteredCategories.Skip((currentPage - 1) * pageSize).Take(pageSize).ToArray();
+    var visiblePages = Enumerable.Range(1, totalPages).Where(pageNumber => pageNumber == 1 || pageNumber == totalPages || Math.Abs(pageNumber - currentPage) <= 1).ToArray();
 }
 
 <section class="content-section section-enter">
@@ -85,7 +90,30 @@
                         </div>
                     </article>
                 }
+
+                @if (!filteredCategories.Any())
+                {
+                    <article class="wide-table-card">
+                        <div class="wide-device-copy">
+                            <strong>Kategori bulunamadi</strong>
+                            <span>Aramaniza uygun kategori eslesmedi.</span>
+                        </div>
+                    </article>
+                }
             </div>
+
+            @if (filteredCategories.Any())
+            {
+                <div class="pagination-pillbar">
+                    <button class="pagination-nav" type="button" @(currentPage <= 1 ? "disabled" : null) onclick="loadSection('categories', true, { page: @(currentPage - 1), search: getSearchValue() }, true)">Onceki</button>
+                    @foreach (var pageNumber in visiblePages)
+                    {
+                        <button class="pagination-page @(pageNumber == currentPage ? "active" : string.Empty)" type="button" onclick="loadSection('categories', true, { page: @(pageNumber), search: getSearchValue() }, true)">@pageNumber</button>
+                    }
+                    <button class="pagination-nav" type="button" @(currentPage >= totalPages ? "disabled" : null) onclick="loadSection('categories', true, { page: @(currentPage + 1), search: getSearchValue() }, true)">Sonraki</button>
+                    <span class="pagination-summary">@categories.Length / @filteredCategories.Length kayit gosteriliyor</span>
+                </div>
+            }
         </article>
     </div>
 </section>

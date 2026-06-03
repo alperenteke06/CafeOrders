@@ -2,15 +2,19 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using CafeOrders.DesktopApp.ViewModels;
 
 namespace CafeOrders.DesktopApp;
 
 public partial class MainWindow : Window
 {
+    private readonly DispatcherTimer _autoCloseTimer = new();
+
     public MainWindow()
     {
         InitializeComponent();
+        _autoCloseTimer.Tick += AutoCloseTimer_OnTick;
         Loaded += OnLoaded;
         Closing += OnClosingAsync;
     }
@@ -21,9 +25,29 @@ public partial class MainWindow : Window
         {
             viewModel.PropertyChanged += OnViewModelPropertyChanged;
             SyncAnimatedStates(viewModel, useTransitions: false);
+            StartAutoCloseTimer(viewModel);
             await viewModel.InitializeAsync();
             SyncAnimatedStates(viewModel, useTransitions: true);
         }
+    }
+
+    private void StartAutoCloseTimer(MainViewModel viewModel)
+    {
+        _autoCloseTimer.Stop();
+
+        if (viewModel.AutoCloseAfter <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        _autoCloseTimer.Interval = viewModel.AutoCloseAfter;
+        _autoCloseTimer.Start();
+    }
+
+    private void AutoCloseTimer_OnTick(object? sender, EventArgs e)
+    {
+        _autoCloseTimer.Stop();
+        Close();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -172,6 +196,7 @@ public partial class MainWindow : Window
     private async void OnClosingAsync(object? sender, CancelEventArgs e)
     {
         Closing -= OnClosingAsync;
+        _autoCloseTimer.Stop();
 
         if (DataContext is MainViewModel viewModel)
         {

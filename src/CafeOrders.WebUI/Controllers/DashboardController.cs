@@ -4,6 +4,7 @@ using CafeOrders.Application.Contracts.Devices;
 using CafeOrders.Application.Contracts.Settings;
 using CafeOrders.Application.Contracts.Tables;
 using CafeOrders.WebUI.Models;
+using CafeOrders.WebUI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
@@ -24,15 +25,6 @@ public sealed class DashboardController(
     IConfiguration configuration) : Controller
 {
     private static readonly JsonSerializerOptions ApiJsonOptions = new(JsonSerializerDefaults.Web);
-    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".webp",
-        ".gif"
-    };
-
     private static readonly HashSet<string> ValidSections =
     [
         "dashboard",
@@ -149,7 +141,7 @@ public sealed class DashboardController(
     }
 
     [HttpPost("/dashboard/settings/upload-sound")]
-    [RequestSizeLimit(10 * 1024 * 1024)]
+    [RequestSizeLimit(UploadValidation.MaxSoundBytes)]
     public async Task<IActionResult> UploadSound(IFormFile file, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
@@ -157,37 +149,37 @@ public sealed class DashboardController(
             return BadRequest(new { message = "Ses dosyasi secilmedi." });
         }
 
-        if (!file.ContentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase))
+        if (file.Length > UploadValidation.MaxSoundBytes)
         {
-            return BadRequest(new { message = "Yalnizca ses dosyalari yuklenebilir." });
+            return BadRequest(new { message = "Ses dosyasi 10MB sinirini asmamali." });
         }
 
-        var uploadsDirectory = Path.Combine(webHostEnvironment.WebRootPath, "uploads", "sounds");
+        if (!UploadValidation.IsAllowedSound(file.FileName, file.ContentType))
+        {
+            return BadRequest(new { message = "Yalnizca MP3, WAV, OGG, M4A, AAC, FLAC veya WEBM ses dosyalari yuklenebilir." });
+        }
+
+        var uploadsDirectory = Path.Combine(ResolveWebRootPath(), "uploads", "sounds");
         Directory.CreateDirectory(uploadsDirectory);
 
-        var extension = Path.GetExtension(file.FileName);
-        if (string.IsNullOrWhiteSpace(extension))
-        {
-            extension = ".mp3";
-        }
-
+        var extension = UploadValidation.ResolveSoundExtension(file.FileName, file.ContentType);
         var fileName = $"{Guid.NewGuid():N}{extension}";
         var physicalPath = Path.Combine(uploadsDirectory, fileName);
 
-        await using (var stream = System.IO.File.Create(physicalPath))
+        await using (var stream = new FileStream(physicalPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
         {
             await file.CopyToAsync(stream, cancellationToken);
         }
 
         return Json(new
         {
-            url = $"{Request.Scheme}://{Request.Host}/uploads/sounds/{fileName}",
+            url = $"{Request.Scheme}://{Request.Host}/uploads/sounds/{Uri.EscapeDataString(fileName)}",
             fileName = file.FileName
         });
     }
 
     [HttpPost("/dashboard/products/upload-image")]
-    [RequestSizeLimit(20 * 1024 * 1024)]
+    [RequestSizeLimit(UploadValidation.MaxProductImageBytes)]
     public async Task<IActionResult> UploadProductImage(IFormFile file, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
@@ -195,15 +187,17 @@ public sealed class DashboardController(
             return BadRequest(new { message = "Gorsel dosyasi secilmedi." });
         }
 
-        var extension = Path.GetExtension(file.FileName)?.ToLowerInvariant();
-        var hasAllowedExtension = !string.IsNullOrWhiteSpace(extension) && AllowedImageExtensions.Contains(extension);
-        var hasImageContentType = HasExpectedContentType(file.ContentType, "image/");
-        if (!hasAllowedExtension && !hasImageContentType)
+        if (file.Length > UploadValidation.MaxProductImageBytes)
+        {
+            return BadRequest(new { message = "Gorsel dosyasi 20MB sinirini asmamali." });
+        }
+
+        if (!UploadValidation.IsAllowedImage(file.FileName, file.ContentType))
         {
             return BadRequest(new { message = "Yalnizca JPG, PNG, WEBP veya GIF gorselleri yuklenebilir." });
         }
 
-        extension = hasAllowedExtension ? extension : ".png";
+        var extension = UploadValidation.ResolveImageExtension(file.FileName, file.ContentType);
         var uploadsDirectory = Path.Combine(ResolveWebRootPath(), "uploads", "products");
         Directory.CreateDirectory(uploadsDirectory);
 
@@ -385,10 +379,6 @@ public sealed class DashboardController(
 
         return Path.Combine(webHostEnvironment.ContentRootPath, "wwwroot");
     }
-
-    private static bool HasExpectedContentType(string? contentType, string expectedContentTypePrefix)
-        => !string.IsNullOrWhiteSpace(contentType) &&
-           contentType.StartsWith(expectedContentTypePrefix, StringComparison.OrdinalIgnoreCase);
 
     private HttpClient CreateApiClient()
     {

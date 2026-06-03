@@ -41,7 +41,7 @@ powershell.exe -ExecutionPolicy Bypass -NoProfile -File "C:\Scripts\CafeOrders.W
 Task Scheduler ile ayni gizli calisma davranisini test etmek icin:
 
 ```powershell
-wscript.exe "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs" "C:\Scripts\CafeOrders.WatchDog.ps1" "http://192.168.1.104:5002/" "CafeOrders.API" "CafeOrders.WebUI" "CafeOrders.API" "CafeOrders.WebUI" "C:\Scripts\CafeOrders.WatchDog.log"
+wscript.exe "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs" "C:\Scripts\CafeOrders.WatchDog.ps1" "http://192.168.11.24:5002/" "CafeOrders.API" "CafeOrders.WebUI" "CafeOrders.API" "CafeOrders.WebUI" "C:\Scripts\CafeOrders.WatchDog.log"
 ```
 
 ## Parametreler
@@ -51,7 +51,7 @@ wscript.exe "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs" "C:\Scripts\CafeOrder
 -WebUiAppPoolName "CafeOrders.WebUI"
 -ApiSiteName "CafeOrders.API"
 -WebUiSiteName "CafeOrders.WebUI"
--WebUiUrl "http://192.168.1.104:5002/"
+-WebUiUrl "http://192.168.11.24:5002/"
 -LogPath "C:\Scripts\CafeOrders.WatchDog.log"
 ```
 
@@ -59,7 +59,7 @@ wscript.exe "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs" "C:\Scripts\CafeOrder
 
 Script su kontrolleri yapar:
 
-- Chrome process command line icinde `192.168.1.104:5002` var mi
+- Chrome process command line icinde `192.168.11.24:5002` var mi
 - aktif Chrome pencere basliginda CafeOrders basligi var mi
 - Chrome tab basliklari UI Automation ile CafeOrders basligi tasiyor mu
 

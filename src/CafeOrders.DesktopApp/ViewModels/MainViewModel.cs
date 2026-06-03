@@ -151,6 +151,7 @@ public sealed partial class MainViewModel : ObservableObject
     public int CartItemCount => Cart.Sum(x => x.Quantity);
     public bool HasItemsInCart => CartItemCount > 0;
     public bool HasActiveOrder => ActiveOrderLines.Count > 0;
+    public TimeSpan AutoCloseAfter => EndpointOptions.AutoCloseAfter;
 
     public MainViewModel()
     {
@@ -1167,10 +1168,11 @@ public sealed partial class MainViewModel : ObservableObject
         await _realtimeClient.DisconnectAsync();
     }
 
-    private sealed record DesktopEndpointOptions(string ApiBaseUrl, string HubUrl, string? SharedWebRootPath)
+    private sealed record DesktopEndpointOptions(string ApiBaseUrl, string HubUrl, string? SharedWebRootPath, TimeSpan AutoCloseAfter)
     {
         private const string DefaultApiBaseUrl = "http://localhost:5001/";
         private const string DefaultHubUrl = "http://localhost:5001/hubs/cafe";
+        private static readonly TimeSpan DefaultAutoCloseAfter = TimeSpan.FromSeconds(150);
 
         public static DesktopEndpointOptions Load()
         {
@@ -1179,7 +1181,7 @@ public sealed partial class MainViewModel : ObservableObject
                 var appSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
                 if (!File.Exists(appSettingsPath))
                 {
-                    return new DesktopEndpointOptions(DefaultApiBaseUrl, DefaultHubUrl, null);
+                    return new DesktopEndpointOptions(DefaultApiBaseUrl, DefaultHubUrl, null, DefaultAutoCloseAfter);
                 }
 
                 using var stream = File.OpenRead(appSettingsPath);
@@ -1195,15 +1197,17 @@ public sealed partial class MainViewModel : ObservableObject
                                         mediaElement.TryGetProperty("SharedWebRootPath", out var sharedRootElement)
                     ? sharedRootElement.GetString()
                     : null;
+                var autoCloseAfter = ResolveAutoCloseAfter(document.RootElement);
 
                 return new DesktopEndpointOptions(
                     NormalizeApiBaseUrl(apiBaseUrl),
                     string.IsNullOrWhiteSpace(hubUrl) ? DefaultHubUrl : hubUrl.Trim(),
-                    NormalizeSharedWebRootPath(sharedWebRootPath));
+                    NormalizeSharedWebRootPath(sharedWebRootPath),
+                    autoCloseAfter);
             }
             catch
             {
-                return new DesktopEndpointOptions(DefaultApiBaseUrl, DefaultHubUrl, null);
+                return new DesktopEndpointOptions(DefaultApiBaseUrl, DefaultHubUrl, null, DefaultAutoCloseAfter);
             }
         }
 
@@ -1226,6 +1230,22 @@ public sealed partial class MainViewModel : ObservableObject
             }
 
             return value.Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+
+        private static TimeSpan ResolveAutoCloseAfter(JsonElement rootElement)
+        {
+            if (!rootElement.TryGetProperty("Session", out var sessionElement) ||
+                !sessionElement.TryGetProperty("AutoCloseAfterSeconds", out var secondsElement))
+            {
+                return DefaultAutoCloseAfter;
+            }
+
+            if (!secondsElement.TryGetInt32(out var seconds) || seconds <= 0)
+            {
+                return TimeSpan.Zero;
+            }
+
+            return TimeSpan.FromSeconds(seconds);
         }
     }
 }

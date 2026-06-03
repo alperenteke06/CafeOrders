@@ -112,7 +112,7 @@
 
 <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 <audio id="newOrderAudio"
-       preload="none"
+       preload="auto"
        data-sound-enabled="@(Model.AppSettings.EnableNewOrderSound ? "true" : "false")"
        data-sound-url="@Model.AppSettings.NewOrderSoundUrl"></audio>
 
@@ -357,6 +357,10 @@
         let snapshotRefreshInFlight = false;
         let snapshotRefreshQueued = false;
         let quickPriceRowsState = [];
+        let pendingNewOrderSound = false;
+        let soundUnlocked = false;
+        let lastNewOrderSoundAttemptAt = 0;
+        let newOrderAudioContext = null;
         const deviceAssignPageSize = 50;
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -367,6 +371,7 @@
             syncSettingsTonePicker('clientInfoBoxType');
             syncSettingsTonePicker('messageType');
             syncProductCategoryOptionsFromSection();
+            prepareNewOrderSoundGuard();
             startAdminHub();
             document.addEventListener('click', handleGlobalUiClick);
         });
@@ -494,7 +499,7 @@
             connection.on('OrderCreated', order => {
                 showToast('Yeni siparis geldi.', 'info');
                 appendNotificationFromOrderCreated(order);
-                playNewOrderSound();
+                queueNewOrderSound('order-created');
                 requestSnapshotRefresh();
             });
             connection.on('OrderAccepted', order => {
@@ -648,6 +653,7 @@
             if (audio) {
                 audio.dataset.soundEnabled = payload.soundEnabled ? 'true' : 'false';
                 audio.dataset.soundUrl = payload.soundUrl ?? '';
+                syncNewOrderAudioSource(payload.soundUrl ?? '');
             }
         }
 
@@ -813,6 +819,7 @@
                 if (audio) {
                     audio.dataset.soundEnabled = result.enableNewOrderSound ? 'true' : 'false';
                     audio.dataset.soundUrl = result.newOrderSoundUrl ?? '';
+                    syncNewOrderAudioSource(result.newOrderSoundUrl ?? '');
                 }
                 updateSoundMedia(result.newOrderSoundUrl ?? '', extractSoundFileName(result.newOrderSoundUrl ?? ''));
                 await refreshSnapshot(true);
@@ -1323,8 +1330,9 @@
         function updateProductPreviewFromUrl(url) {
             const image = document.getElementById('productEditorImage');
             const fallback = document.getElementById('productEditorPreviewFallback');
-            if (url && url.trim().length > 0) {
-                image.src = url.trim();
+            const normalizedUrl = normalizeMediaUrl(url, 'image');
+            if (normalizedUrl) {
+                image.src = normalizedUrl;
                 image.hidden = false;
                 fallback.hidden = true;
             } else {
@@ -1362,11 +1370,17 @@
             if (file) {
                 await loadProductFile(file);
             }
+            event.target.value = '';
         }
 
         async function loadProductFile(file) {
-            if (!file.type.startsWith('image/')) {
+            if (!isProbablyImageFile(file)) {
                 showToast('Lutfen gecerli bir gorsel secin.', 'warning');
+                return;
+            }
+
+            if (file.size > 20 * 1024 * 1024) {
+                showToast('Gorsel dosyasi 20MB sinirini asmamali.', 'warning');
                 return;
             }
 
@@ -1428,10 +1442,11 @@
             if (file) {
                 await loadSoundFile(file);
             }
+            event.target.value = '';
         }
 
         async function loadSoundFile(file) {
-            if (!file.type.startsWith('audio/')) {
+            if (!isProbablySoundFile(file)) {
                 showToast('Lutfen gecerli bir ses dosyasi secin.', 'warning');
                 return;
             }
@@ -1456,6 +1471,7 @@
             }
             if (audio) {
                 audio.dataset.soundUrl = uploaded.url ?? '';
+                syncNewOrderAudioSource(uploaded.url ?? '');
             }
             updateSoundMedia(uploaded.url ?? '', uploaded.fileName ?? file.name);
             showToast('Ses dosyasi yuklendi ve kayda hazir.', 'success');
@@ -1483,7 +1499,8 @@
         }
 
         function updateSoundPreviewFromUrl(url) {
-            updateSoundMedia(url, extractSoundFileName(url));
+            const normalizedUrl = normalizeMediaUrl(url, 'audio');
+            updateSoundMedia(normalizedUrl, extractSoundFileName(normalizedUrl));
         }
 
         function updateSoundMedia(url, fileName) {
@@ -1518,6 +1535,49 @@
                 return parsed.pathname.split('/').filter(Boolean).pop() ?? url;
             } catch {
                 return url;
+            }
+        }
+
+        function isProbablyImageFile(file) {
+            return file?.type?.startsWith('image/') ||
+                hasAllowedFileExtension(file?.name, ['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+        }
+
+        function isProbablySoundFile(file) {
+            return file?.type?.startsWith('audio/') ||
+                hasAllowedFileExtension(file?.name, ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.webm']);
+        }
+
+        function hasAllowedFileExtension(fileName, allowedExtensions) {
+            const normalized = String(fileName ?? '').toLowerCase();
+            return allowedExtensions.some(extension => normalized.endsWith(extension));
+        }
+
+        function normalizeMediaUrl(url, kind) {
+            const value = String(url ?? '').trim();
+            if (!value) {
+                return '';
+            }
+
+            if (value.startsWith('/') || value.startsWith('blob:')) {
+                return value;
+            }
+
+            if (kind === 'image' && value.startsWith('data:image/')) {
+                return value;
+            }
+
+            if (kind === 'audio' && value.startsWith('data:audio/')) {
+                return value;
+            }
+
+            try {
+                const parsed = new URL(value, window.location.origin);
+                return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+                    ? parsed.href
+                    : '';
+            } catch {
+                return '';
             }
         }
 
@@ -1896,19 +1956,132 @@
             return escapeHtml(value);
         }
 
-        function playNewOrderSound() {
+        function prepareNewOrderSoundGuard() {
             const audio = document.getElementById('newOrderAudio');
-            const url = audio?.dataset.soundUrl ?? '';
-            const enabled = audio?.dataset.soundEnabled === 'true';
-            if (!audio || !enabled || !url) {
+            syncNewOrderAudioSource(audio?.dataset.soundUrl ?? '');
+
+            const unlock = () => unlockNewOrderSound();
+            document.addEventListener('pointerdown', unlock, { passive: true });
+            document.addEventListener('keydown', unlock);
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    flushPendingNewOrderSound('visibilitychange');
+                }
+            });
+            window.addEventListener('focus', () => flushPendingNewOrderSound('focus'));
+            window.addEventListener('pageshow', () => flushPendingNewOrderSound('pageshow'));
+        }
+
+        function queueNewOrderSound(reason) {
+            pendingNewOrderSound = true;
+            playNewOrderSound(reason);
+        }
+
+        function flushPendingNewOrderSound(reason) {
+            if (pendingNewOrderSound) {
+                playNewOrderSound(reason);
+            }
+        }
+
+        async function unlockNewOrderSound() {
+            if (soundUnlocked) {
+                flushPendingNewOrderSound('unlock');
                 return;
             }
 
+            const audio = document.getElementById('newOrderAudio');
+            const url = audio?.dataset.soundUrl ?? '';
+            if (!audio || !url) {
+                soundUnlocked = true;
+                return;
+            }
+
+            const previousVolume = audio.volume;
+            try {
+                audio.volume = 0;
+                syncNewOrderAudioSource(url);
+                await audio.play();
+                audio.pause();
+                audio.currentTime = 0;
+                audio.volume = previousVolume;
+                soundUnlocked = true;
+                flushPendingNewOrderSound('unlock');
+            } catch {
+                audio.volume = previousVolume;
+                soundUnlocked = false;
+            }
+        }
+
+        function syncNewOrderAudioSource(url) {
+            const audio = document.getElementById('newOrderAudio');
+            const normalizedUrl = normalizeMediaUrl(url, 'audio');
+            if (!audio) {
+                return;
+            }
+
+            if (!normalizedUrl) {
+                audio.removeAttribute('src');
+                return;
+            }
+
+            if (audio.getAttribute('src') !== normalizedUrl) {
+                audio.src = normalizedUrl;
+                audio.load();
+            }
+        }
+
+        function playNewOrderSound(reason) {
+            const audio = document.getElementById('newOrderAudio');
+            const url = normalizeMediaUrl(audio?.dataset.soundUrl ?? '', 'audio');
+            const enabled = audio?.dataset.soundEnabled === 'true';
+            if (!audio || !enabled || !url) {
+                pendingNewOrderSound = false;
+                return;
+            }
+
+            const now = Date.now();
+            if (now - lastNewOrderSoundAttemptAt < 350) {
+                return;
+            }
+            lastNewOrderSoundAttemptAt = now;
+
+            syncNewOrderAudioSource(url);
             audio.pause();
-            audio.src = url;
             audio.currentTime = 0;
-            audio.load();
-            audio.play().catch(() => {});
+            audio.play()
+                .then(() => {
+                    pendingNewOrderSound = false;
+                })
+                .catch(() => {
+                    pendingNewOrderSound = true;
+                    playFallbackOrderBeep();
+                    window.setTimeout(() => flushPendingNewOrderSound(reason ?? 'retry'), 1500);
+                });
+        }
+
+        function playFallbackOrderBeep() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) {
+                    return;
+                }
+
+                newOrderAudioContext ??= new AudioContext();
+                if (newOrderAudioContext.state === 'suspended') {
+                    newOrderAudioContext.resume();
+                }
+
+                const oscillator = newOrderAudioContext.createOscillator();
+                const gain = newOrderAudioContext.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 880;
+                gain.gain.value = 0.035;
+                oscillator.connect(gain);
+                gain.connect(newOrderAudioContext.destination);
+                oscillator.start();
+                oscillator.stop(newOrderAudioContext.currentTime + 0.12);
+            } catch {
+            }
         }
 
         function playPreviewSound() {
