@@ -1,4 +1,5 @@
-using System.Runtime.Versioning;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace CafeOrders.AdminAudioAgent;
 
@@ -33,51 +34,30 @@ public sealed class WindowsMediaAudioPlayer(AgentOptions options) : IAudioPlayer
         return completion.Task;
     }
 
-    public Task<bool> PlayFallbackAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            for (var index = 0; index < 3 && !cancellationToken.IsCancellationRequested; index++)
-            {
-                Console.Beep(880, 160);
-                Thread.Sleep(90);
-            }
+    public Task<bool> PlayFallbackAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
 
-            return Task.FromResult(true);
-        }
-        catch
-        {
-            return Task.FromResult(false);
-        }
-    }
-
-    [SupportedOSPlatform("windows")]
     private bool PlayWithWindowsMediaPlayer(string source, CancellationToken cancellationToken)
     {
-        var playerType = Type.GetTypeFromProgID("WMPlayer.OCX");
-        if (playerType is null)
-        {
-            return false;
-        }
-
-        dynamic? player = Activator.CreateInstance(playerType);
-        if (player is null)
-        {
-            return false;
-        }
-
+        var alias = $"CafeOrdersOrderSound{Guid.NewGuid():N}";
         try
         {
-            player.settings.volume = options.Volume;
-            player.URL = source;
-            player.controls.play();
+            if (SendMciCommand($"open \"{source}\" alias {alias}") != 0
+                && SendMciCommand($"open \"{source}\" type mpegvideo alias {alias}") != 0)
+            {
+                return false;
+            }
 
-            var startedAt = DateTime.UtcNow;
-            var stopAt = startedAt.AddSeconds(Math.Max(1, options.MaxPlaybackSeconds));
+            SendMciCommand($"setaudio {alias} volume to {Math.Clamp(options.Volume, 0, 100) * 10}");
+            if (SendMciCommand($"play {alias}") != 0)
+            {
+                return false;
+            }
+
+            var stopAt = DateTime.UtcNow.AddSeconds(Math.Max(1, options.MaxPlaybackSeconds));
             while (!cancellationToken.IsCancellationRequested && DateTime.UtcNow < stopAt)
             {
-                var state = (int)player.playState;
-                if (DateTime.UtcNow - startedAt > TimeSpan.FromMilliseconds(700) && state is 1 or 8 or 10)
+                var mode = ReadMciStatus(alias, "mode");
+                if (mode is "stopped" or "not ready")
                 {
                     break;
                 }
@@ -85,18 +65,29 @@ public sealed class WindowsMediaAudioPlayer(AgentOptions options) : IAudioPlayer
                 Thread.Sleep(150);
             }
 
-            player.controls.stop();
-            return true;
+            return !cancellationToken.IsCancellationRequested;
+        }
+        catch
+        {
+            return false;
         }
         finally
         {
-            try
-            {
-                player.close();
-            }
-            catch
-            {
-            }
+            SendMciCommand($"stop {alias}");
+            SendMciCommand($"close {alias}");
         }
     }
+
+    private static int SendMciCommand(string command)
+        => mciSendString(command, null, 0, IntPtr.Zero);
+
+    private static string ReadMciStatus(string alias, string item)
+    {
+        var buffer = new StringBuilder(128);
+        var result = mciSendString($"status {alias} {item}", buffer, buffer.Capacity, IntPtr.Zero);
+        return result == 0 ? buffer.ToString().Trim().ToLowerInvariant() : string.Empty;
+    }
+
+    [DllImport("winmm.dll", CharSet = CharSet.Unicode)]
+    private static extern int mciSendString(string command, StringBuilder? returnValue, int returnLength, IntPtr callback);
 }

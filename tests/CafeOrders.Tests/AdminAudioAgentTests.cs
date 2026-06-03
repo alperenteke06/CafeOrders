@@ -76,6 +76,18 @@ public sealed class AdminAudioAgentTests
     }
 
     [Fact]
+    public void AgentDefaults_PlayConfiguredSoundAfterOneSecondWithoutSystemBeep()
+    {
+        var options = AgentOptions.Load(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
+        var player = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "WindowsMediaAudioPlayer.cs");
+
+        Assert.Equal(1000, options.FallbackDelayMilliseconds);
+        Assert.False(options.UseSystemBeepFallback);
+        Assert.Contains("mciSendString", player);
+        Assert.DoesNotContain("Console.Beep", player);
+    }
+
+    [Fact]
     public void WatchDogScript_StartsAdminAudioAgentWhenMissing()
     {
         var script = ReadRepoFile("scripts", "CafeOrders.WatchDog.ps1");

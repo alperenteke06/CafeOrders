@@ -25,10 +25,10 @@ public sealed record AgentOptions(
                 "CafeOrders",
                 "AdminAudioAgent",
                 "AdminAudioAgent.log"),
-            1800,
+            1000,
             12,
             90,
-            true);
+            false);
 
         var path = Path.Combine(baseDirectory, "appsettings.json");
         if (!File.Exists(path))

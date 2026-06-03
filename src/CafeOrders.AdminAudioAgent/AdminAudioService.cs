@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Net.Http.Json;
 using CafeOrders.Application.Contracts.Settings;
 
@@ -17,7 +18,7 @@ public sealed class AdminAudioService(HttpClient httpClient, AgentOptions option
         var source = AudioSourceResolver.Resolve(settings.NewOrderSoundUrl, options.WebUiBaseUrl, options.FallbackSoundPath);
         if (string.IsNullOrWhiteSpace(source))
         {
-            logger?.Warning("New order sound source is empty. Trying system beep fallback.");
+            logger?.Warning("New order sound source is empty. Playback skipped.");
             return options.UseSystemBeepFallback && await audioPlayer.PlayFallbackAsync(cancellationToken);
         }
 
@@ -29,7 +30,7 @@ public sealed class AdminAudioService(HttpClient httpClient, AgentOptions option
         }
         catch (Exception exception)
         {
-            logger?.Error("New order sound playback failed. Trying fallback.", exception);
+            logger?.Error("New order sound playback failed.", exception);
             return options.UseSystemBeepFallback && await audioPlayer.PlayFallbackAsync(cancellationToken);
         }
     }
