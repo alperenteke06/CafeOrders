@@ -9,12 +9,12 @@ namespace CafeOrders.DesktopApp;
 
 public partial class MainWindow : Window
 {
-    private readonly DispatcherTimer _autoCloseTimer = new();
+    private readonly DispatcherTimer _sessionCountdownTimer = new() { Interval = TimeSpan.FromSeconds(1) };
 
     public MainWindow()
     {
         InitializeComponent();
-        _autoCloseTimer.Tick += AutoCloseTimer_OnTick;
+        _sessionCountdownTimer.Tick += SessionCountdownTimer_OnTick;
         Loaded += OnLoaded;
         Closing += OnClosingAsync;
     }
@@ -25,29 +25,38 @@ public partial class MainWindow : Window
         {
             viewModel.PropertyChanged += OnViewModelPropertyChanged;
             SyncAnimatedStates(viewModel, useTransitions: false);
-            StartAutoCloseTimer(viewModel);
+            StartSessionCountdown(viewModel);
             await viewModel.InitializeAsync();
             SyncAnimatedStates(viewModel, useTransitions: true);
         }
     }
 
-    private void StartAutoCloseTimer(MainViewModel viewModel)
+    private void StartSessionCountdown(MainViewModel viewModel)
     {
-        _autoCloseTimer.Stop();
+        _sessionCountdownTimer.Stop();
+        viewModel.RefreshSessionCountdown();
 
         if (viewModel.AutoCloseAfter <= TimeSpan.Zero)
         {
             return;
         }
 
-        _autoCloseTimer.Interval = viewModel.AutoCloseAfter;
-        _autoCloseTimer.Start();
+        _sessionCountdownTimer.Start();
     }
 
-    private void AutoCloseTimer_OnTick(object? sender, EventArgs e)
+    private void SessionCountdownTimer_OnTick(object? sender, EventArgs e)
     {
-        _autoCloseTimer.Stop();
-        Close();
+        if (DataContext is not MainViewModel viewModel)
+        {
+            return;
+        }
+
+        viewModel.RefreshSessionCountdown();
+        if (viewModel.ResolveCurrentSessionRemaining() <= TimeSpan.Zero)
+        {
+            _sessionCountdownTimer.Stop();
+            Close();
+        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -196,7 +205,7 @@ public partial class MainWindow : Window
     private async void OnClosingAsync(object? sender, CancelEventArgs e)
     {
         Closing -= OnClosingAsync;
-        _autoCloseTimer.Stop();
+        _sessionCountdownTimer.Stop();
 
         if (DataContext is MainViewModel viewModel)
         {

@@ -36,7 +36,7 @@ public sealed class DashboardService(CafeOrdersDbContext dbContext, IOrderServic
                 devices.Count(x => !x.IsApproved),
                 orders.Count(x => x.Status == OrderStatus.Pending.ToString()),
                 revenueToday),
-            devices.Select(x => x.ToDto()).ToArray(),
+            devices.Select(x => x.ToDto(now)).ToArray(),
             orders,
             await settingsService.GetActiveInfoMessageAsync(cancellationToken));
     }

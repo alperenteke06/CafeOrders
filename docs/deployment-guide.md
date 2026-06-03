@@ -6,6 +6,7 @@ Onerilen kurulum:
 
 - `CafeOrders.API` -> sunucu uzerinde `5001`
 - `CafeOrders.WebUI` -> sunucu uzerinde `5002`
+- `CafeOrders.AdminAudioAgent` -> sunucu PC uzerinde yeni siparis sesi icin native fallback ajan
 - `CafeOrders.DesktopApp` -> client makinelere dagitilan WPF istemci
 - SQL Server -> ayni sunucu veya ayri veritabani sunucusu
 
@@ -22,7 +23,7 @@ IIS / SQL sunucusunda:
 Not:
 
 - API ve WebUI framework-dependent publish ile calistirilabilir
-- DesktopApp icin self-contained publish onerilir
+- DesktopApp ve AdminAudioAgent icin self-contained publish onerilir
 
 ## 3. Client Gereksinimleri
 
@@ -43,25 +44,32 @@ Onerilen publish hedefleri:
 - `publishes/API`
 - `publishes/WebUI`
 - `publishes/DesktopApp`
+- `publishes/AdminAudioAgent`
 
 Ornek publish komutlari:
 
 ### API
 
 ```powershell
-dotnet publish C:\AllActivities\SoftwareDev\CafeOrders\src\CafeOrders.API\CafeOrders.API.csproj -c Release --self-contained false /p:UseSharedCompilation=false -o C:\AllActivities\SoftwareDev\CafeOrders\publishes\API
+dotnet publish C:\AllActivities\SoftwareDev\CafeOrders\src\CafeOrders.API\CafeOrders.API.csproj -c Release -r win-x64 --self-contained true -o C:\AllActivities\SoftwareDev\CafeOrders\publishes\API
 ```
 
 ### WebUI
 
 ```powershell
-dotnet publish C:\AllActivities\SoftwareDev\CafeOrders\src\CafeOrders.WebUI\CafeOrders.WebUI.csproj -c Release --self-contained false /p:UseSharedCompilation=false -o C:\AllActivities\SoftwareDev\CafeOrders\publishes\WebUI
+dotnet publish C:\AllActivities\SoftwareDev\CafeOrders\src\CafeOrders.WebUI\CafeOrders.WebUI.csproj -c Release -r win-x64 --self-contained true -o C:\AllActivities\SoftwareDev\CafeOrders\publishes\WebUI
 ```
 
 ### DesktopApp
 
 ```powershell
 dotnet publish C:\AllActivities\SoftwareDev\CafeOrders\src\CafeOrders.DesktopApp\CafeOrders.DesktopApp.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=false /p:IncludeNativeLibrariesForSelfExtract=true -o C:\AllActivities\SoftwareDev\CafeOrders\publishes\DesktopApp
+```
+
+### AdminAudioAgent
+
+```powershell
+dotnet publish C:\AllActivities\SoftwareDev\CafeOrders\src\CafeOrders.AdminAudioAgent\CafeOrders.AdminAudioAgent.csproj -c Release -r win-x64 --self-contained true -o C:\AllActivities\SoftwareDev\CafeOrders\publishes\AdminAudioAgent
 ```
 
 ## 5. Konfigurasyon Dosyalari
@@ -117,6 +125,22 @@ Temel alanlar:
   }
 }
 ```
+
+### AdminAudioAgent
+
+Dosya:
+
+- `src/CafeOrders.AdminAudioAgent/appsettings.json`
+
+Temel alanlar:
+
+- `Agent:ApiBaseUrl`
+- `Agent:HubUrl`
+- `Agent:WebUiBaseUrl`
+- `Agent:FallbackDelayMilliseconds`
+- `Agent:Volume`
+
+WebUI yeni siparis sesini basariyla calarsa Hub uzerinden ses onayi gonderir. Onay gelmezse AdminAudioAgent belirtilen gecikme sonunda sesi Windows uzerinden native olarak calar.
 
 ### WebUI
 
@@ -196,11 +220,13 @@ Bu yapi, IIS static file erisim problemlerinde daha stabil davranir.
 2. IIS ve Hosting Bundle kur
 3. API publish dosyalarini yerlestir
 4. WebUI publish dosyalarini yerlestir
-5. `appsettings.json` dosyalarini production degerleriyle guncelle
-6. paylasimli medya klasoru gerekiyorsa `wwwroot` paylasimini ac
-7. API ve WebUI'yi baslat
-8. DesktopApp `appsettings.json` icinde sunucu adreslerini guncelle
-9. DesktopApp'i client makinelere dagit
+5. AdminAudioAgent publish dosyalarini server PC uzerinde uygun bir klasore yerlestir
+6. `appsettings.json` dosyalarini production degerleriyle guncelle
+7. paylasimli medya klasoru gerekiyorsa `wwwroot` paylasimini ac
+8. API ve WebUI'yi baslat
+9. AdminAudioAgent'i server PC kullanici oturumunda calistir veya startup/task ile baslat
+10. DesktopApp `appsettings.json` icinde sunucu adreslerini guncelle
+11. DesktopApp'i client makinelere dagit
 
 ## 11. Operasyonel Kontrol Listesi
 
@@ -208,6 +234,7 @@ Bu yapi, IIS static file erisim problemlerinde daha stabil davranir.
 - WebUI `5002` cevap veriyor mu
 - DB migration otomatik uygulandi mi
 - admin login calisiyor mu
+- AdminAudioAgent Hub'a baglanip WebUI ack gelmeyen sipariste ses caliyor mu
 - yeni cihaz kaydi gorunuyor mu
 - cihaz onayi DesktopApp'e dusuyor mu
 - urun gorseli degisikligi realtime yenileniyor mu

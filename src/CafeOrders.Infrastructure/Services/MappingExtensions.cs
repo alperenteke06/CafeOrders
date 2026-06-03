@@ -13,8 +13,31 @@ internal static class MappingExtensions
     public static ProductDto ToDto(this Product product)
         => new(product.Id, product.CategoryId, product.Name, product.Description, product.Price, product.ImageUrl, product.IsActive);
 
-    public static DeviceDto ToDto(this Device device)
-        => new(device.Id, device.HostName, device.MacAddress, device.IpAddress, device.IsApproved, device.Status.ToString(), device.LastSeenAt, device.TableId);
+    public static DeviceDto ToDto(this Device device, DateTime now)
+        => new(
+            device.Id,
+            device.HostName,
+            device.MacAddress,
+            device.IpAddress,
+            device.IsApproved,
+            device.Status.ToString(),
+            device.LastSeenAt,
+            device.TableId,
+            ResolveSessionRemainingSeconds(device, now),
+            device.SessionExpiresAtUtc);
+
+    private static int? ResolveSessionRemainingSeconds(Device device, DateTime now)
+    {
+        if (!device.IsApproved ||
+            device.Status != CafeOrders.Domain.Enums.DeviceStatus.Online ||
+            !device.SessionExpiresAtUtc.HasValue)
+        {
+            return null;
+        }
+
+        var remaining = device.SessionExpiresAtUtc.Value - now;
+        return remaining <= TimeSpan.Zero ? 0 : (int)Math.Ceiling(remaining.TotalSeconds);
+    }
 
     public static OrderDto ToDto(this Order order)
         => new(

@@ -12,6 +12,7 @@ public sealed class Device
     public bool IsApproved { get; set; }
     public DeviceStatus Status { get; set; } = DeviceStatus.Pending;
     public DateTime? LastSeenAt { get; set; }
+    public DateTime? SessionExpiresAtUtc { get; set; }
     public string? ConnectionId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

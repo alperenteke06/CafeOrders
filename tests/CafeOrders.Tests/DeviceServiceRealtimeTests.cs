@@ -51,6 +51,31 @@ public sealed class DeviceServiceRealtimeTests
         Assert.Equal(1, notifier.DevicesUpdatedCount);
     }
 
+    [Fact]
+    public async Task HeartbeatAsync_UpdatesSessionExpirationForRealtimeDeviceCountdown()
+    {
+        await using var dbContext = CreateDbContext();
+        var deviceId = Guid.NewGuid();
+        dbContext.Devices.Add(new Device
+        {
+            Id = deviceId,
+            HostName = "PC-01",
+            MacAddress = "aabbccddeeff",
+            IpAddress = "192.168.2.30",
+            IsApproved = true
+        });
+        await dbContext.SaveChangesAsync();
+
+        var service = new DeviceService(dbContext, new FakeJwtTokenService(), new FakeRealtimeNotifier());
+
+        var result = await service.HeartbeatAsync(new HeartbeatRequest(deviceId, 150));
+
+        var device = await dbContext.Devices.SingleAsync(x => x.Id == deviceId);
+        Assert.True(result);
+        Assert.NotNull(device.SessionExpiresAtUtc);
+        Assert.InRange((device.SessionExpiresAtUtc!.Value - DateTime.UtcNow).TotalSeconds, 120, 151);
+    }
+
     private static CafeOrdersDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<CafeOrdersDbContext>()

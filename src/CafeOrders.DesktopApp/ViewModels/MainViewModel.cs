@@ -23,6 +23,7 @@ public sealed partial class MainViewModel : ObservableObject
     private static readonly TimeSpan StartupRetryDelay = TimeSpan.FromSeconds(2);
     private const int StartupRetryCount = 15;
     private static readonly DesktopEndpointOptions EndpointOptions = DesktopEndpointOptions.Load();
+    private readonly DateTime _sessionStartedAtUtc = DateTime.UtcNow;
 
     private readonly DeviceIdentityService _deviceIdentityService = new();
     private readonly HttpClient _httpClient;
@@ -67,6 +68,9 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string _displayTableName = "Masa -";
+
+    [ObservableProperty]
+    private string _sessionRemainingText = "02:30";
 
     [ObservableProperty]
     private string _footerCopyrightText = "NightByte Lounge @ 2026 Tum Haklari Saklidir.";
@@ -152,11 +156,16 @@ public sealed partial class MainViewModel : ObservableObject
     public bool HasItemsInCart => CartItemCount > 0;
     public bool HasActiveOrder => ActiveOrderLines.Count > 0;
     public TimeSpan AutoCloseAfter => EndpointOptions.AutoCloseAfter;
+    public bool IsSessionCountdownVisible => AutoCloseAfter > TimeSpan.Zero;
+    public int? CurrentSessionRemainingSeconds => IsSessionCountdownVisible
+        ? (int)Math.Ceiling(ResolveCurrentSessionRemaining().TotalSeconds)
+        : null;
 
     public MainViewModel()
     {
         _httpClient = new HttpClient { BaseAddress = new Uri(EndpointOptions.ApiBaseUrl) };
         _apiService = new ClientApiService(_httpClient);
+        RefreshSessionCountdown();
         Cart.CollectionChanged += OnCartCollectionChanged;
         ActiveOrderLines.CollectionChanged += OnActiveOrderCollectionChanged;
         _statusPopupTimer.Tick += (_, _) =>
@@ -182,7 +191,8 @@ public sealed partial class MainViewModel : ObservableObject
         var registrationRequest = new DeviceRegistrationRequest(
             _deviceIdentityService.GetHostName(),
             _deviceIdentityService.GetMacAddress(),
-            _deviceIdentityService.GetIpAddress());
+            _deviceIdentityService.GetIpAddress(),
+            CurrentSessionRemainingSeconds);
         _registrationRequest = registrationRequest;
 
         DeviceRegistrationResponse? registration = null;
@@ -502,9 +512,28 @@ public sealed partial class MainViewModel : ObservableObject
             while (true)
             {
                 await Task.Delay(TimeSpan.FromSeconds(10));
-                await _apiService.HeartbeatAsync(new HeartbeatRequest(_deviceId));
+                await _apiService.HeartbeatAsync(new HeartbeatRequest(_deviceId, CurrentSessionRemainingSeconds));
             }
         });
+    }
+
+    public TimeSpan ResolveCurrentSessionRemaining()
+    {
+        if (!IsSessionCountdownVisible)
+        {
+            return TimeSpan.Zero;
+        }
+
+        var remaining = _sessionStartedAtUtc.Add(AutoCloseAfter) - DateTime.UtcNow;
+        return remaining <= TimeSpan.Zero ? TimeSpan.Zero : remaining;
+    }
+
+    public void RefreshSessionCountdown()
+    {
+        var remaining = ResolveCurrentSessionRemaining();
+        var totalMinutes = (int)Math.Floor(remaining.TotalMinutes);
+        SessionRemainingText = $"{totalMinutes:00}:{remaining.Seconds:00}";
+        OnPropertyChanged(nameof(CurrentSessionRemainingSeconds));
     }
 
     private void ApplyCatalog(CatalogResponseDto catalog)

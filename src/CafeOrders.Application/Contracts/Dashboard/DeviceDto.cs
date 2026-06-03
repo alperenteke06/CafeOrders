@@ -1,3 +1,13 @@
 namespace CafeOrders.Application.Contracts.Dashboard;
 
-public sealed record DeviceDto(Guid Id, string HostName, string MacAddress, string IpAddress, bool IsApproved, string Status, DateTime? LastSeenAt, int? TableId);
+public sealed record DeviceDto(
+    Guid Id,
+    string HostName,
+    string MacAddress,
+    string IpAddress,
+    bool IsApproved,
+    string Status,
+    DateTime? LastSeenAt,
+    int? TableId,
+    int? SessionRemainingSeconds,
+    DateTime? SessionExpiresAtUtc);

@@ -335,6 +335,51 @@
                         <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BB;" FontSize="14" />
                     </Button>
 
+                    <Border Margin="0,0,18,0"
+                            Width="270"
+                            Height="72"
+                            Padding="18,10"
+                            Background="#252E42"
+                            CornerRadius="17"
+                            BorderBrush="#817A68"
+                            BorderThickness="3"
+                            Visibility="{Binding IsSessionCountdownVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="58" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Width="46"
+                                    Height="46"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    CornerRadius="23"
+                                    BorderBrush="{StaticResource AccentBrush}"
+                                    BorderThickness="4">
+                                <TextBlock FontFamily="Segoe MDL2 Assets"
+                                           Text="&#xE121;"
+                                           FontSize="21"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="KALAN SURE"
+                                           FontSize="19"
+                                           FontWeight="Bold"
+                                           Foreground="#D8CBB4" />
+                                <TextBlock Text="{Binding SessionRemainingText}"
+                                           Margin="0,2,0,0"
+                                           FontSize="36"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           FontFamily="Consolas" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
                     <Border Margin="0,0,18,0" Padding="26,12" Background="#252E42" CornerRadius="16">
                         <TextBlock Text="{Binding DisplayTableName}"
                                    FontSize="18"

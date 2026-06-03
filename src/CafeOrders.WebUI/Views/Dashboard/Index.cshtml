@@ -358,6 +358,7 @@
         let snapshotRefreshQueued = false;
         let quickPriceRowsState = [];
         let pendingNewOrderSound = false;
+        let pendingNewOrderSoundOrderId = null;
         let soundUnlocked = false;
         let lastNewOrderSoundAttemptAt = 0;
         let newOrderAudioContext = null;
@@ -499,8 +500,15 @@
             connection.on('OrderCreated', order => {
                 showToast('Yeni siparis geldi.', 'info');
                 appendNotificationFromOrderCreated(order);
-                queueNewOrderSound('order-created');
+                queueNewOrderSound(order);
                 requestSnapshotRefresh();
+            });
+            connection.on('OrderSoundAcknowledged', orderId => {
+                const acknowledgedOrderId = Number(orderId);
+                if (pendingNewOrderSoundOrderId === acknowledgedOrderId) {
+                    pendingNewOrderSound = false;
+                    pendingNewOrderSoundOrderId = null;
+                }
             });
             connection.on('OrderAccepted', order => {
                 showToast(`Masa ${order.order?.tableId ?? order.tableId ?? ''} siparisi onaylandi.`, 'success');
@@ -1972,9 +1980,10 @@
             window.addEventListener('pageshow', () => flushPendingNewOrderSound('pageshow'));
         }
 
-        function queueNewOrderSound(reason) {
+        function queueNewOrderSound(order) {
             pendingNewOrderSound = true;
-            playNewOrderSound(reason);
+            pendingNewOrderSoundOrderId = extractOrderId(order);
+            playNewOrderSound('order-created');
         }
 
         function flushPendingNewOrderSound(reason) {
@@ -2050,13 +2059,30 @@
             audio.currentTime = 0;
             audio.play()
                 .then(() => {
+                    const acknowledgedOrderId = pendingNewOrderSoundOrderId;
                     pendingNewOrderSound = false;
+                    pendingNewOrderSoundOrderId = null;
+                    acknowledgeNewOrderSound(acknowledgedOrderId);
                 })
                 .catch(() => {
                     pendingNewOrderSound = true;
                     playFallbackOrderBeep();
                     window.setTimeout(() => flushPendingNewOrderSound(reason ?? 'retry'), 1500);
                 });
+        }
+
+        function extractOrderId(order) {
+            const candidate = order?.id ?? order?.order?.id ?? order?.orderId ?? null;
+            const parsed = Number(candidate);
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+        }
+
+        function acknowledgeNewOrderSound(orderId) {
+            if (!orderId || !hubConnection || hubConnection.state !== signalR.HubConnectionState.Connected) {
+                return;
+            }
+
+            hubConnection.invoke('AcknowledgeOrderSound', Number(orderId)).catch(() => {});
         }
 
         function playFallbackOrderBeep() {

@@ -19,6 +19,11 @@
     <File Path="publishes/DesktopApp/CafeOrders.DesktopApp.dll" />
     <File Path="publishes/DesktopApp/CafeOrders.DesktopApp.exe" />
     <File Path="publishes/DesktopApp/CafeOrders.DesktopApp.runtimeconfig.json" />
+    <File Path="publishes/AdminAudioAgent/appsettings.json" />
+    <File Path="publishes/AdminAudioAgent/CafeOrders.AdminAudioAgent.deps.json" />
+    <File Path="publishes/AdminAudioAgent/CafeOrders.AdminAudioAgent.dll" />
+    <File Path="publishes/AdminAudioAgent/CafeOrders.AdminAudioAgent.exe" />
+    <File Path="publishes/AdminAudioAgent/CafeOrders.AdminAudioAgent.runtimeconfig.json" />
     <File Path="publishes/WebUI/appsettings.json" />
     <File Path="publishes/WebUI/CafeOrders.WebUI.deps.json" />
     <File Path="publishes/WebUI/CafeOrders.WebUI.dll" />
@@ -33,11 +38,15 @@
     <File Path="scripts/Run-CafeOrders.WatchDogHidden.vbs" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/CafeOrders.AdminAudioAgent/CafeOrders.AdminAudioAgent.csproj" />
     <Project Path="src/CafeOrders.WebUI/CafeOrders.WebUI.csproj" />
     <Project Path="src/CafeOrders.API/CafeOrders.API.csproj" />
     <Project Path="src/CafeOrders.Application/CafeOrders.Application.csproj" />
     <Project Path="src/CafeOrders.DesktopApp/CafeOrders.DesktopApp.csproj" />
     <Project Path="src/CafeOrders.Domain/CafeOrders.Domain.csproj" />
     <Project Path="src/CafeOrders.Infrastructure/CafeOrders.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CafeOrders.Tests/CafeOrders.Tests.csproj" />
   </Folder>
 </Solution>

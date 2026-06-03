@@ -7,12 +7,14 @@ public sealed class WebUiRegressionTests
     {
         var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
 
-        Assert.Contains("queueNewOrderSound('order-created')", index);
+        Assert.Contains("queueNewOrderSound(order)", index);
         Assert.Contains("pendingNewOrderSound", index);
         Assert.Contains("prepareNewOrderSoundGuard", index);
         Assert.Contains("visibilitychange", index);
         Assert.Contains("pointerdown", index);
         Assert.Contains("playFallbackOrderBeep", index);
+        Assert.Contains("AcknowledgeOrderSound", index);
+        Assert.Contains("OrderSoundAcknowledged", index);
     }
 
     [Fact]
@@ -39,6 +41,18 @@ public sealed class WebUiRegressionTests
         Assert.Contains("loadSection('devices'", devices);
         Assert.Contains("pagination-pillbar", categories);
         Assert.Contains("loadSection('categories'", categories);
+    }
+
+    [Fact]
+    public void DesktopAppShell_ShowsSessionCountdownInHeader()
+    {
+        var xaml = ReadRepoFile("src", "CafeOrders.DesktopApp", "MainWindow.xaml");
+        var appSettings = ReadRepoFile("src", "CafeOrders.DesktopApp", "appsettings.json");
+
+        Assert.Contains("KALAN SURE", xaml);
+        Assert.Contains("SessionRemainingText", xaml);
+        Assert.Contains("IsSessionCountdownVisible", xaml);
+        Assert.Contains("AutoCloseAfterSeconds", appSettings);
     }
 
     private static string ReadRepoFile(params string[] segments)

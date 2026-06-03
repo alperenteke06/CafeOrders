@@ -50,6 +50,7 @@
                     <span>MAC: @device.MacAddress</span>
                     <span>Masa: @(device.TableId?.ToString() ?? "-")</span>
                     <span>Son gorulme: @(device.LastSeenAt?.ToLocalTime().ToString("dd.MM HH:mm") ?? "-")</span>
+                    <span>Kalan oturum: @FormatSessionRemaining(device)</span>
                 </div>
 
                 <div class="wide-device-actions">
@@ -97,3 +98,26 @@
         }
     </div>
 </section>
+
+@functions {
+    private static string FormatSessionRemaining(CafeOrders.Application.Contracts.Dashboard.DeviceDto device)
+    {
+        if (!device.IsApproved)
+        {
+            return "Onay bekliyor";
+        }
+
+        if (!string.Equals(device.Status, "Online", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Cevrimdisi";
+        }
+
+        if (!device.SessionRemainingSeconds.HasValue)
+        {
+            return "Bekleniyor";
+        }
+
+        var remaining = Math.Max(0, device.SessionRemainingSeconds.Value);
+        return $"{remaining / 60:00}:{remaining % 60:00}";
+    }
+}

@@ -18,6 +18,7 @@ public sealed class DeviceService(
         var device = await dbContext.Devices.FirstOrDefaultAsync(x => x.MacAddress == normalizedMac, cancellationToken);
         var isNewDevice = device is null;
         var wasOnline = device?.Status == DeviceStatus.Online;
+        var now = DateTime.UtcNow;
 
         if (device is null)
         {
@@ -39,7 +40,8 @@ public sealed class DeviceService(
         if (device.IsApproved)
         {
             device.Status = DeviceStatus.Online;
-            device.LastSeenAt = DateTime.UtcNow;
+            device.LastSeenAt = now;
+            device.SessionExpiresAtUtc = ResolveSessionExpiresAt(now, request.SessionDurationSeconds);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -72,6 +74,7 @@ public sealed class DeviceService(
         device.IsApproved = true;
         device.Status = DeviceStatus.Online;
         device.LastSeenAt = DateTime.UtcNow;
+        device.SessionExpiresAtUtc = null;
         device.TableId = request.TableId ?? await GetNextAvailableTableIdAsync(cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -106,6 +109,7 @@ public sealed class DeviceService(
             device.IsApproved = true;
             device.Status = DeviceStatus.Online;
             device.LastSeenAt = DateTime.UtcNow;
+            device.SessionExpiresAtUtc = null;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -147,8 +151,10 @@ public sealed class DeviceService(
         }
 
         var statusChanged = device.Status != DeviceStatus.Online;
-        device.LastSeenAt = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
+        device.LastSeenAt = now;
         device.Status = DeviceStatus.Online;
+        device.SessionExpiresAtUtc = ResolveSessionExpiresAt(now, request.SessionRemainingSeconds) ?? device.SessionExpiresAtUtc;
         await dbContext.SaveChangesAsync(cancellationToken);
 
         if (statusChanged)
@@ -167,4 +173,16 @@ public sealed class DeviceService(
     }
 
     private static string NormalizeMac(string macAddress) => macAddress.Replace(":", string.Empty).Replace("-", string.Empty).Trim().ToLowerInvariant();
+
+    private static DateTime? ResolveSessionExpiresAt(DateTime now, int? remainingSeconds)
+    {
+        if (!remainingSeconds.HasValue)
+        {
+            return null;
+        }
+
+        return remainingSeconds.Value <= 0
+            ? now
+            : now.AddSeconds(remainingSeconds.Value);
+    }
 }

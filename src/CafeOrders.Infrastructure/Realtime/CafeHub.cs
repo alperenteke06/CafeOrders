@@ -41,6 +41,11 @@ public sealed class CafeHub(CafeOrdersDbContext dbContext, IRealtimeNotifier rea
         return Groups.AddToGroupAsync(Context.ConnectionId, "admin");
     }
 
+    public Task AcknowledgeOrderSound(int orderId)
+    {
+        return Clients.Group("admin").SendAsync(CafeOrders.Application.Contracts.Realtime.CafeHubEvents.OrderSoundAcknowledged, orderId);
+    }
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var device = await dbContext.Devices.FirstOrDefaultAsync(x => x.ConnectionId == Context.ConnectionId);
