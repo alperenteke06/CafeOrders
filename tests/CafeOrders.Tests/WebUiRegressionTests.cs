@@ -87,6 +87,22 @@ public sealed class WebUiRegressionTests
         Assert.Contains("Logging must never interrupt the kiosk flow.", logger);
     }
 
+    [Fact]
+    public void ToastFlows_DedupeManualActionsAndRealtimeEvents()
+    {
+        var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
+        var viewModel = ReadRepoFile("src", "CafeOrders.DesktopApp", "ViewModels", "MainViewModel.cs");
+
+        Assert.Contains("recentToastKeys", index);
+        Assert.Contains("suppressedHubToastKeys", index);
+        Assert.Contains("suppressHubToast(`order:${orderId}:accepted`)", index);
+        Assert.Contains("consumeSuppressedHubToast(toastKey)", index);
+        Assert.Contains("showToast(message, type, dedupeKey = null)", index);
+        Assert.Contains("StatusPopupDedupeWindow", viewModel);
+        Assert.Contains("ShouldSkipStatusPopup", viewModel);
+        Assert.Contains("BuildStatusPopupKey", viewModel);
+    }
+
     private static string ReadRepoFile(params string[] segments)
     {
         var root = FindRepoRoot();

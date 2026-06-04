@@ -22,6 +22,7 @@ namespace CafeOrders.DesktopApp.ViewModels;
 public sealed partial class MainViewModel : ObservableObject
 {
     private static readonly TimeSpan StartupRetryDelay = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan StatusPopupDedupeWindow = TimeSpan.FromSeconds(4);
     private const int StartupRetryCount = 15;
     private static readonly DesktopEndpointOptions EndpointOptions = DesktopEndpointOptions.Load();
     private readonly DateTime _sessionStartedAtUtc = DateTime.UtcNow;
@@ -32,6 +33,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ClientApiService _apiService;
     private readonly DispatcherTimer _statusPopupTimer = new() { Interval = TimeSpan.FromSeconds(3.2) };
     private readonly Queue<(string Title, string Message, string Tone)> _statusPopupQueue = new();
+    private readonly Dictionary<string, DateTime> _recentStatusPopupKeys = new();
     private readonly SemaphoreSlim _catalogRefreshGate = new(1, 1);
     private readonly SemaphoreSlim _deviceRefreshGate = new(1, 1);
     private bool _isApprovalPolling;
@@ -679,9 +681,19 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void ShowStatusPopup(string title, string message, string tone)
     {
+        var popupKey = BuildStatusPopupKey(title, message, tone);
+        if (ShouldSkipStatusPopup(popupKey))
+        {
+            return;
+        }
+
         if (IsStatusPopupVisible)
         {
-            _statusPopupQueue.Enqueue((title, message, tone));
+            if (!_statusPopupQueue.Any(item => BuildStatusPopupKey(item.Title, item.Message, item.Tone) == popupKey))
+            {
+                _statusPopupQueue.Enqueue((title, message, tone));
+            }
+
             return;
         }
 
@@ -692,6 +704,30 @@ public sealed partial class MainViewModel : ObservableObject
         _statusPopupTimer.Stop();
         _statusPopupTimer.Start();
     }
+
+    private bool ShouldSkipStatusPopup(string popupKey)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var key in _recentStatusPopupKeys
+                     .Where(item => now - item.Value > StatusPopupDedupeWindow)
+                     .Select(item => item.Key)
+                     .ToList())
+        {
+            _recentStatusPopupKeys.Remove(key);
+        }
+
+        if (_recentStatusPopupKeys.TryGetValue(popupKey, out var lastShownAt) &&
+            now - lastShownAt < StatusPopupDedupeWindow)
+        {
+            return true;
+        }
+
+        _recentStatusPopupKeys[popupKey] = now;
+        return false;
+    }
+
+    private static string BuildStatusPopupKey(string title, string message, string tone)
+        => $"{tone.Trim().ToLowerInvariant()}|{title.Trim()}|{message.Trim()}";
 
     private static string ResolveIconGlyph(string iconKey)
         => iconKey.Trim().ToLowerInvariant() switch
