@@ -250,11 +250,11 @@ Ornek:
 ```json
 {
   "Endpoints": {
-    "ApiBaseUrl": "http://192.168.11.24:5001/",
-    "HubUrl": "http://192.168.11.24:5001/hubs/cafe"
+    "ApiBaseUrl": "http://192.168.2.11:5001/",
+    "HubUrl": "http://192.168.2.11:5001/hubs/cafe"
   },
   "Media": {
-    "SharedWebRootPath": "\\\\192.168.11.24\\inetpub\\wwwroot\\WebUI\\wwwroot"
+    "SharedWebRootPath": "\\\\192.168.2.11\\inetpub\\wwwroot\\WebUI\\wwwroot"
   }
 }
 ```

@@ -121,7 +121,7 @@ Temel alanlar:
 {
   "Urls": "http://0.0.0.0:5001",
   "ConnectionStrings": {
-    "CafeOrders": "Server=.\\SQLEXPRESS;Database=CafeOrders;User Id=sa;Password=sa@Alperen123!;TrustServerCertificate=True;MultipleActiveResultSets=True"
+    "CafeOrders": "Server=.\\SQLEXPRESS;Database=CafeOrders;User Id=CafeOrdersAdmin;Password=sa@CafeOrders!;TrustServerCertificate=True;MultipleActiveResultSets=True"
   }
 }
 ```
@@ -147,7 +147,7 @@ WebUI yeni siparis sesini basariyla calarsa Hub uzerinden ses onayi gonderir. On
 ```json
 {
   "Urls": "http://0.0.0.0:5002",
-  "ApiBaseUrl": "http://192.168.11.24:5001"
+  "ApiBaseUrl": "http://192.168.2.11:5001"
 }
 ```
 
@@ -156,11 +156,11 @@ WebUI yeni siparis sesini basariyla calarsa Hub uzerinden ses onayi gonderir. On
 ```json
 {
   "Endpoints": {
-    "ApiBaseUrl": "http://192.168.11.24:5001/",
-    "HubUrl": "http://192.168.11.24:5001/hubs/cafe"
+    "ApiBaseUrl": "http://192.168.2.11:5001/",
+    "HubUrl": "http://192.168.2.11:5001/hubs/cafe"
   },
   "Media": {
-    "SharedWebRootPath": "\\\\192.168.11.24\\inetpub\\wwwroot\\WebUI\\wwwroot"
+    "SharedWebRootPath": "\\\\192.168.2.11\\inetpub\\wwwroot\\WebUI\\wwwroot"
   }
 }
 ```

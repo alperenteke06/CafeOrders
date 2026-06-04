@@ -3,7 +3,7 @@ param(
     [string]$WebUiAppPoolName = "CafeOrders.WebUI",
     [string]$ApiSiteName = "CafeOrders.API",
     [string]$WebUiSiteName = "CafeOrders.WebUI",
-    [string]$WebUiUrl = "http://192.168.11.24:5002/",
+    [string]$WebUiUrl = "http://192.168.2.11:5002/",
     [string]$LogPath = "C:\Scripts\CafeOrders.WatchDog.log",
     [string]$AdminAudioAgentPath = "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe",
     [string]$BrowserPath = "",
