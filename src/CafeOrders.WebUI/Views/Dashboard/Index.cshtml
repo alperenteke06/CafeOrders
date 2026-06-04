@@ -366,7 +366,11 @@
         let lastNewOrderSoundAttemptAt = 0;
         let newOrderAudioContext = null;
         let deviceSessionCountdownTimer = null;
+        const recentToastKeys = new Map();
+        const suppressedHubToastKeys = new Map();
         const deviceAssignPageSize = 50;
+        const toastDedupeWindowMs = 3600;
+        const hubToastSuppressWindowMs = 5000;
 
         document.addEventListener('DOMContentLoaded', () => {
             syncSearchVisibility(getCurrentSection());
@@ -502,7 +506,8 @@
 
         function registerHubHandlers(connection) {
             connection.on('OrderCreated', order => {
-                showToast('Yeni siparis geldi.', 'info');
+                const orderId = extractOrderId(order);
+                showToast('Yeni siparis geldi.', 'info', `order:${orderId}:created`);
                 appendNotificationFromOrderCreated(order);
                 queueNewOrderSound(order);
                 requestSnapshotRefresh();
@@ -520,30 +525,48 @@
                 }
             });
             connection.on('OrderAccepted', order => {
-                showToast(`Masa ${order.order?.tableId ?? order.tableId ?? ''} siparisi onaylandi.`, 'success');
+                const orderId = extractOrderId(order);
+                const toastKey = `order:${orderId}:accepted`;
+                if (!consumeSuppressedHubToast(toastKey)) {
+                    showToast(`Masa ${order.order?.tableId ?? order.tableId ?? ''} siparisi onaylandi.`, 'success', toastKey);
+                }
                 appendNotificationFromEvent(order, 'Accepted');
                 requestSnapshotRefresh();
             });
             connection.on('OrderRejected', order => {
-                showToast('Bir siparis reddedildi.', 'warning');
+                const orderId = extractOrderId(order);
+                const toastKey = `order:${orderId}:rejected`;
+                if (!consumeSuppressedHubToast(toastKey)) {
+                    showToast('Bir siparis reddedildi.', 'warning', toastKey);
+                }
                 appendNotificationFromEvent(order, 'Rejected');
                 requestSnapshotRefresh();
             });
             connection.on('OrderCompleted', order => {
-                showToast('Bir siparis tamamlandi.', 'success');
+                const orderId = extractOrderId(order);
+                const toastKey = `order:${orderId}:completed`;
+                if (!consumeSuppressedHubToast(toastKey)) {
+                    showToast('Bir siparis tamamlandi.', 'success', toastKey);
+                }
                 appendNotificationFromEvent(order, 'Completed');
                 requestSnapshotRefresh();
             });
             connection.on('DeviceApproved', () => {
-                showToast('Bir cihaz onaylandi.', 'success');
+                if (!consumeSuppressedHubToast('device:approved')) {
+                    showToast('Bir cihaz onaylandi.', 'success', 'device:approved');
+                }
                 requestSnapshotRefresh();
             });
             connection.on('DeviceRejected', () => {
-                showToast('Bekleyen cihaz talebi reddedildi.', 'warning');
+                if (!consumeSuppressedHubToast('device:rejected')) {
+                    showToast('Bekleyen cihaz talebi reddedildi.', 'warning', 'device:rejected');
+                }
                 requestSnapshotRefresh();
             });
             connection.on('DeviceMapped', () => {
-                showToast('Masa ve cihaz eslestirmesi guncellendi.', 'info');
+                if (!consumeSuppressedHubToast('device:mapped')) {
+                    showToast('Masa ve cihaz eslestirmesi guncellendi.', 'info', 'device:mapped');
+                }
                 requestSnapshotRefresh();
             });
             connection.on('DevicesUpdated', () => {
@@ -750,6 +773,7 @@
 
         async function approveDevice(deviceId, tableId) {
             const payload = { deviceId, tableId: tableId ? Number(tableId) : null };
+            suppressHubToast('device:approved');
             const result = await postJson('/dashboard/devices/approve', payload, 'Cihaz onaylandi.', 'Cihaz onaylanamadi.');
             if (result) {
                 closeDeviceAssignModal();
@@ -758,6 +782,7 @@
         }
 
         async function assignDeviceTable(deviceId, tableId) {
+            suppressHubToast('device:mapped');
             const result = await postJson('/dashboard/devices/assign-table', { deviceId, tableId: Number(tableId) || null }, 'Masa eslestirmesi kaydedildi.', 'Masa eslestirmesi kaydedilemedi.');
             if (result) {
                 await refreshSnapshot(true);
@@ -766,6 +791,7 @@
 
         async function rejectDevice(deviceId) {
             openConfirmModal('Cihaz talebini reddet', 'Bu cihaz kaydini sistemden kaldirmak istiyor musunuz?', async () => {
+                suppressHubToast('device:rejected');
                 const success = await deleteRequest(`/dashboard/devices/${deviceId}`, 'Cihaz talebi kaldirildi.', 'Cihaz silinemedi.');
                 if (success) {
                     await refreshSnapshot(true);
@@ -774,6 +800,8 @@
         }
 
         async function acceptOrder(orderId) {
+            suppressHubToast(`order:${orderId}:accepted`);
+            suppressHubToast(`order:${orderId}:completed`);
             const result = await postJson(`/dashboard/orders/${orderId}/accept`, {}, 'Siparis tamamlandi.', 'Siparis onaylanamadi.');
             if (result) {
                 await refreshSnapshot(true);
@@ -781,6 +809,7 @@
         }
 
         async function rejectOrder(orderId) {
+            suppressHubToast(`order:${orderId}:rejected`);
             const result = await postJson(`/dashboard/orders/${orderId}/reject`, {}, 'Siparis reddedildi.', 'Siparis reddedilemedi.');
             if (result) {
                 await refreshSnapshot(true);
@@ -788,6 +817,7 @@
         }
 
         async function completeOrder(orderId) {
+            suppressHubToast(`order:${orderId}:completed`);
             const result = await postJson(`/dashboard/orders/${orderId}/complete`, {}, 'Siparis tamamlandi.', 'Siparis tamamlanamadi.');
             if (result) {
                 await refreshSnapshot(true);
@@ -1978,8 +2008,21 @@
             document.getElementById('chartTooltip').hidden = true;
         }
 
-        function showToast(message, type) {
+        function showToast(message, type, dedupeKey = null) {
             const stack = document.getElementById('toastStack');
+            if (!stack) {
+                return;
+            }
+
+            const now = Date.now();
+            pruneTimedMap(recentToastKeys, now);
+            const key = dedupeKey ?? `${type ?? 'info'}:${message}`;
+            const lastShownAt = recentToastKeys.get(key);
+            if (lastShownAt && now - lastShownAt < toastDedupeWindowMs) {
+                return;
+            }
+
+            recentToastKeys.set(key, now);
             const toast = document.createElement('div');
             toast.className = `toast-item ${type ?? 'info'}`;
             toast.innerHTML = `<span class="material-symbols-outlined">${resolveToastIcon(type)}</span><span>${message}</span>`;
@@ -1989,6 +2032,31 @@
                 toast.classList.remove('visible');
                 window.setTimeout(() => toast.remove(), 260);
             }, 3200);
+        }
+
+        function suppressHubToast(key) {
+            pruneTimedMap(suppressedHubToastKeys, Date.now());
+            suppressedHubToastKeys.set(key, Date.now());
+        }
+
+        function consumeSuppressedHubToast(key) {
+            const now = Date.now();
+            pruneTimedMap(suppressedHubToastKeys, now);
+            const suppressedAt = suppressedHubToastKeys.get(key);
+            if (!suppressedAt || now - suppressedAt > hubToastSuppressWindowMs) {
+                return false;
+            }
+
+            suppressedHubToastKeys.delete(key);
+            return true;
+        }
+
+        function pruneTimedMap(map, now) {
+            for (const [key, timestamp] of map.entries()) {
+                if (now - timestamp > Math.max(toastDedupeWindowMs, hubToastSuppressWindowMs)) {
+                    map.delete(key);
+                }
+            }
         }
 
         function resolveToastIcon(type) {
