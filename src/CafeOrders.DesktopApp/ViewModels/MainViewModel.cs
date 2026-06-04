@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Net.Http;
 using System.IO;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Threading;
 using CafeOrders.Application.Contracts.Catalog;
@@ -165,6 +166,8 @@ public sealed partial class MainViewModel : ObservableObject
     {
         _httpClient = new HttpClient { BaseAddress = new Uri(EndpointOptions.ApiBaseUrl) };
         _apiService = new ClientApiService(_httpClient);
+        DesktopAppLogger.Info(
+            $"MainViewModel created. ApiBaseUrl={EndpointOptions.ApiBaseUrl}, HubUrl={EndpointOptions.HubUrl}, SharedWebRootPath={EndpointOptions.SharedWebRootPath ?? "-"}, AutoCloseAfterSeconds={EndpointOptions.AutoCloseAfter.TotalSeconds:0}");
         RefreshSessionCountdown();
         Cart.CollectionChanged += OnCartCollectionChanged;
         ActiveOrderLines.CollectionChanged += OnActiveOrderCollectionChanged;
@@ -194,6 +197,8 @@ public sealed partial class MainViewModel : ObservableObject
             _deviceIdentityService.GetIpAddress(),
             CurrentSessionRemainingSeconds);
         _registrationRequest = registrationRequest;
+        DesktopAppLogger.Info(
+            $"Initialize started. HostName={registrationRequest.HostName}, MacAddress={registrationRequest.MacAddress}, IpAddress={registrationRequest.IpAddress}, SessionRemaining={registrationRequest.SessionDurationSeconds}");
 
         DeviceRegistrationResponse? registration = null;
 
@@ -203,11 +208,14 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 StatusText = $"API baglantisi bekleniyor... deneme {attempt}/{StartupRetryCount}";
                 BlockingTitle = "Sunucuya Baglaniliyor";
+                DesktopAppLogger.Info($"Device register attempt {attempt}/{StartupRetryCount} started.");
                 registration = await _apiService.RegisterAsync(registrationRequest);
+                DesktopAppLogger.Info($"Device register attempt {attempt} succeeded. DeviceId={registration?.DeviceId}, IsApproved={registration?.IsApproved}, TableId={registration?.TableId}");
                 break;
             }
-            catch (HttpRequestException)
+            catch (HttpRequestException exception)
             {
+                DesktopAppLogger.Warning($"Device register attempt {attempt} failed. {exception.Message}");
                 if (attempt == StartupRetryCount)
                 {
                     StatusText = "API baglantisi kurulamadi. Sunucunun acik oldugunu kontrol edin.";
@@ -223,6 +231,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (registration is null)
         {
+            DesktopAppLogger.Warning("Device registration response is null.");
             StatusText = "Kayit basarisiz.";
             IsBusy = false;
             return;
@@ -235,44 +244,58 @@ public sealed partial class MainViewModel : ObservableObject
         StatusText = registration.Message ?? "Onay bekleniyor.";
         BlockingTitle = registration.IsApproved ? "Hazirlaniyor" : "Masa Onayi Bekleniyor";
 
-        await _realtimeClient.ConnectAsync(
-            EndpointOptions.HubUrl,
-            _deviceKey,
-            async (_, message, tableId) =>
-            {
-                _tableId = tableId;
-                DisplayTableName = _tableId.HasValue ? $"Masa {_tableId.Value:00}" : "Masa -";
-                StatusText = message ?? "Masa onaylandi.";
-                BlockingTitle = "Sistem Hazirlaniyor";
-                await System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadApprovedStateAsync);
-            },
-            message =>
-            {
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        try
+        {
+            DesktopAppLogger.Info($"Realtime connect starting. HubUrl={EndpointOptions.HubUrl}, DeviceKey={_deviceKey}");
+            await _realtimeClient.ConnectAsync(
+                EndpointOptions.HubUrl,
+                _deviceKey,
+                async (_, message, tableId) =>
                 {
-                    IsBusy = false;
-                    IsApproved = false;
-                    IsAwaitingApproval = true;
-                    BlockingTitle = "Cihaz Talebi Reddedildi";
-                    StatusText = message;
-                    ShowStatusPopup("Cihaz talebi reddedildi", "Lutfen yonetici ile gorusun.", "warning");
-                    OnPropertyChanged(nameof(IsBlockingOverlayVisible));
-                });
-            },
-            (eventName, message) =>
-            {
-                System.Windows.Application.Current.Dispatcher.Invoke(() => HandleRealtimeOrderEvent(eventName, message));
-            },
-            infoMessage =>
-            {
-                System.Windows.Application.Current.Dispatcher.Invoke(() => ApplyInfoMessage(infoMessage));
-            },
-            settings =>
-            {
-                System.Windows.Application.Current.Dispatcher.Invoke(() => ApplySettingsPresentation(settings));
-            },
-            () => RefreshCatalogAsync(),
-            () => RefreshDeviceRegistrationAsync());
+                    DesktopAppLogger.Info($"Realtime DeviceApproved received. TableId={tableId}, Message={message}");
+                    _tableId = tableId;
+                    DisplayTableName = _tableId.HasValue ? $"Masa {_tableId.Value:00}" : "Masa -";
+                    StatusText = message ?? "Masa onaylandi.";
+                    BlockingTitle = "Sistem Hazirlaniyor";
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadApprovedStateAsync);
+                },
+                message =>
+                {
+                    DesktopAppLogger.Warning($"Realtime DeviceRejected received. Message={message}");
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        IsBusy = false;
+                        IsApproved = false;
+                        IsAwaitingApproval = true;
+                        BlockingTitle = "Cihaz Talebi Reddedildi";
+                        StatusText = message;
+                        ShowStatusPopup("Cihaz talebi reddedildi", "Lutfen yonetici ile gorusun.", "warning");
+                        OnPropertyChanged(nameof(IsBlockingOverlayVisible));
+                    });
+                },
+                (eventName, message) =>
+                {
+                    DesktopAppLogger.Info($"Realtime order event received. Event={eventName}, Message={message}");
+                    System.Windows.Application.Current.Dispatcher.Invoke(() => HandleRealtimeOrderEvent(eventName, message));
+                },
+                infoMessage =>
+                {
+                    DesktopAppLogger.Info($"Realtime info message updated. Type={infoMessage.Type}, Icon={infoMessage.IconKey}");
+                    System.Windows.Application.Current.Dispatcher.Invoke(() => ApplyInfoMessage(infoMessage));
+                },
+                settings =>
+                {
+                    DesktopAppLogger.Info($"Realtime app settings updated. CafeName={settings.CafeName}");
+                    System.Windows.Application.Current.Dispatcher.Invoke(() => ApplySettingsPresentation(settings));
+                },
+                () => RefreshCatalogAsync(),
+                () => RefreshDeviceRegistrationAsync());
+            DesktopAppLogger.Info("Realtime connect completed.");
+        }
+        catch (Exception exception)
+        {
+            DesktopAppLogger.Error("Realtime connect failed. Continuing with API polling/register flow.", exception);
+        }
 
         if (registration.IsApproved)
         {
@@ -312,8 +335,9 @@ public sealed partial class MainViewModel : ObservableObject
                 {
                     registration = await _apiService.RegisterAsync(_registrationRequest);
                 }
-                catch (HttpRequestException)
+                catch (HttpRequestException exception)
                 {
+                    DesktopAppLogger.Warning($"Approval polling register failed. {exception.Message}");
                     continue;
                 }
 
@@ -325,6 +349,7 @@ public sealed partial class MainViewModel : ObservableObject
                 _deviceId = registration.DeviceId;
                 _tableId = registration.TableId;
                 _deviceKey = registration.DeviceKey;
+                DesktopAppLogger.Info($"Approval polling detected approved device. DeviceId={_deviceId}, TableId={_tableId}");
                 DisplayTableName = _tableId.HasValue ? $"Masa {_tableId.Value:00}" : "Masa -";
                 StatusText = registration.Message ?? "Masa onaylandi.";
                 BlockingTitle = "Sistem Hazirlaniyor";
@@ -484,6 +509,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task LoadApprovedStateAsync()
     {
+        DesktopAppLogger.Info("LoadApprovedState started.");
         IsBusy = true;
         IsApproved = true;
         IsAwaitingApproval = false;
@@ -506,13 +532,25 @@ public sealed partial class MainViewModel : ObservableObject
         StatusText = $"{DisplayTableName} aktif.";
         IsBusy = false;
         OnPropertyChanged(nameof(IsBlockingOverlayVisible));
+        DesktopAppLogger.Info($"LoadApprovedState completed. Products={Products.Count}, Categories={Categories.Count}");
 
         _ = Task.Run(async () =>
         {
             while (true)
             {
                 await Task.Delay(TimeSpan.FromSeconds(10));
-                await _apiService.HeartbeatAsync(new HeartbeatRequest(_deviceId, CurrentSessionRemainingSeconds));
+                try
+                {
+                    var response = await _apiService.HeartbeatAsync(new HeartbeatRequest(_deviceId, CurrentSessionRemainingSeconds));
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        DesktopAppLogger.Warning($"Heartbeat failed. StatusCode={(int)response.StatusCode} {response.StatusCode}");
+                    }
+                }
+                catch (Exception exception)
+                {
+                    DesktopAppLogger.Error("Heartbeat exception.", exception);
+                }
             }
         });
     }
@@ -988,8 +1026,9 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 registration = await _apiService.RegisterAsync(_registrationRequest);
             }
-            catch (HttpRequestException)
+            catch (HttpRequestException exception)
             {
+                DesktopAppLogger.Warning($"Device registration refresh failed. {exception.Message}");
                 return;
             }
 
@@ -1001,6 +1040,7 @@ public sealed partial class MainViewModel : ObservableObject
             _deviceId = registration.DeviceId;
             _tableId = registration.TableId;
             _deviceKey = registration.DeviceKey;
+            DesktopAppLogger.Info($"Device registration refreshed. DeviceId={_deviceId}, Approved={registration.IsApproved}, TableId={_tableId}");
             DisplayTableName = _tableId.HasValue ? $"Masa {_tableId.Value:00}" : "Masa -";
 
             if (!string.IsNullOrWhiteSpace(registration.Message))
@@ -1093,6 +1133,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             if (!File.Exists(sharedFilePath))
             {
+                DesktopAppLogger.Warning($"Shared media file not found. Path={sharedFilePath}");
                 return false;
             }
 
@@ -1205,40 +1246,85 @@ public sealed partial class MainViewModel : ObservableObject
 
         public static DesktopEndpointOptions Load()
         {
+            var appSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            if (!File.Exists(appSettingsPath))
+            {
+                DesktopAppLogger.Warning($"Desktop appsettings not found. Defaults will be used. Path={appSettingsPath}");
+                return new DesktopEndpointOptions(DefaultApiBaseUrl, DefaultHubUrl, null, DefaultAutoCloseAfter);
+            }
+
+            string rawSettings;
             try
             {
-                var appSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
-                if (!File.Exists(appSettingsPath))
-                {
-                    return new DesktopEndpointOptions(DefaultApiBaseUrl, DefaultHubUrl, null, DefaultAutoCloseAfter);
-                }
-
-                using var stream = File.OpenRead(appSettingsPath);
-                using var document = JsonDocument.Parse(stream);
-                var hasEndpoints = document.RootElement.TryGetProperty("Endpoints", out var endpointsElement);
-                var apiBaseUrl = hasEndpoints && endpointsElement.TryGetProperty("ApiBaseUrl", out var apiElement)
-                    ? apiElement.GetString()
-                    : null;
-                var hubUrl = hasEndpoints && endpointsElement.TryGetProperty("HubUrl", out var hubElement)
-                    ? hubElement.GetString()
-                    : null;
-                var sharedWebRootPath = document.RootElement.TryGetProperty("Media", out var mediaElement) &&
-                                        mediaElement.TryGetProperty("SharedWebRootPath", out var sharedRootElement)
-                    ? sharedRootElement.GetString()
-                    : null;
-                var autoCloseAfter = ResolveAutoCloseAfter(document.RootElement);
-
-                return new DesktopEndpointOptions(
-                    NormalizeApiBaseUrl(apiBaseUrl),
-                    string.IsNullOrWhiteSpace(hubUrl) ? DefaultHubUrl : hubUrl.Trim(),
-                    NormalizeSharedWebRootPath(sharedWebRootPath),
-                    autoCloseAfter);
+                rawSettings = File.ReadAllText(appSettingsPath);
             }
-            catch
+            catch (Exception exception)
             {
+                DesktopAppLogger.Error($"Desktop appsettings could not be read. Path={appSettingsPath}", exception);
+                return new DesktopEndpointOptions(DefaultApiBaseUrl, DefaultHubUrl, null, DefaultAutoCloseAfter);
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(rawSettings);
+                var options = LoadFromJson(document.RootElement);
+                DesktopAppLogger.Info($"Desktop appsettings loaded as JSON. Path={appSettingsPath}");
+                return options;
+            }
+            catch (JsonException exception)
+            {
+                DesktopAppLogger.Error("Desktop appsettings JSON parse failed. Lenient config recovery will be used.", exception);
+                return LoadFromLooseText(rawSettings);
+            }
+            catch (Exception exception)
+            {
+                DesktopAppLogger.Error("Desktop appsettings load failed. Defaults will be used.", exception);
                 return new DesktopEndpointOptions(DefaultApiBaseUrl, DefaultHubUrl, null, DefaultAutoCloseAfter);
             }
         }
+
+        private static DesktopEndpointOptions LoadFromJson(JsonElement rootElement)
+        {
+            var hasEndpoints = rootElement.TryGetProperty("Endpoints", out var endpointsElement);
+            var apiBaseUrl = hasEndpoints && endpointsElement.TryGetProperty("ApiBaseUrl", out var apiElement) && apiElement.ValueKind == JsonValueKind.String
+                ? apiElement.GetString()
+                : null;
+            var hubUrl = hasEndpoints && endpointsElement.TryGetProperty("HubUrl", out var hubElement) && hubElement.ValueKind == JsonValueKind.String
+                ? hubElement.GetString()
+                : null;
+            var sharedWebRootPath = rootElement.TryGetProperty("Media", out var mediaElement) &&
+                                    mediaElement.TryGetProperty("SharedWebRootPath", out var sharedRootElement) &&
+                                    sharedRootElement.ValueKind == JsonValueKind.String
+                ? sharedRootElement.GetString()
+                : null;
+            var autoCloseAfter = ResolveAutoCloseAfter(rootElement);
+
+            return new DesktopEndpointOptions(
+                NormalizeApiBaseUrl(apiBaseUrl),
+                NormalizeHubUrl(hubUrl),
+                NormalizeSharedWebRootPath(sharedWebRootPath),
+                autoCloseAfter);
+        }
+
+        private static DesktopEndpointOptions LoadFromLooseText(string rawSettings)
+        {
+            var apiBaseUrl = ExtractStringValue(rawSettings, "ApiBaseUrl");
+            var hubUrl = ExtractStringValue(rawSettings, "HubUrl");
+            var sharedWebRootPath = ExtractStringValue(rawSettings, "SharedWebRootPath");
+            var autoCloseSeconds = ExtractIntValue(rawSettings, "AutoCloseAfterSeconds");
+
+            var recovered = new DesktopEndpointOptions(
+                NormalizeApiBaseUrl(apiBaseUrl),
+                NormalizeHubUrl(hubUrl),
+                NormalizeSharedWebRootPath(sharedWebRootPath),
+                autoCloseSeconds.HasValue ? ResolveAutoCloseAfter(autoCloseSeconds.Value) : DefaultAutoCloseAfter);
+            DesktopAppLogger.Warning(
+                $"Desktop appsettings recovered from loose text. ApiBaseUrl={recovered.ApiBaseUrl}, HubUrl={recovered.HubUrl}, SharedWebRootPath={recovered.SharedWebRootPath ?? "-"}, AutoCloseAfterSeconds={recovered.AutoCloseAfter.TotalSeconds:0}");
+            return recovered;
+        }
+
+        private static string NormalizeHubUrl(string? value)
+            => string.IsNullOrWhiteSpace(value) ? DefaultHubUrl : value.Trim();
 
         private static string NormalizeApiBaseUrl(string? value)
         {
@@ -1275,6 +1361,38 @@ public sealed partial class MainViewModel : ObservableObject
             }
 
             return TimeSpan.FromSeconds(seconds);
+        }
+
+        private static TimeSpan ResolveAutoCloseAfter(int seconds)
+            => seconds <= 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(seconds);
+
+        private static string? ExtractStringValue(string rawSettings, string propertyName)
+        {
+            var pattern = $"\"{Regex.Escape(propertyName)}\"\\s*:\\s*\"(?<value>(?:\\\\.|[^\"])*)\"";
+            var match = Regex.Match(rawSettings, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!match.Success)
+            {
+                return null;
+            }
+
+            var rawValue = match.Groups["value"].Value;
+            try
+            {
+                return JsonSerializer.Deserialize<string>($"\"{rawValue}\"");
+            }
+            catch
+            {
+                return rawValue.Replace("\\\\", "\\").Trim();
+            }
+        }
+
+        private static int? ExtractIntValue(string rawSettings, string propertyName)
+        {
+            var pattern = $"\"{Regex.Escape(propertyName)}\"\\s*:\\s*(?<value>-?\\d+)";
+            var match = Regex.Match(rawSettings, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            return match.Success && int.TryParse(match.Groups["value"].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+                ? value
+                : null;
         }
     }
 }

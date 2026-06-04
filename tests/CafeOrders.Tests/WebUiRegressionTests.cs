@@ -70,6 +70,23 @@ public sealed class WebUiRegressionTests
         Assert.Contains("AutoCloseAfterSeconds", appSettings);
     }
 
+    [Fact]
+    public void DesktopAppConfigLoader_RecoversFromBrokenMediaConfigAndLogsDiagnostics()
+    {
+        var viewModel = ReadRepoFile("src", "CafeOrders.DesktopApp", "ViewModels", "MainViewModel.cs");
+        var logger = ReadRepoFile("src", "CafeOrders.DesktopApp", "Services", "DesktopAppLogger.cs");
+
+        Assert.Contains("JsonException", viewModel);
+        Assert.Contains("LoadFromLooseText", viewModel);
+        Assert.Contains("ExtractStringValue", viewModel);
+        Assert.Contains("SharedWebRootPath", viewModel);
+        Assert.Contains("Desktop appsettings recovered from loose text", viewModel);
+        Assert.Contains("Realtime connect failed. Continuing with API polling/register flow.", viewModel);
+        Assert.Contains("DesktopApp.log", logger);
+        Assert.Contains("MaxLogSizeBytes", logger);
+        Assert.Contains("Logging must never interrupt the kiosk flow.", logger);
+    }
+
     private static string ReadRepoFile(params string[] segments)
     {
         var root = FindRepoRoot();
