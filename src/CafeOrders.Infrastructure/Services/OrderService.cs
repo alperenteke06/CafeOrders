@@ -122,12 +122,37 @@ public sealed class OrderService(
         return dto;
     }
 
-    public async Task<IReadOnlyCollection<OrderDto>> GetActiveOrdersAsync(CancellationToken cancellationToken = default)
+    public async Task<OrderDto?> MarkSoundPlayedAsync(int orderId, CancellationToken cancellationToken = default)
     {
-        var orders = await dbContext.Orders
+        var order = await LoadOrderAsync(orderId, cancellationToken);
+        if (order is null)
+        {
+            return null;
+        }
+
+        if (!order.IsSoundPlayed)
+        {
+            order.IsSoundPlayed = true;
+            order.SoundPlayedAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return order.ToDto();
+    }
+
+    public async Task<IReadOnlyCollection<OrderDto>> GetActiveOrdersAsync(bool soundPendingOnly = false, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.Orders
             .Include(x => x.OrderLines)
             .ThenInclude(x => x.Product)
-            .Where(x => x.Status != OrderStatus.Completed)
+            .Where(x => x.Status != OrderStatus.Completed);
+
+        if (soundPendingOnly)
+        {
+            query = query.Where(x => x.Status == OrderStatus.Pending && !x.IsSoundPlayed);
+        }
+
+        var orders = await query
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
 

@@ -10,4 +10,6 @@ public sealed record OrderDto(
     DateTime? AcceptedAt,
     DateTime? RejectedAt,
     DateTime? CompletedAt,
+    bool IsSoundPlayed,
+    DateTime? SoundPlayedAt,
     IReadOnlyCollection<OrderLineDto> Lines);

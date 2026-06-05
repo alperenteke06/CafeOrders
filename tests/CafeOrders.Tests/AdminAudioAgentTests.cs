@@ -137,8 +137,11 @@ public sealed class AdminAudioAgentTests
 
         Assert.Contains("PollPendingOrdersAsync", program);
         Assert.Contains("QueuePendingOrdersFromApiAsync", program);
-        Assert.Contains("api/v1/orders", program);
+        Assert.Contains("api/v1/orders?soundPendingOnly=true", program);
+        Assert.Contains("api/v1/orders/{orderId}/sound-played", program);
+        Assert.Contains("MarkOrderSoundPlayedAsync", program);
         Assert.Contains("order.Status, \"Pending\"", program);
+        Assert.Contains("!order.IsSoundPlayed", program);
         Assert.Contains("\"poll\"", program);
         Assert.Contains("PollIntervalMilliseconds", options);
     }

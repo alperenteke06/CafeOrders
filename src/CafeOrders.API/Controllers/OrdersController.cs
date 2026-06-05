@@ -9,8 +9,8 @@ namespace CafeOrders.API.Controllers;
 public sealed class OrdersController(IOrderService orderService) : ControllerBase
 {
     [HttpGet]
-    public Task<IReadOnlyCollection<OrderDto>> Get(CancellationToken cancellationToken)
-        => orderService.GetActiveOrdersAsync(cancellationToken);
+    public Task<IReadOnlyCollection<OrderDto>> Get([FromQuery] bool soundPendingOnly, CancellationToken cancellationToken)
+        => orderService.GetActiveOrdersAsync(soundPendingOnly, cancellationToken);
 
     [HttpGet("{orderId:int}")]
     public async Task<IActionResult> GetById(int orderId, CancellationToken cancellationToken)
@@ -50,6 +50,13 @@ public sealed class OrdersController(IOrderService orderService) : ControllerBas
     public async Task<IActionResult> Complete(int orderId, CancellationToken cancellationToken)
     {
         var result = await orderService.CompleteAsync(orderId, cancellationToken);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("{orderId:int}/sound-played")]
+    public async Task<IActionResult> MarkSoundPlayed(int orderId, CancellationToken cancellationToken)
+    {
+        var result = await orderService.MarkSoundPlayedAsync(orderId, cancellationToken);
         return result is null ? NotFound() : Ok(result);
     }
 }

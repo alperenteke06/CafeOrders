@@ -25,7 +25,7 @@ public sealed class DashboardService(CafeOrdersDbContext dbContext, IOrderServic
             .ThenBy(x => x.HostName)
             .ToListAsync(cancellationToken);
 
-        var orders = await orderService.GetActiveOrdersAsync(cancellationToken);
+        var orders = await orderService.GetActiveOrdersAsync(cancellationToken: cancellationToken);
         var revenueToday = await dbContext.Orders
             .Where(x => x.Status == OrderStatus.Completed && x.CompletedAt >= now.Date)
             .SumAsync(x => (decimal?)x.TotalPrice, cancellationToken) ?? 0m;

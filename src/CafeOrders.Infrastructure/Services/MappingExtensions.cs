@@ -50,6 +50,8 @@ internal static class MappingExtensions
             order.AcceptedAt,
             order.RejectedAt,
             order.CompletedAt,
+            order.IsSoundPlayed,
+            order.SoundPlayedAt,
             order.OrderLines.Select(line => new OrderLineDto(
                 line.ProductId,
                 line.Product?.Name ?? $"Urun {line.ProductId}",

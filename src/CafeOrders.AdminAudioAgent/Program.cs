@@ -84,11 +84,7 @@ static async Task ProcessPlaybackQueueAsync(
 
         if (pending.Token.IsCancellationRequested)
         {
-            if (pendingOrders.TryRemove(orderId, out var cancelled))
-            {
-                cancelled.Dispose();
-            }
-
+            pendingOrders.TryRemove(orderId, out _);
             continue;
         }
 
@@ -96,10 +92,18 @@ static async Task ProcessPlaybackQueueAsync(
         {
             logger.Info($"Fallback audio playback started. OrderId={orderId}");
             var played = await audioService.PlayNewOrderSoundAsync(pending.Token);
-            if (played && hubConnection.State == HubConnectionState.Connected)
+            if (played)
             {
-                await hubConnection.InvokeAsync(CafeHubMethods.AcknowledgeOrderSound, orderId, CancellationToken.None);
-                logger.Info($"Fallback audio playback acknowledged. OrderId={orderId}");
+                await MarkOrderSoundPlayedAsync(audioService.HttpClient, orderId, logger, CancellationToken.None);
+                if (hubConnection.State == HubConnectionState.Connected)
+                {
+                    await hubConnection.InvokeAsync(CafeHubMethods.AcknowledgeOrderSound, orderId, CancellationToken.None);
+                    logger.Info($"Fallback audio playback acknowledged. OrderId={orderId}");
+                }
+                else
+                {
+                    logger.Warning($"Fallback audio playback persisted without hub acknowledgement. HubState={hubConnection.State}, OrderId={orderId}");
+                }
             }
             else
             {
@@ -116,10 +120,7 @@ static async Task ProcessPlaybackQueueAsync(
         }
         finally
         {
-            if (pendingOrders.TryRemove(orderId, out var removed))
-            {
-                removed.Dispose();
-            }
+            pendingOrders.TryRemove(orderId, out _);
         }
     }
 }
@@ -168,9 +169,9 @@ static void ScheduleFallbackPlayback(
         }
         finally
         {
-            if (pending.IsCancellationRequested && pendingOrders.TryRemove(orderId, out var removed))
+            if (pending.IsCancellationRequested)
             {
-                removed.Dispose();
+                pendingOrders.TryRemove(orderId, out _);
             }
         }
     });
@@ -215,10 +216,12 @@ static async Task QueuePendingOrdersFromApiAsync(
 {
     try
     {
-        var orders = await httpClient.GetFromJsonAsync<IReadOnlyCollection<OrderDto>>("api/v1/orders", cancellationToken)
+        var orders = await httpClient.GetFromJsonAsync<IReadOnlyCollection<OrderDto>>("api/v1/orders?soundPendingOnly=true", cancellationToken)
             ?? Array.Empty<OrderDto>();
 
-        foreach (var order in orders.Where(order => string.Equals(order.Status, "Pending", StringComparison.OrdinalIgnoreCase)))
+        foreach (var order in orders.Where(order =>
+                     string.Equals(order.Status, "Pending", StringComparison.OrdinalIgnoreCase) &&
+                     !order.IsSoundPlayed))
         {
             ScheduleFallbackPlayback(
                 order.Id,
@@ -237,6 +240,25 @@ static async Task QueuePendingOrdersFromApiAsync(
     catch (Exception exception)
     {
         logger.Warning($"Pending order polling failed: {exception.Message}");
+    }
+}
+
+static async Task MarkOrderSoundPlayedAsync(HttpClient httpClient, int orderId, AgentLogger logger, CancellationToken cancellationToken)
+{
+    try
+    {
+        using var response = await httpClient.PostAsync($"api/v1/orders/{orderId}/sound-played", content: null, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            logger.Info($"Order sound marked as played. OrderId={orderId}");
+            return;
+        }
+
+        logger.Warning($"Order sound mark failed. HTTP {(int)response.StatusCode}, OrderId={orderId}");
+    }
+    catch (Exception exception) when (exception is not OperationCanceledException)
+    {
+        logger.Warning($"Order sound mark failed. {exception.Message}, OrderId={orderId}");
     }
 }
 

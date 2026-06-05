@@ -9,6 +9,7 @@ public interface IOrderService
     Task<OrderDto?> AcceptAsync(int orderId, CancellationToken cancellationToken = default);
     Task<OrderDto?> RejectAsync(int orderId, CancellationToken cancellationToken = default);
     Task<OrderDto?> CompleteAsync(int orderId, CancellationToken cancellationToken = default);
-    Task<IReadOnlyCollection<OrderDto>> GetActiveOrdersAsync(CancellationToken cancellationToken = default);
+    Task<OrderDto?> MarkSoundPlayedAsync(int orderId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<OrderDto>> GetActiveOrdersAsync(bool soundPendingOnly = false, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<OrderDto>> GetRecentOrdersAsync(int take = 50, CancellationToken cancellationToken = default);
 }

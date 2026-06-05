@@ -6,6 +6,8 @@ namespace CafeOrders.AdminAudioAgent;
 
 public sealed class AdminAudioService(HttpClient httpClient, AgentOptions options, IAudioPlayer audioPlayer, AgentLogger? logger = null)
 {
+    public HttpClient HttpClient => httpClient;
+
     public async Task<bool> PlayNewOrderSoundAsync(CancellationToken cancellationToken = default)
     {
         var settings = await httpClient.GetFromJsonAsync<AppSettingsDto>("api/v1/settings/app", cancellationToken);

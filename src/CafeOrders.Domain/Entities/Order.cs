@@ -12,6 +12,8 @@ public sealed class Order
     public DateTime? AcceptedAt { get; set; }
     public DateTime? RejectedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public bool IsSoundPlayed { get; set; }
+    public DateTime? SoundPlayedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public CafeTable? Table { get; set; }
