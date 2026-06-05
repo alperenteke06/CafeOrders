@@ -6,6 +6,7 @@ public sealed record AgentOptions(
     string ApiBaseUrl,
     string HubUrl,
     string WebUiBaseUrl,
+    string? SharedWebRootPath,
     string? FallbackSoundPath,
     string LogPath,
     int FallbackDelayMilliseconds,
@@ -20,6 +21,7 @@ public sealed record AgentOptions(
             "http://localhost:5001/",
             "http://localhost:5001/hubs/cafe",
             "http://localhost:5002/",
+            null,
             null,
             Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
@@ -38,8 +40,18 @@ public sealed record AgentOptions(
             return defaults;
         }
 
-        using var stream = File.OpenRead(path);
-        using var document = JsonDocument.Parse(stream);
+        JsonDocument document;
+        try
+        {
+            using var stream = File.OpenRead(path);
+            document = JsonDocument.Parse(stream);
+        }
+        catch
+        {
+            return defaults;
+        }
+
+        using var _ = document;
         if (!document.RootElement.TryGetProperty("Agent", out var agent))
         {
             return defaults;
@@ -50,6 +62,7 @@ public sealed record AgentOptions(
             ApiBaseUrl = ReadString(agent, nameof(ApiBaseUrl), defaults.ApiBaseUrl),
             HubUrl = ReadString(agent, nameof(HubUrl), defaults.HubUrl),
             WebUiBaseUrl = ReadString(agent, nameof(WebUiBaseUrl), defaults.WebUiBaseUrl),
+            SharedWebRootPath = ReadNullableString(agent, nameof(SharedWebRootPath)),
             FallbackSoundPath = ReadNullableString(agent, nameof(FallbackSoundPath)),
             LogPath = ReadString(agent, nameof(LogPath), defaults.LogPath),
             FallbackDelayMilliseconds = ReadInt(agent, nameof(FallbackDelayMilliseconds), defaults.FallbackDelayMilliseconds),

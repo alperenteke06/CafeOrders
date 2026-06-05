@@ -15,7 +15,7 @@ public sealed class AdminAudioService(HttpClient httpClient, AgentOptions option
             return false;
         }
 
-        var source = AudioSourceResolver.Resolve(settings.NewOrderSoundUrl, options.WebUiBaseUrl, options.FallbackSoundPath);
+        var source = AudioSourceResolver.Resolve(settings.NewOrderSoundUrl, options.WebUiBaseUrl, options.FallbackSoundPath, options.SharedWebRootPath);
         if (string.IsNullOrWhiteSpace(source))
         {
             logger?.Warning("New order sound source is empty. Playback skipped.");

@@ -7,7 +7,7 @@ using CafeOrders.Application.Contracts.Realtime;
 using Microsoft.AspNetCore.SignalR.Client;
 
 var options = AgentOptions.Load(AppContext.BaseDirectory);
-var logger = new AgentLogger(options.LogPath);
+var logger = new AgentLogger(options.LogPath, AppContext.BaseDirectory);
 using var httpClient = new HttpClient { BaseAddress = new Uri(EnsureTrailingSlash(options.ApiBaseUrl)) };
 var audioService = new AdminAudioService(httpClient, options, new WindowsMediaAudioPlayer(options), logger);
 var pendingOrders = new ConcurrentDictionary<int, CancellationTokenSource>();
@@ -60,7 +60,7 @@ hubConnection.On<int>(CafeHubEvents.OrderSoundAcknowledged, orderId =>
     queuedOrderIds.TryRemove(orderId, out _);
 });
 
-logger.Info("CafeOrders AdminAudioAgent starting.");
+logger.Info($"CafeOrders AdminAudioAgent starting. ApiBaseUrl={options.ApiBaseUrl}, HubUrl={options.HubUrl}, WebUiBaseUrl={options.WebUiBaseUrl}, SharedWebRootPath={options.SharedWebRootPath ?? "(empty)"}, LogPath={options.LogPath}");
 await StartAndJoinAsync(hubConnection);
 hubConnection.Reconnected += async _ => await JoinAdminChannelAsync(hubConnection);
 logger.Info("CafeOrders AdminAudioAgent connected.");

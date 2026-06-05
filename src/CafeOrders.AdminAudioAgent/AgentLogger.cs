@@ -1,6 +1,6 @@
 namespace CafeOrders.AdminAudioAgent;
 
-public sealed class AgentLogger(string logPath)
+public sealed class AgentLogger(string logPath, string? fallbackDirectory = null)
 {
     private readonly object _syncRoot = new();
     private readonly string _logPath = string.IsNullOrWhiteSpace(logPath)
@@ -10,6 +10,9 @@ public sealed class AgentLogger(string logPath)
             "AdminAudioAgent",
             "AdminAudioAgent.log")
         : logPath;
+    private readonly string _fallbackLogPath = Path.Combine(
+        string.IsNullOrWhiteSpace(fallbackDirectory) ? AppContext.BaseDirectory : fallbackDirectory,
+        "AdminAudioAgent.log");
 
     public void Info(string message) => Write("INFO", message);
 
@@ -22,21 +25,37 @@ public sealed class AgentLogger(string logPath)
     {
         try
         {
-            var directory = Path.GetDirectoryName(_logPath);
-            if (!string.IsNullOrWhiteSpace(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
             var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}][{level}] {message}{Environment.NewLine}";
             lock (_syncRoot)
             {
-                File.AppendAllText(_logPath, line);
+                WriteLine(_logPath, line);
             }
         }
         catch
         {
-            // Logging should never stop the fallback sound agent.
+            try
+            {
+                var fallbackLine = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}][{level}] {message}{Environment.NewLine}";
+                lock (_syncRoot)
+                {
+                    WriteLine(_fallbackLogPath, fallbackLine);
+                }
+            }
+            catch
+            {
+                // Logging should never stop the fallback sound agent.
+            }
         }
+    }
+
+    private static void WriteLine(string path, string line)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        File.AppendAllText(path, line);
     }
 }

@@ -16,6 +16,56 @@ public sealed class AdminAudioAgentTests
     }
 
     [Fact]
+    public void AudioSourceResolver_ResolvesRelativeUploadFromSharedWebRootWhenAvailable()
+    {
+        var webRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "wwwroot");
+        var soundsDirectory = Path.Combine(webRoot, "uploads", "sounds");
+        Directory.CreateDirectory(soundsDirectory);
+        var soundPath = Path.Combine(soundsDirectory, "new order.mp3");
+        File.WriteAllText(soundPath, "fake sound");
+
+        try
+        {
+            var result = AudioSourceResolver.Resolve(
+                "/uploads/sounds/new%20order.mp3",
+                "http://192.168.11.24:5002/",
+                fallbackSource: null,
+                sharedWebRootPath: webRoot);
+
+            Assert.Equal(soundPath, result);
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(webRoot)!, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AudioSourceResolver_ResolvesAbsoluteWebUiUploadFromSharedWebRootWhenAvailable()
+    {
+        var webRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "wwwroot");
+        var soundsDirectory = Path.Combine(webRoot, "uploads", "sounds");
+        Directory.CreateDirectory(soundsDirectory);
+        var soundPath = Path.Combine(soundsDirectory, "new-order.mp3");
+        File.WriteAllText(soundPath, "fake sound");
+
+        try
+        {
+            var result = AudioSourceResolver.Resolve(
+                "http://192.168.11.24:5002/uploads/sounds/new-order.mp3",
+                "http://192.168.11.24:5002/",
+                fallbackSource: null,
+                sharedWebRootPath: webRoot);
+
+            Assert.Equal(soundPath, result);
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(webRoot)!, recursive: true);
+        }
+    }
+
+    [Fact]
     public void AudioSourceResolver_UsesFallbackWhenConfiguredSourceIsEmpty()
     {
         var result = AudioSourceResolver.Resolve(
@@ -39,6 +89,7 @@ public sealed class AdminAudioAgentTests
                     "ApiBaseUrl": "http://192.168.11.24:5001/",
                     "HubUrl": "http://192.168.11.24:5001/hubs/cafe",
                     "WebUiBaseUrl": "http://192.168.11.24:5002/",
+                    "SharedWebRootPath": "C:\\inetpub\\wwwroot\\WebUI\\wwwroot",
                     "LogPath": "C:\\Temp\\CafeOrders.AdminAudioAgent.log",
                     "FallbackDelayMilliseconds": 900,
                     "PollIntervalMilliseconds": 1500,
@@ -53,6 +104,7 @@ public sealed class AdminAudioAgentTests
             Assert.Equal("http://192.168.11.24:5001/", options.ApiBaseUrl);
             Assert.Equal("http://192.168.11.24:5001/hubs/cafe", options.HubUrl);
             Assert.Equal("http://192.168.11.24:5002/", options.WebUiBaseUrl);
+            Assert.Equal(@"C:\inetpub\wwwroot\WebUI\wwwroot", options.SharedWebRootPath);
             Assert.Equal(@"C:\Temp\CafeOrders.AdminAudioAgent.log", options.LogPath);
             Assert.Equal(900, options.FallbackDelayMilliseconds);
             Assert.Equal(1500, options.PollIntervalMilliseconds);
