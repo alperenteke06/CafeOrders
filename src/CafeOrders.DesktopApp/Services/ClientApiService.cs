@@ -25,7 +25,7 @@ public sealed class ClientApiService(HttpClient httpClient)
 
     public async Task<AppSettingsDto> GetSettingsAsync(CancellationToken cancellationToken = default)
         => await httpClient.GetFromJsonAsync<AppSettingsDto>("api/v1/settings/app", cancellationToken)
-           ?? new AppSettingsDto("NightByte Lounge", "Alperen TEKE", "0 (541) 688 88 06", string.Empty, string.Empty, string.Empty, "Info", "campaign", false, false, false, null);
+           ?? new AppSettingsDto("NightByte Lounge", "Alperen TEKE", "0 (541) 688 88 06", string.Empty, string.Empty, string.Empty, "Info", "campaign", false, false, false, null, null);
 
     public async Task<InfoMessageDto?> GetActiveInfoMessageAsync(CancellationToken cancellationToken = default)
     {
@@ -42,7 +42,12 @@ public sealed class ClientApiService(HttpClient httpClient)
     public async Task<OrderDto> CreateOrderAsync(CreateOrderRequest request, CancellationToken cancellationToken = default)
     {
         var response = await httpClient.PostAsJsonAsync("api/v1/orders", request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadFromJsonAsync<ApiErrorResponse>(cancellationToken: cancellationToken);
+            throw new InvalidOperationException(error?.Message ?? "Siparis gonderilemedi.");
+        }
+
         return await response.Content.ReadFromJsonAsync<OrderDto>(cancellationToken: cancellationToken)
                ?? throw new InvalidOperationException("Siparis yaniti alinamadi.");
     }
@@ -58,4 +63,6 @@ public sealed class ClientApiService(HttpClient httpClient)
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<OrderDto>(cancellationToken: cancellationToken);
     }
+
+    private sealed record ApiErrorResponse(string? Message);
 }

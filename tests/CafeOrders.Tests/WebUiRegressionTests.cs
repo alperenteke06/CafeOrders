@@ -71,6 +71,17 @@ public sealed class WebUiRegressionTests
     }
 
     [Fact]
+    public void DesktopCartItemLayout_KeepsQuantityStepperAndPriceInsideDrawer()
+    {
+        var xaml = ReadRepoFile("src", "CafeOrders.DesktopApp", "MainWindow.xaml");
+
+        Assert.Contains("<ColumnDefinition Width=\"132\" />", xaml);
+        Assert.Contains("Text=\"{Binding Total, StringFormat={}{0:N2} TL}\"", xaml);
+        Assert.Contains("TextTrimming=\"CharacterEllipsis\"", xaml);
+        Assert.DoesNotContain("Width=\"166\"\r\n                                                            Height=\"38\"", xaml);
+    }
+
+    [Fact]
     public void DesktopAppConfigLoader_RecoversFromBrokenMediaConfigAndLogsDiagnostics()
     {
         var viewModel = ReadRepoFile("src", "CafeOrders.DesktopApp", "ViewModels", "MainViewModel.cs");
@@ -101,6 +112,80 @@ public sealed class WebUiRegressionTests
         Assert.Contains("StatusPopupDedupeWindow", viewModel);
         Assert.Contains("ShouldSkipStatusPopup", viewModel);
         Assert.Contains("BuildStatusPopupKey", viewModel);
+    }
+
+    [Fact]
+    public void MinimumOrderAmount_IsManagedRealtimeAndRenderedInDesktopCart()
+    {
+        var settingsSection = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "_SettingsSection.cshtml");
+        var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
+        var xaml = ReadRepoFile("src", "CafeOrders.DesktopApp", "MainWindow.xaml");
+        var viewModel = ReadRepoFile("src", "CafeOrders.DesktopApp", "ViewModels", "MainViewModel.cs");
+        var realtimeClient = ReadRepoFile("src", "CafeOrders.DesktopApp", "Services", "RealtimeClient.cs");
+        var appSettingsDto = ReadRepoFile("src", "CafeOrders.Application", "Contracts", "Settings", "AppSettingsDto.cs");
+
+        Assert.Contains("minimumOrderAmount", index);
+        Assert.Contains("parseOptionalDecimal", index);
+        Assert.Contains("Minimum Sepet Tutari", settingsSection);
+        Assert.Contains("MinimumOrderAmount", appSettingsDto);
+        Assert.Contains("AppSettingsUpdated", realtimeClient);
+        Assert.Contains("MinimumOrderAmount = settings.MinimumOrderAmount", viewModel);
+        Assert.Contains("IsCartBelowMinimum", xaml);
+        Assert.Contains("CartMinimumProgressBarStyle", xaml);
+        Assert.Contains("CanSubmitCart", xaml);
+    }
+
+    [Fact]
+    public void WebUiRealtimeRefresh_DoesNotReloadEverySectionOrOpenEditors()
+    {
+        var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
+        var css = ReadRepoFile("src", "CafeOrders.WebUI", "wwwroot", "css", "site.css");
+
+        Assert.Contains("const defaultRealtimeRefreshSections = ['dashboard', 'orders', 'devices', 'notifications']", index);
+        Assert.Contains("requestSnapshotRefresh(['dashboard', 'orders', 'notifications'])", index);
+        Assert.Contains("requestSnapshotRefresh(['dashboard', 'products', 'categories'])", index);
+        Assert.Contains("refreshSnapshot(true, { realtime: true })", index);
+        Assert.Contains("prepareRealtimeSectionHtml", index);
+        Assert.Contains("canAutoRefreshSection(targetSection, refreshSections)", index);
+        Assert.Contains("isAutoRefreshBlockedForUserInput", index);
+        Assert.Contains("['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName)", index);
+        Assert.Contains("#productEditorModal:not([hidden])", index);
+        Assert.Contains("#quickPriceModal:not([hidden])", index);
+        Assert.Contains("#sectionHost.is-realtime-refresh", css);
+        Assert.Contains("animation: none !important", css);
+    }
+
+    [Fact]
+    public void WebUiNumberInputs_UseCustomThemeStylingInsteadOfNativeSpinners()
+    {
+        var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
+        var categories = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "_CategoriesSection.cshtml");
+        var settings = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "_SettingsSection.cshtml");
+        var css = ReadRepoFile("src", "CafeOrders.WebUI", "wwwroot", "css", "site.css");
+
+        Assert.Contains("id=\"productEditorPrice\" class=\"modal-input\" type=\"number\"", index);
+        Assert.Contains("class=\"quick-price-input\" type=\"number\"", index);
+        Assert.Contains("id=\"categorySortOrder\" type=\"number\"", categories);
+        Assert.Contains("id=\"minimumOrderAmount\"", settings);
+        Assert.Contains("input[type=\"number\"]::-webkit-inner-spin-button", css);
+        Assert.Contains("-moz-appearance: textfield", css);
+        Assert.Contains(".field-row input[type=\"number\"]", css);
+        Assert.Contains(".quick-price-input-shell:focus-within", css);
+    }
+
+    [Fact]
+    public void WebUiSearchBox_CanBeClearedAndDoesNotCarryQueryAcrossSections()
+    {
+        var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
+        var css = ReadRepoFile("src", "CafeOrders.WebUI", "wwwroot", "css", "site.css");
+
+        Assert.Contains("adminSearchClearButton", index);
+        Assert.Contains("clearSearchBox", index);
+        Assert.Contains("syncSearchClearButton", index);
+        Assert.Contains("normalizeSectionOverrides", index);
+        Assert.Contains("normalized.search = null", index);
+        Assert.Contains("normalized.category = 'all'", index);
+        Assert.Contains(".topbar-search-clear", css);
     }
 
     private static string ReadRepoFile(params string[] segments)

@@ -109,9 +109,34 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="18">
+                        <Border x:Name="PrimaryButtonBorder" Background="{TemplateBinding Background}" CornerRadius="18">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}" />
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="PrimaryButtonBorder" Property="Opacity" Value="0.55" />
+                                <Setter TargetName="PrimaryButtonBorder" Property="Background" Value="#8F6F17" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CartMinimumProgressBarStyle" TargetType="ProgressBar">
+            <Setter Property="Height" Value="6" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Background" Value="#2A354F" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid ClipToBounds="True">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="5" />
+                            <Border x:Name="PART_Indicator"
+                                    HorizontalAlignment="Left"
+                                    Background="{TemplateBinding Foreground}"
+                                    CornerRadius="5" />
+                        </Grid>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -928,11 +953,11 @@
                 MouseDown="CartOverlay_OnMouseDown" />
 
         <Border x:Name="CartDrawer"
-                Width="520"
+                Width="420"
                 HorizontalAlignment="Right"
                 Margin="0,0,0,0"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="#2B3550"
+                Background="#070D1B"
+                BorderBrush="#64512D"
                 BorderThickness="1,0,0,0"
                 Panel.ZIndex="40"
                 Visibility="Collapsed">
@@ -940,7 +965,7 @@
                 <TranslateTransform x:Name="CartDrawerTransform" X="560" />
             </Border.RenderTransform>
 
-            <Grid Margin="28,24,28,24">
+            <Grid Margin="24,22,24,22">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -953,8 +978,8 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🧺" FontSize="24" Margin="0,0,12,0" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7BF;" FontSize="18" Foreground="{StaticResource AccentBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
                         <TextBlock Text="Sepetim" FontSize="22" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
                     </StackPanel>
                     <Button Grid.Column="1"
@@ -964,22 +989,22 @@
                             Background="#00000000"
                             Foreground="#DCCCB0"
                             Command="{Binding CloseCartCommand}">
-                        <TextBlock Text="✕" FontSize="18" />
+                        <TextBlock Text="x" FontSize="20" />
                     </Button>
                 </Grid>
 
                 <Border Grid.Row="1"
                         Margin="0,22,0,0"
-                        Padding="18"
-                        Background="#232D40"
-                        CornerRadius="18"
-                        BorderBrush="#2D3A55"
-                        BorderThickness="1">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE73E;" FontSize="18" Foreground="#2FD6FF" Margin="0,0,12,0" />
+                        Padding="14"
+                        Background="#151D30"
+                        CornerRadius="10"
+                        BorderBrush="#1BCEE6"
+                        BorderThickness="3,0,0,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE946;" FontSize="16" Foreground="#2FD6FF" Margin="0,0,12,0" />
                         <StackPanel>
-                            <TextBlock Text="{Binding ActiveOrderBannerTitle}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
-                            <TextBlock Text="{Binding ActiveOrderBannerMessage}" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                            <TextBlock Text="Sepetiniz hazir" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+                            <TextBlock Text="Siparisi onayladiginizda mutfaga iletilecek." Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -988,7 +1013,7 @@
                     <ItemsControl ItemsSource="{Binding Cart}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="0,0,0,18" Padding="18" Background="{StaticResource PanelBrush}" CornerRadius="22">
+                                <Border Margin="0,0,0,16" Padding="16" Background="#121B2E" CornerRadius="12">
                                     <Grid>
                                         <Button Width="36"
                                                 Height="36"
@@ -1003,13 +1028,13 @@
                                             <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74D;" FontSize="14" />
                                         </Button>
 
-                                        <Grid Margin="0,0,56,0">
+                                        <Grid Margin="0,0,36,0">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="112" />
+                                                <ColumnDefinition Width="78" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-                                        <Grid Width="96" Height="96">
-                                            <Border Background="#1C2538" CornerRadius="18" />
+                                        <Grid Width="70" Height="70" VerticalAlignment="Center">
+                                            <Border Background="#1C2538" CornerRadius="10" />
                                             <Image Stretch="UniformToFill" Source="{Binding ImageUrl}">
                                                 <Image.Style>
                                                     <Style TargetType="Image">
@@ -1028,7 +1053,8 @@
                                                        TextAlignment="Center"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"
-                                                       Margin="12">
+                                                       Margin="8"
+                                                       FontSize="11">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Visibility" Value="Visible" />
@@ -1042,7 +1068,7 @@
                                             </TextBlock>
                                         </Grid>
 
-                                            <Grid Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                                            <Grid Grid.Column="1" Margin="4,0,0,0" VerticalAlignment="Center">
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
@@ -1050,41 +1076,40 @@
                                                 </Grid.RowDefinitions>
 
                                                 <TextBlock Text="{Binding Name}"
-                                                           FontSize="18"
+                                                           FontSize="16"
                                                            FontWeight="SemiBold"
                                                            Foreground="{StaticResource TextPrimaryBrush}"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Grid.Row="1"
                                                            Text="{Binding Quantity, StringFormat={}{0} Adet}"
-                                                           Margin="0,6,0,16"
+                                                           Margin="0,4,0,12"
                                                            Foreground="{StaticResource TextSecondaryBrush}" />
                                                 <Grid Grid.Row="2">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="132" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
 
-                                                    <Border Width="206"
-                                                            Height="56"
-                                                            Background="#34415D"
-                                                            CornerRadius="28"
+                                                    <Border Height="38"
+                                                            Background="#26324B"
+                                                            CornerRadius="7"
                                                             BorderBrush="#5A6B8B"
                                                             BorderThickness="1"
                                                             SnapsToDevicePixels="True">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="54" />
+                                                                <ColumnDefinition Width="34" />
                                                                 <ColumnDefinition Width="1" />
                                                                 <ColumnDefinition Width="*" />
                                                                 <ColumnDefinition Width="1" />
-                                                                <ColumnDefinition Width="54" />
+                                                                <ColumnDefinition Width="34" />
                                                             </Grid.ColumnDefinitions>
 
                                                             <Button Grid.Column="0"
-                                                                    Width="46"
-                                                                    Height="46"
-                                                                    Margin="5,5,0,5"
-                                                                    Background="#4B5774"
+                                                                    Width="30"
+                                                                    Height="30"
+                                                                    Margin="2,2,0,2"
+                                                                    Background="#34415E"
                                                                     BorderThickness="0"
                                                                     Cursor="Hand"
                                                                     Padding="0"
@@ -1094,44 +1119,42 @@
                                                                     CommandParameter="{Binding}">
                                                                 <Button.Template>
                                                                     <ControlTemplate TargetType="Button">
-                                                                        <Border Background="{TemplateBinding Background}" CornerRadius="18">
+                                                                        <Border Background="{TemplateBinding Background}" CornerRadius="5">
                                                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                                         </Border>
                                                                     </ControlTemplate>
                                                                 </Button.Template>
-                                                                <TextBlock Text="−" FontSize="19" FontWeight="SemiBold" Foreground="#F2E1BE" />
+                                                                <TextBlock Text="-" FontSize="18" FontWeight="SemiBold" Foreground="#F2E1BE" />
                                                             </Button>
 
                                                             <Border Grid.Column="1"
                                                                     Width="1"
-                                                                    Margin="0,14,0,14"
+                                                                    Margin="0,9,0,9"
                                                                     Background="#60708F"
                                                                     Opacity="0.55" />
 
                                                             <Border Grid.Column="2"
-                                                                    Margin="8,7"
-                                                                    Background="#28334D"
-                                                                    CornerRadius="16"
-                                                                    BorderBrush="#43516F"
-                                                                    BorderThickness="1">
+                                                                    Margin="6,5"
+                                                                    Background="Transparent"
+                                                                    BorderThickness="0">
                                                                 <TextBlock Text="{Binding Quantity}"
                                                                            HorizontalAlignment="Center"
                                                                            VerticalAlignment="Center"
-                                                                           FontSize="21"
+                                                                           FontSize="16"
                                                                            FontWeight="Bold"
                                                                            Foreground="{StaticResource TextPrimaryBrush}" />
                                                             </Border>
 
                                                             <Border Grid.Column="3"
                                                                     Width="1"
-                                                                    Margin="0,14,0,14"
+                                                                    Margin="0,9,0,9"
                                                                     Background="#60708F"
                                                                     Opacity="0.55" />
 
                                                             <Button Grid.Column="4"
-                                                                    Width="46"
-                                                                    Height="46"
-                                                                    Margin="0,5,5,5"
+                                                                    Width="30"
+                                                                    Height="30"
+                                                                    Margin="0,2,2,2"
                                                                     Background="{StaticResource AccentBrush}"
                                                                     BorderThickness="0"
                                                                     Cursor="Hand"
@@ -1142,22 +1165,24 @@
                                                                     CommandParameter="{Binding}">
                                                                 <Button.Template>
                                                                     <ControlTemplate TargetType="Button">
-                                                                        <Border Background="{TemplateBinding Background}" CornerRadius="18">
+                                                                        <Border Background="{TemplateBinding Background}" CornerRadius="5">
                                                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                                         </Border>
                                                                     </ControlTemplate>
                                                                 </Button.Template>
-                                                                <TextBlock Text="+" FontSize="20" FontWeight="Bold" Foreground="#2F2200" />
+                                                                <TextBlock Text="+" FontSize="16" FontWeight="Bold" Foreground="#2F2200" />
                                                             </Button>
                                                         </Grid>
                                                     </Border>
 
                                                     <TextBlock Grid.Column="1"
-                                                               Margin="18,0,0,0"
+                                                               Margin="8,0,0,0"
                                                                VerticalAlignment="Center"
                                                                HorizontalAlignment="Right"
                                                                Text="{Binding Total, StringFormat={}{0:N2} TL}"
-                                                               FontSize="18"
+                                                               TextAlignment="Right"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               FontSize="15"
                                                                FontWeight="Bold"
                                                                Foreground="{StaticResource AccentBrush}" />
                                                 </Grid>
@@ -1176,7 +1201,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Toplam Tutar" FontSize="18" Foreground="{StaticResource TextPrimaryBrush}" />
+                        <TextBlock Text="Toplam Tutar" FontSize="16" Foreground="{StaticResource TextPrimaryBrush}" />
                         <TextBlock Grid.Column="1"
                                    Text="{Binding CartTotal, StringFormat={}{0:N2} TL}"
                                    FontSize="24"
@@ -1184,9 +1209,39 @@
                                    Foreground="{StaticResource AccentBrush}" />
                     </Grid>
 
+                    <Border Margin="0,0,0,18"
+                            Padding="12"
+                            Background="#2A220D"
+                            CornerRadius="8"
+                            BorderBrush="#9E7A17"
+                            BorderThickness="1"
+                            Visibility="{Binding IsCartBelowMinimum, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE946;" FontSize="14" Foreground="{StaticResource AccentBrush}" Margin="0,0,8,0" />
+                                <TextBlock Text="{Binding MinimumOrderText}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
+                            </StackPanel>
+                            <Grid Height="6" ClipToBounds="True">
+                                <Border Background="#2A354F" CornerRadius="5" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="{Binding MinimumOrderProgressFill}" />
+                                        <ColumnDefinition Width="{Binding MinimumOrderProgressRemainder}" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="{StaticResource AccentBrush}" CornerRadius="5" />
+                                </Grid>
+                            </Grid>
+                            <TextBlock Margin="0,8,0,0"
+                                       Text="{Binding MinimumOrderRemainingText}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="#FFEAC1" />
+                        </StackPanel>
+                    </Border>
+
                     <Button Style="{StaticResource PrimaryButtonStyle}"
                             Command="{Binding SubmitOrderCommand}"
-                            IsEnabled="{Binding HasItemsInCart}">
+                            IsEnabled="{Binding CanSubmitCart}">
                         <TextBlock Text="Siparisi Onayla" FontSize="18" />
                     </Button>
 

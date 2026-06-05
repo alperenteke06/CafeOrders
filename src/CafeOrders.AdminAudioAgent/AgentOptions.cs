@@ -9,6 +9,7 @@ public sealed record AgentOptions(
     string? FallbackSoundPath,
     string LogPath,
     int FallbackDelayMilliseconds,
+    int PollIntervalMilliseconds,
     int MaxPlaybackSeconds,
     int Volume,
     bool UseSystemBeepFallback)
@@ -26,6 +27,7 @@ public sealed record AgentOptions(
                 "AdminAudioAgent",
                 "AdminAudioAgent.log"),
             1000,
+            2000,
             12,
             90,
             false);
@@ -51,6 +53,7 @@ public sealed record AgentOptions(
             FallbackSoundPath = ReadNullableString(agent, nameof(FallbackSoundPath)),
             LogPath = ReadString(agent, nameof(LogPath), defaults.LogPath),
             FallbackDelayMilliseconds = ReadInt(agent, nameof(FallbackDelayMilliseconds), defaults.FallbackDelayMilliseconds),
+            PollIntervalMilliseconds = ReadInt(agent, nameof(PollIntervalMilliseconds), defaults.PollIntervalMilliseconds),
             MaxPlaybackSeconds = ReadInt(agent, nameof(MaxPlaybackSeconds), defaults.MaxPlaybackSeconds),
             Volume = Math.Clamp(ReadInt(agent, nameof(Volume), defaults.Volume), 0, 100),
             UseSystemBeepFallback = ReadBool(agent, nameof(UseSystemBeepFallback), defaults.UseSystemBeepFallback)

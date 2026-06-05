@@ -41,6 +41,7 @@ public sealed class AdminAudioAgentTests
                     "WebUiBaseUrl": "http://192.168.11.24:5002/",
                     "LogPath": "C:\\Temp\\CafeOrders.AdminAudioAgent.log",
                     "FallbackDelayMilliseconds": 900,
+                    "PollIntervalMilliseconds": 1500,
                     "Volume": 75,
                     "UseSystemBeepFallback": false
                   }
@@ -54,6 +55,7 @@ public sealed class AdminAudioAgentTests
             Assert.Equal("http://192.168.11.24:5002/", options.WebUiBaseUrl);
             Assert.Equal(@"C:\Temp\CafeOrders.AdminAudioAgent.log", options.LogPath);
             Assert.Equal(900, options.FallbackDelayMilliseconds);
+            Assert.Equal(1500, options.PollIntervalMilliseconds);
             Assert.Equal(75, options.Volume);
             Assert.False(options.UseSystemBeepFallback);
         }
@@ -73,6 +75,20 @@ public sealed class AdminAudioAgentTests
         Assert.Contains("ProcessPlaybackQueueAsync", program);
         Assert.Contains("ReadAllAsync", program);
         Assert.Contains("OrderSoundAcknowledged", program);
+    }
+
+    [Fact]
+    public void AgentProgram_PollsApiForPendingOrdersWhenHubEventIsMissed()
+    {
+        var program = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "Program.cs");
+        var options = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "AgentOptions.cs");
+
+        Assert.Contains("PollPendingOrdersAsync", program);
+        Assert.Contains("QueuePendingOrdersFromApiAsync", program);
+        Assert.Contains("api/v1/orders", program);
+        Assert.Contains("order.Status, \"Pending\"", program);
+        Assert.Contains("\"poll\"", program);
+        Assert.Contains("PollIntervalMilliseconds", options);
     }
 
     [Fact]

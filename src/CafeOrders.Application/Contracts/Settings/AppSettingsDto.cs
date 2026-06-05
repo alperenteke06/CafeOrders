@@ -12,4 +12,5 @@ public sealed record AppSettingsDto(
     bool EnableNewOrderSound,
     bool EnableQuickApproveMode,
     bool EnableLiveAnnouncements,
+    decimal? MinimumOrderAmount,
     string? NewOrderSoundUrl);

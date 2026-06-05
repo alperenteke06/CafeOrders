@@ -1,8 +1,10 @@
+@using System.Globalization
 @model CafeOrders.WebUI.Models.DashboardViewModel
 @{
     var infoMessage = Model.Snapshot.ActiveInfoMessage?.Message ?? Model.AppSettings.ClientInfoBoxMessage;
     var infoMessageType = Model.Snapshot.ActiveInfoMessage?.Type ?? "Info";
     var infoMessageIcon = Model.Snapshot.ActiveInfoMessage?.IconKey ?? "campaign";
+    var minimumOrderAmountValue = Model.AppSettings.MinimumOrderAmount?.ToString("0.##", CultureInfo.InvariantCulture) ?? string.Empty;
     static string ToneChipClass(string? value) => value switch
     {
         "Warning" => "warning",
@@ -60,6 +62,20 @@
                 <span>Siparis Red Mesaji</span>
                 <input id="rejectedMessage" value="@Model.AppSettings.OrderRejectedMessage" />
                 <small>Siparis iptal edildiginde gonderilecek varsayilan mesaj.</small>
+            </label>
+
+            <label class="field-row">
+                <span>Minimum Sepet Tutari</span>
+                <div class="settings-price-shell">
+                    <input id="minimumOrderAmount"
+                           type="number"
+                           min="0"
+                           step="0.01"
+                           value="@minimumOrderAmountValue"
+                           placeholder="Bos birakilirsa limit yok" />
+                    <strong>TL</strong>
+                </div>
+                <small>Bos veya 0 girilirse tum sepet tutarlari siparise gonderilebilir.</small>
             </label>
 
             <label class="field-row">

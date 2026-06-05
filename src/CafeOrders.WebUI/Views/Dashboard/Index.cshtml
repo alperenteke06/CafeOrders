@@ -76,6 +76,14 @@
                 <label id="adminSearchShell" class="topbar-search @((Model.ActiveSection is "dashboard" or "settings") ? "is-hidden" : string.Empty)">
                     <span class="material-symbols-outlined topbar-search-icon">search</span>
                     <input id="adminSearchInput" type="text" value="@Model.SearchQuery" placeholder="Aktif sayfada ara..." oninput="queueSearch(this.value)" />
+                    <button id="adminSearchClearButton"
+                            class="topbar-search-clear"
+                            type="button"
+                            aria-label="Aramayi temizle"
+                            onclick="clearSearchBox()"
+                            hidden>
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
                 </label>
 
                 <button class="icon-chip notification-chip" type="button" aria-label="Bildirimler" onclick="toggleNotificationTray()">
@@ -356,6 +364,7 @@
         let deviceAssignPage = 1;
         let snapshotRefreshInFlight = false;
         let snapshotRefreshQueued = false;
+        let snapshotRefreshQueuedSections = new Set();
         let quickPriceRowsState = [];
         let pendingNewOrderSound = false;
         let pendingNewOrderSoundOrderId = null;
@@ -371,10 +380,11 @@
         const deviceAssignPageSize = 50;
         const toastDedupeWindowMs = 3600;
         const hubToastSuppressWindowMs = 5000;
+        const defaultRealtimeRefreshSections = ['dashboard', 'orders', 'devices', 'notifications'];
 
         document.addEventListener('DOMContentLoaded', () => {
             syncSearchVisibility(getCurrentSection());
-            syncSearchInputFromUrl();
+            syncSearchInputFromUrl(null, getCurrentSection());
             seedNotificationsFromShell();
             hydrateSettingsMediaState();
             syncSettingsTonePicker('clientInfoBoxType');
@@ -385,12 +395,21 @@
             document.addEventListener('click', handleGlobalUiClick);
         });
 
-        async function loadSection(section, pushHistory, overrides = {}, silent = false) {
+        async function loadSection(section, pushHistory, overrides = {}, silent = false, options = {}) {
+            const host = document.getElementById('sectionHost');
+            const isRealtimeRefresh = options?.realtime === true;
+            const scrollPosition = { x: window.scrollX, y: window.scrollY };
+
             if (!silent) {
                 setSectionLoading(true);
             }
 
-            const url = buildSectionUrl(section, overrides);
+            if (isRealtimeRefresh) {
+                beginRealtimeSectionRefresh(host);
+            }
+
+            const normalizedOverrides = normalizeSectionOverrides(section, overrides);
+            const url = buildSectionUrl(section, normalizedOverrides);
             const controller = new AbortController();
             const timeoutId = window.setTimeout(() => controller.abort(), 10000);
             try {
@@ -404,17 +423,24 @@
                     return;
                 }
 
-                document.getElementById('sectionHost').innerHTML = await response.text();
+                const responseHtml = await response.text();
+                host.innerHTML = isRealtimeRefresh
+                    ? prepareRealtimeSectionHtml(responseHtml)
+                    : responseHtml;
                 document.querySelectorAll('.sidebar-nav .nav-item').forEach(button => {
                     button.classList.toggle('active', button.dataset.section === section);
                 });
                 syncSearchVisibility(section);
-                syncSearchInputFromUrl(url.params);
+                syncSearchInputFromUrl(url.params, section);
                 seedNotificationsFromSection();
                 afterSectionRender(section);
 
                 if (pushHistory) {
                     window.history.pushState({ section }, '', url.browserUrl);
+                }
+
+                if (isRealtimeRefresh) {
+                    window.scrollTo(scrollPosition.x, scrollPosition.y);
                 }
             } catch {
                 if (!silent) {
@@ -422,6 +448,9 @@
                 }
             } finally {
                 window.clearTimeout(timeoutId);
+                if (isRealtimeRefresh) {
+                    finishRealtimeSectionRefresh(host);
+                }
                 if (!silent) {
                     setSectionLoading(false);
                 }
@@ -433,6 +462,33 @@
             const loading = document.getElementById('sectionLoading');
             host.classList.toggle('is-loading', isVisible);
             loading.hidden = !isVisible;
+        }
+
+        function beginRealtimeSectionRefresh(host) {
+            if (!host) {
+                return;
+            }
+
+            host.style.minHeight = `${host.offsetHeight}px`;
+            host.classList.add('is-realtime-refresh');
+        }
+
+        function finishRealtimeSectionRefresh(host) {
+            if (!host) {
+                return;
+            }
+
+            window.requestAnimationFrame(() => {
+                host.classList.remove('is-realtime-refresh');
+                host.style.minHeight = '';
+            });
+        }
+
+        function prepareRealtimeSectionHtml(html) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = html;
+            wrapper.querySelectorAll('.section-enter').forEach(element => element.classList.remove('section-enter'));
+            return wrapper.innerHTML;
         }
 
         window.addEventListener('popstate', async event => {
@@ -490,7 +546,7 @@
                 await hubConnection.invoke('JoinAdminChannel');
                 hubConnection.onreconnected(async () => {
                     await hubConnection.invoke('JoinAdminChannel');
-                    requestSnapshotRefresh();
+                    requestSnapshotRefresh(defaultRealtimeRefreshSections);
                 });
                 hubConnection.onclose(async () => {
                     if (hubReconnectTimer) {
@@ -510,7 +566,7 @@
                 showToast('Yeni siparis geldi.', 'info', `order:${orderId}:created`);
                 appendNotificationFromOrderCreated(order);
                 queueNewOrderSound(order);
-                requestSnapshotRefresh();
+                requestSnapshotRefresh(['dashboard', 'orders', 'notifications']);
             });
             connection.on('OrderSoundAcknowledged', orderId => {
                 const acknowledgedOrderId = Number(orderId);
@@ -531,7 +587,7 @@
                     showToast(`Masa ${order.order?.tableId ?? order.tableId ?? ''} siparisi onaylandi.`, 'success', toastKey);
                 }
                 appendNotificationFromEvent(order, 'Accepted');
-                requestSnapshotRefresh();
+                requestSnapshotRefresh(['dashboard', 'orders', 'notifications']);
             });
             connection.on('OrderRejected', order => {
                 const orderId = extractOrderId(order);
@@ -540,7 +596,7 @@
                     showToast('Bir siparis reddedildi.', 'warning', toastKey);
                 }
                 appendNotificationFromEvent(order, 'Rejected');
-                requestSnapshotRefresh();
+                requestSnapshotRefresh(['dashboard', 'orders', 'notifications']);
             });
             connection.on('OrderCompleted', order => {
                 const orderId = extractOrderId(order);
@@ -549,43 +605,45 @@
                     showToast('Bir siparis tamamlandi.', 'success', toastKey);
                 }
                 appendNotificationFromEvent(order, 'Completed');
-                requestSnapshotRefresh();
+                requestSnapshotRefresh(['dashboard', 'orders', 'notifications']);
             });
             connection.on('DeviceApproved', () => {
                 if (!consumeSuppressedHubToast('device:approved')) {
                     showToast('Bir cihaz onaylandi.', 'success', 'device:approved');
                 }
-                requestSnapshotRefresh();
+                requestSnapshotRefresh(['dashboard', 'devices']);
             });
             connection.on('DeviceRejected', () => {
                 if (!consumeSuppressedHubToast('device:rejected')) {
                     showToast('Bekleyen cihaz talebi reddedildi.', 'warning', 'device:rejected');
                 }
-                requestSnapshotRefresh();
+                requestSnapshotRefresh(['dashboard', 'devices']);
             });
             connection.on('DeviceMapped', () => {
                 if (!consumeSuppressedHubToast('device:mapped')) {
                     showToast('Masa ve cihaz eslestirmesi guncellendi.', 'info', 'device:mapped');
                 }
-                requestSnapshotRefresh();
+                requestSnapshotRefresh(['dashboard', 'devices']);
             });
             connection.on('DevicesUpdated', () => {
-                requestSnapshotRefresh();
+                requestSnapshotRefresh(['dashboard', 'devices']);
             });
             connection.on('CatalogUpdated', () => {
-                syncProductCategoryOptionsFromSection(true);
-                requestSnapshotRefresh();
+                if (!isAutoRefreshBlockedForUserInput()) {
+                    syncProductCategoryOptionsFromSection(true);
+                }
+                requestSnapshotRefresh(['dashboard', 'products', 'categories']);
             });
             connection.on('TablesUpdated', () => {
-                requestSnapshotRefresh();
+                requestSnapshotRefresh(['dashboard', 'tables', 'devices']);
             });
             connection.on('AppSettingsUpdated', () => {
                 refreshShellPresentation();
-                requestSnapshotRefresh();
+                requestSnapshotRefresh(['dashboard', 'settings']);
             });
             connection.on('InfoMessageUpdated', () => {
                 refreshShellPresentation();
-                requestSnapshotRefresh();
+                requestSnapshotRefresh(['dashboard', 'settings']);
             });
         }
 
@@ -595,16 +653,48 @@
 
         function syncSearchVisibility(section) {
             const shell = document.getElementById('adminSearchShell');
-            const visibleSections = ['orders', 'products', 'categories', 'devices', 'tables', 'notifications'];
-            shell?.classList.toggle('is-hidden', !visibleSections.includes(section));
+            shell?.classList.toggle('is-hidden', !isSearchVisibleForSection(section));
         }
 
-        function syncSearchInputFromUrl(params) {
+        function isSearchVisibleForSection(section) {
+            return ['orders', 'products', 'categories', 'devices', 'tables', 'notifications'].includes(section);
+        }
+
+        function syncSearchInputFromUrl(params, section = getCurrentSection()) {
             const urlParams = params ?? new URL(window.location.href).searchParams;
             const input = document.getElementById('adminSearchInput');
             if (input) {
-                input.value = urlParams.get('search') ?? '';
+                input.value = isSearchVisibleForSection(section) ? urlParams.get('search') ?? '' : '';
             }
+
+            syncSearchClearButton();
+        }
+
+        function syncSearchClearButton() {
+            const input = document.getElementById('adminSearchInput');
+            const clearButton = document.getElementById('adminSearchClearButton');
+            if (clearButton) {
+                clearButton.hidden = !input?.value;
+            }
+        }
+
+        function normalizeSectionOverrides(section, overrides = {}) {
+            const normalized = { ...overrides };
+            if (section !== getCurrentSection()) {
+                if (!Object.prototype.hasOwnProperty.call(normalized, 'search')) {
+                    normalized.search = null;
+                }
+
+                if (!Object.prototype.hasOwnProperty.call(normalized, 'page')) {
+                    normalized.page = 1;
+                }
+
+                if (!Object.prototype.hasOwnProperty.call(normalized, 'category')) {
+                    normalized.category = 'all';
+                }
+            }
+
+            return normalized;
         }
 
         function buildSectionUrl(section, overrides = {}) {
@@ -646,8 +736,8 @@
             };
         }
 
-        async function refreshSnapshot(silent = true) {
-            await loadSection(getCurrentSection(), false, {}, silent);
+        async function refreshSnapshot(silent = true, options = {}) {
+            await loadSection(getCurrentSection(), false, {}, silent, options);
         }
 
         async function refreshShellPresentation() {
@@ -697,24 +787,62 @@
             }
         }
 
-        function requestSnapshotRefresh() {
+        function requestSnapshotRefresh(allowedSections = defaultRealtimeRefreshSections) {
+            const refreshSections = normalizeRealtimeRefreshSections(allowedSections);
+            const targetSection = getCurrentSection();
+            if (!canAutoRefreshSection(targetSection, refreshSections)) {
+                return;
+            }
+
             if (snapshotRefreshInFlight) {
                 snapshotRefreshQueued = true;
+                snapshotRefreshQueuedSections = mergeRealtimeRefreshSections(snapshotRefreshQueuedSections, refreshSections);
                 return;
             }
 
             snapshotRefreshInFlight = true;
             window.setTimeout(async () => {
                 try {
-                    await refreshSnapshot(true);
+                    if (getCurrentSection() === targetSection && canAutoRefreshSection(targetSection, refreshSections)) {
+                        await refreshSnapshot(true, { realtime: true });
+                    }
                 } finally {
                     snapshotRefreshInFlight = false;
                     if (snapshotRefreshQueued) {
+                        const queuedSections = Array.from(snapshotRefreshQueuedSections);
                         snapshotRefreshQueued = false;
-                        requestSnapshotRefresh();
+                        snapshotRefreshQueuedSections = new Set();
+                        requestSnapshotRefresh(queuedSections.length ? queuedSections : defaultRealtimeRefreshSections);
                     }
                 }
             }, 80);
+        }
+
+        function normalizeRealtimeRefreshSections(allowedSections) {
+            if (!Array.isArray(allowedSections) || allowedSections.length === 0) {
+                return new Set(defaultRealtimeRefreshSections);
+            }
+
+            return new Set(allowedSections.filter(section => typeof section === 'string' && section.length > 0));
+        }
+
+        function mergeRealtimeRefreshSections(existingSections, incomingSections) {
+            return new Set([...existingSections, ...incomingSections]);
+        }
+
+        function canAutoRefreshSection(section, allowedSections) {
+            return allowedSections.has(section) && !isAutoRefreshBlockedForUserInput();
+        }
+
+        function isAutoRefreshBlockedForUserInput() {
+            const activeElement = document.activeElement;
+            if (activeElement?.closest('#sectionHost') && (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName) || activeElement.isContentEditable)) {
+                return true;
+            }
+
+            return Boolean(document.querySelector(
+                '#confirmModal:not([hidden]), #productEditorModal:not([hidden]), #quickPriceModal:not([hidden]), #deviceAssignModal:not([hidden]), #productEditorCategoryMenu:not([hidden])'
+            ));
         }
 
         async function requestJson(url, options, successMessage, errorMessage) {
@@ -857,6 +985,7 @@
                 enableNewOrderSound: document.getElementById('settingEnableNewOrderSound')?.getAttribute('aria-pressed') === 'true',
                 enableQuickApproveMode: document.getElementById('settingEnableQuickApproveMode')?.getAttribute('aria-pressed') === 'true',
                 enableLiveAnnouncements: document.getElementById('settingEnableLiveAnnouncements')?.getAttribute('aria-pressed') === 'true',
+                minimumOrderAmount: parseOptionalDecimal(document.getElementById('minimumOrderAmount')?.value),
                 newOrderSoundUrl: document.getElementById('newOrderSoundUrl')?.value ?? ''
             };
 
@@ -871,6 +1000,16 @@
                 updateSoundMedia(result.newOrderSoundUrl ?? '', extractSoundFileName(result.newOrderSoundUrl ?? ''));
                 await refreshSnapshot(true);
             }
+        }
+
+        function parseOptionalDecimal(value) {
+            const normalized = String(value ?? '').trim().replace(',', '.');
+            if (!normalized) {
+                return null;
+            }
+
+            const parsed = Number(normalized);
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
         }
 
         async function saveTable() {
@@ -1838,10 +1977,23 @@
         }
 
         function queueSearch(value) {
+            syncSearchClearButton();
             window.clearTimeout(searchDebounceHandle);
             searchDebounceHandle = window.setTimeout(() => {
                 loadSection(getCurrentSection(), true, { search: value, page: 1 }, true);
             }, 260);
+        }
+
+        function clearSearchBox() {
+            const input = document.getElementById('adminSearchInput');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+
+            syncSearchClearButton();
+            window.clearTimeout(searchDebounceHandle);
+            loadSection(getCurrentSection(), true, { search: null, page: 1 }, true);
         }
 
         function getSearchValue() {

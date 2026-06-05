@@ -22,19 +22,7 @@ public sealed class SettingsService(
             .AsNoTracking()
             .OrderBy(x => x.Id)
             .FirstAsync(cancellationToken);
-        return new AppSettingsDto(
-            settings.CafeName,
-            _developerName,
-            _developerPhone,
-            settings.OrderAcceptedMessage,
-            settings.OrderRejectedMessage,
-            settings.ClientInfoBoxMessage,
-            settings.ClientInfoBoxType.ToString(),
-            settings.ClientInfoBoxIcon,
-            settings.EnableNewOrderSound,
-            settings.EnableQuickApproveMode,
-            settings.EnableLiveAnnouncements,
-            settings.NewOrderSoundUrl);
+        return ToDto(settings);
     }
 
     public async Task<AppSettingsDto> UpdateAppSettingsAsync(UpdateAppSettingsRequest request, CancellationToken cancellationToken = default)
@@ -53,22 +41,11 @@ public sealed class SettingsService(
         settings.EnableNewOrderSound = request.EnableNewOrderSound;
         settings.EnableQuickApproveMode = request.EnableQuickApproveMode;
         settings.EnableLiveAnnouncements = request.EnableLiveAnnouncements;
+        settings.MinimumOrderAmount = request.MinimumOrderAmount is > 0 ? request.MinimumOrderAmount : null;
         settings.NewOrderSoundUrl = string.IsNullOrWhiteSpace(request.NewOrderSoundUrl) ? null : request.NewOrderSoundUrl.Trim();
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        var dto = new AppSettingsDto(
-            settings.CafeName,
-            _developerName,
-            _developerPhone,
-            settings.OrderAcceptedMessage,
-            settings.OrderRejectedMessage,
-            settings.ClientInfoBoxMessage,
-            settings.ClientInfoBoxType.ToString(),
-            settings.ClientInfoBoxIcon,
-            settings.EnableNewOrderSound,
-            settings.EnableQuickApproveMode,
-            settings.EnableLiveAnnouncements,
-            settings.NewOrderSoundUrl);
+        var dto = ToDto(settings);
         await realtimeNotifier.NotifyAppSettingsUpdatedAsync(dto, cancellationToken);
         return dto;
     }
@@ -104,4 +81,20 @@ public sealed class SettingsService(
         await realtimeNotifier.NotifyInfoMessageUpdatedAsync(dto, cancellationToken);
         return dto;
     }
+
+    private AppSettingsDto ToDto(AppSetting settings)
+        => new(
+            settings.CafeName,
+            _developerName,
+            _developerPhone,
+            settings.OrderAcceptedMessage,
+            settings.OrderRejectedMessage,
+            settings.ClientInfoBoxMessage,
+            settings.ClientInfoBoxType.ToString(),
+            settings.ClientInfoBoxIcon,
+            settings.EnableNewOrderSound,
+            settings.EnableQuickApproveMode,
+            settings.EnableLiveAnnouncements,
+            settings.MinimumOrderAmount is > 0 ? settings.MinimumOrderAmount : null,
+            settings.NewOrderSoundUrl);
 }

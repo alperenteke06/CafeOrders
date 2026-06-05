@@ -16,5 +16,6 @@ public sealed class AppSetting
     public bool EnableNewOrderSound { get; set; } = true;
     public bool EnableQuickApproveMode { get; set; } = true;
     public bool EnableLiveAnnouncements { get; set; } = true;
+    public decimal? MinimumOrderAmount { get; set; }
     public string? NewOrderSoundUrl { get; set; }
 }

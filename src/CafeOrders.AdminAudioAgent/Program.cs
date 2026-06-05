@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net.Http.Json;
 using System.Threading.Channels;
 using CafeOrders.AdminAudioAgent;
 using CafeOrders.Application.Contracts.Orders;
@@ -11,6 +12,7 @@ using var httpClient = new HttpClient { BaseAddress = new Uri(EnsureTrailingSlas
 var audioService = new AdminAudioService(httpClient, options, new WindowsMediaAudioPlayer(options), logger);
 var pendingOrders = new ConcurrentDictionary<int, CancellationTokenSource>();
 var queuedOrderIds = new ConcurrentDictionary<int, byte>();
+var announcedOrderIds = new ConcurrentDictionary<int, DateTime>();
 var playbackQueue = Channel.CreateUnbounded<int>(new UnboundedChannelOptions
 {
     SingleReader = true,
@@ -23,48 +25,32 @@ await using var hubConnection = new HubConnectionBuilder()
     .Build();
 
 _ = Task.Run(() => ProcessPlaybackQueueAsync(playbackQueue.Reader, pendingOrders, queuedOrderIds, audioService, hubConnection, logger));
+_ = Task.Run(() => PollPendingOrdersAsync(
+    httpClient,
+    options,
+    pendingOrders,
+    queuedOrderIds,
+    announcedOrderIds,
+    playbackQueue.Writer,
+    logger,
+    CancellationToken.None));
 
 hubConnection.On<OrderDto>(CafeHubEvents.OrderCreated, order =>
 {
-    var pending = new CancellationTokenSource();
-    if (!pendingOrders.TryAdd(order.Id, pending))
-    {
-        pending.Dispose();
-        return;
-    }
-
-    logger.Info($"OrderCreated received. OrderId={order.Id}");
-    _ = Task.Run(async () =>
-    {
-        try
-        {
-            await Task.Delay(Math.Max(0, options.FallbackDelayMilliseconds), pending.Token);
-            if (pending.Token.IsCancellationRequested)
-            {
-                return;
-            }
-
-            if (queuedOrderIds.TryAdd(order.Id, 0))
-            {
-                await playbackQueue.Writer.WriteAsync(order.Id, CancellationToken.None);
-                logger.Info($"Order queued for fallback audio. OrderId={order.Id}");
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        finally
-        {
-            if (pending.IsCancellationRequested && pendingOrders.TryRemove(order.Id, out var removed))
-            {
-                removed.Dispose();
-            }
-        }
-    });
+    ScheduleFallbackPlayback(
+        order.Id,
+        "hub",
+        options,
+        pendingOrders,
+        queuedOrderIds,
+        announcedOrderIds,
+        playbackQueue.Writer,
+        logger);
 });
 
 hubConnection.On<int>(CafeHubEvents.OrderSoundAcknowledged, orderId =>
 {
+    announcedOrderIds.TryAdd(orderId, DateTime.UtcNow);
     if (pendingOrders.TryGetValue(orderId, out var pending))
     {
         logger.Info($"Order sound acknowledged. OrderId={orderId}");
@@ -135,6 +121,122 @@ static async Task ProcessPlaybackQueueAsync(
                 removed.Dispose();
             }
         }
+    }
+}
+
+static void ScheduleFallbackPlayback(
+    int orderId,
+    string source,
+    AgentOptions options,
+    ConcurrentDictionary<int, CancellationTokenSource> pendingOrders,
+    ConcurrentDictionary<int, byte> queuedOrderIds,
+    ConcurrentDictionary<int, DateTime> announcedOrderIds,
+    ChannelWriter<int> playbackQueue,
+    AgentLogger logger)
+{
+    if (!announcedOrderIds.TryAdd(orderId, DateTime.UtcNow))
+    {
+        return;
+    }
+
+    var pending = new CancellationTokenSource();
+    if (!pendingOrders.TryAdd(orderId, pending))
+    {
+        pending.Dispose();
+        return;
+    }
+
+    logger.Info($"Order observed for fallback audio. Source={source}, OrderId={orderId}");
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            await Task.Delay(Math.Max(0, options.FallbackDelayMilliseconds), pending.Token);
+            if (pending.Token.IsCancellationRequested)
+            {
+                return;
+            }
+
+            if (queuedOrderIds.TryAdd(orderId, 0))
+            {
+                await playbackQueue.WriteAsync(orderId, CancellationToken.None);
+                logger.Info($"Order queued for fallback audio. Source={source}, OrderId={orderId}");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (pending.IsCancellationRequested && pendingOrders.TryRemove(orderId, out var removed))
+            {
+                removed.Dispose();
+            }
+        }
+    });
+}
+
+static async Task PollPendingOrdersAsync(
+    HttpClient httpClient,
+    AgentOptions options,
+    ConcurrentDictionary<int, CancellationTokenSource> pendingOrders,
+    ConcurrentDictionary<int, byte> queuedOrderIds,
+    ConcurrentDictionary<int, DateTime> announcedOrderIds,
+    ChannelWriter<int> playbackQueue,
+    AgentLogger logger,
+    CancellationToken cancellationToken)
+{
+    using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(Math.Max(1000, options.PollIntervalMilliseconds)));
+    while (!cancellationToken.IsCancellationRequested)
+    {
+        await QueuePendingOrdersFromApiAsync(
+            httpClient,
+            options,
+            pendingOrders,
+            queuedOrderIds,
+            announcedOrderIds,
+            playbackQueue,
+            logger,
+            cancellationToken);
+
+        await timer.WaitForNextTickAsync(cancellationToken);
+    }
+}
+
+static async Task QueuePendingOrdersFromApiAsync(
+    HttpClient httpClient,
+    AgentOptions options,
+    ConcurrentDictionary<int, CancellationTokenSource> pendingOrders,
+    ConcurrentDictionary<int, byte> queuedOrderIds,
+    ConcurrentDictionary<int, DateTime> announcedOrderIds,
+    ChannelWriter<int> playbackQueue,
+    AgentLogger logger,
+    CancellationToken cancellationToken)
+{
+    try
+    {
+        var orders = await httpClient.GetFromJsonAsync<IReadOnlyCollection<OrderDto>>("api/v1/orders", cancellationToken)
+            ?? Array.Empty<OrderDto>();
+
+        foreach (var order in orders.Where(order => string.Equals(order.Status, "Pending", StringComparison.OrdinalIgnoreCase)))
+        {
+            ScheduleFallbackPlayback(
+                order.Id,
+                "poll",
+                options,
+                pendingOrders,
+                queuedOrderIds,
+                announcedOrderIds,
+                playbackQueue,
+                logger);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+    }
+    catch (Exception exception)
+    {
+        logger.Warning($"Pending order polling failed: {exception.Message}");
     }
 }
 

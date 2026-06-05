@@ -44,6 +44,18 @@ textarea {
   font: inherit;
 }
 
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .page-wrap {
   padding: 0;
 }
@@ -292,6 +304,32 @@ textarea {
 .topbar-search-icon {
   color: var(--muted);
   font-size: 1rem;
+}
+
+.topbar-search-clear {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(220, 226, 247, 0.82);
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.topbar-search-clear:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 184, 0, 0.28);
+  background: rgba(255, 184, 0, 0.12);
+  color: var(--accent-strong);
+}
+
+.topbar-search-clear .material-symbols-outlined {
+  font-size: 18px;
 }
 
 .icon-chip,
@@ -1161,6 +1199,62 @@ textarea {
   color: var(--text);
 }
 
+.field-row input[type="number"],
+.modal-input[type="number"] {
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  background:
+    linear-gradient(180deg, rgba(40, 48, 67, 0.98), rgba(27, 36, 55, 0.98)),
+    var(--surface-high);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 12px 34px rgba(0, 0, 0, 0.12);
+  color: var(--text);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.field-row input[type="number"]:hover,
+.modal-input[type="number"]:hover {
+  border-color: rgba(255, 184, 0, 0.24);
+}
+
+.field-row input[type="number"]:focus,
+.modal-input[type="number"]:focus {
+  outline: none;
+  border-color: rgba(255, 184, 0, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 0 0 4px rgba(255, 184, 0, 0.11),
+    0 18px 44px rgba(0, 0, 0, 0.18);
+}
+
+.settings-price-shell {
+  position: relative;
+}
+
+.settings-price-shell input {
+  width: 100%;
+  padding-right: 62px;
+}
+
+.settings-price-shell:focus-within,
+.modal-price-shell:focus-within,
+.quick-price-input-shell:focus-within {
+  filter: drop-shadow(0 14px 32px rgba(255, 184, 0, 0.08));
+}
+
+.settings-price-shell strong {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent-strong);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
 .field-row small {
   font-size: 0.82rem;
 }
@@ -1707,6 +1801,14 @@ textarea {
 
 #sectionHost {
   transition: opacity 180ms ease, transform 220ms ease;
+}
+
+#sectionHost.is-realtime-refresh {
+  transition: none;
+}
+
+#sectionHost.is-realtime-refresh .section-enter {
+  animation: none !important;
 }
 
 #sectionHost.is-loading {
@@ -2726,6 +2828,7 @@ textarea {
 }
 
 .quick-price-input-shell {
+  position: relative;
   min-height: 58px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2733,8 +2836,24 @@ textarea {
   gap: 12px;
   padding: 0 16px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.04);
+  background: linear-gradient(180deg, rgba(42, 50, 70, 0.94), rgba(26, 35, 53, 0.94));
   border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.quick-price-input-shell:hover {
+  border-color: rgba(255, 184, 0, 0.24);
+  transform: translateY(-1px);
+}
+
+.quick-price-input-shell:focus-within {
+  border-color: rgba(255, 184, 0, 0.5);
+  background: linear-gradient(180deg, rgba(47, 56, 78, 0.98), rgba(30, 40, 61, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 0 0 4px rgba(255, 184, 0, 0.1),
+    0 18px 42px rgba(0, 0, 0, 0.18);
 }
 
 .quick-price-input {
@@ -2746,6 +2865,10 @@ textarea {
   color: var(--text);
   font-size: 1.02rem;
   font-weight: 700;
+}
+
+.quick-price-input[type="number"]:focus {
+  outline: none;
 }
 
 .quick-price-input-shell span {

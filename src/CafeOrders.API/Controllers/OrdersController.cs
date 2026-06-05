@@ -20,8 +20,17 @@ public sealed class OrdersController(IOrderService orderService) : ControllerBas
     }
 
     [HttpPost]
-    public Task<OrderDto> Create([FromBody] CreateOrderRequest request, CancellationToken cancellationToken)
-        => orderService.CreateAsync(request, cancellationToken);
+    public async Task<IActionResult> Create([FromBody] CreateOrderRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await orderService.CreateAsync(request, cancellationToken));
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
 
     [HttpPost("{orderId:int}/accept")]
     public async Task<IActionResult> Accept(int orderId, CancellationToken cancellationToken)

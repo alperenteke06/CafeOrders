@@ -22,5 +22,6 @@ public sealed class CafeOrdersDbContext(DbContextOptions<CafeOrdersDbContext> op
         modelBuilder.Entity<OrderLine>().Property(x => x.UnitPrice).HasPrecision(18, 2);
         modelBuilder.Entity<OrderLine>().Property(x => x.LineTotal).HasPrecision(18, 2);
         modelBuilder.Entity<Product>().Property(x => x.Price).HasPrecision(18, 2);
+        modelBuilder.Entity<AppSetting>().Property(x => x.MinimumOrderAmount).HasPrecision(18, 2);
     }
 }

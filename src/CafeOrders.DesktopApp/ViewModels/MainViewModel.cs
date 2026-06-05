@@ -153,10 +153,39 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _statusPopupTone = "info";
 
+    [ObservableProperty]
+    private decimal? _minimumOrderAmount;
+
     public bool IsBlockingOverlayVisible => IsBusy || IsAwaitingApproval;
     public decimal CartTotal => Cart.Sum(x => x.Total);
     public int CartItemCount => Cart.Sum(x => x.Quantity);
     public bool HasItemsInCart => CartItemCount > 0;
+    public bool HasMinimumOrderAmount => MinimumOrderAmount is > 0;
+    public bool IsCartBelowMinimum => HasItemsInCart && HasMinimumOrderAmount && CartTotal < MinimumOrderAmount!.Value;
+    public bool CanSubmitCart => HasItemsInCart && !IsCartBelowMinimum;
+    public decimal MinimumOrderRemaining => IsCartBelowMinimum ? MinimumOrderAmount!.Value - CartTotal : 0m;
+    public double MinimumOrderProgressPercent
+    {
+        get
+        {
+            if (!HasMinimumOrderAmount || MinimumOrderAmount!.Value <= 0)
+            {
+                return 100d;
+            }
+
+            var percent = (double)(CartTotal / MinimumOrderAmount.Value) * 100d;
+            return double.IsFinite(percent) ? Math.Clamp(percent, 0d, 100d) : 0d;
+        }
+    }
+
+    public GridLength MinimumOrderProgressFill => new(MinimumOrderProgressPercent, GridUnitType.Star);
+    public GridLength MinimumOrderProgressRemainder => new(Math.Max(100d - MinimumOrderProgressPercent, 0d), GridUnitType.Star);
+    public string MinimumOrderText => HasMinimumOrderAmount
+        ? $"Minimum siparis tutari {MinimumOrderAmount!.Value:N0} TL'dir."
+        : string.Empty;
+    public string MinimumOrderRemainingText => IsCartBelowMinimum
+        ? $"Siparis vermek icin {MinimumOrderRemaining:N0} TL daha eklemelisiniz."
+        : "Minimum sepet tutari tamamlandi.";
     public bool HasActiveOrder => ActiveOrderLines.Count > 0;
     public TimeSpan AutoCloseAfter => EndpointOptions.AutoCloseAfter;
     public bool IsSessionCountdownVisible => AutoCloseAfter > TimeSpan.Zero;
@@ -462,6 +491,13 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
+        if (IsCartBelowMinimum)
+        {
+            IsCartOpen = true;
+            ShowStatusPopup("Minimum sepet tutari", MinimumOrderRemainingText, "warning");
+            return;
+        }
+
         var draftItems = Cart.Select(item => new CartItem
         {
             ProductId = item.ProductId,
@@ -502,6 +538,17 @@ public sealed partial class MainViewModel : ObservableObject
             ActiveOrderTotal = 0;
             ShowMenuScreen();
             ShowStatusPopup("Siparis gonderilemedi", "Sunucuya ulasilamadi. Lutfen tekrar deneyin.", "warning");
+            return;
+        }
+        catch (InvalidOperationException exception)
+        {
+            StopActiveOrderMonitoring();
+            ActiveOrderLines.Clear();
+            ActiveOrderNumber = 0;
+            ActiveOrderTotal = 0;
+            ShowMenuScreen();
+            IsCartOpen = true;
+            ShowStatusPopup("Siparis gonderilemedi", exception.Message, "warning");
             return;
         }
 
@@ -746,6 +793,7 @@ public sealed partial class MainViewModel : ObservableObject
         CafeName = settings.CafeName;
         AppDeveloperName = settings.AppDeveloperName;
         AppDeveloperPhone = settings.AppDeveloperPhone;
+        MinimumOrderAmount = settings.MinimumOrderAmount is > 0 ? settings.MinimumOrderAmount : null;
         FooterCopyrightText = $"{settings.CafeName} @ {DateTime.Now.Year} Tum Haklari Saklidir.";
 
         if (forceInfoBoxRefresh || !_hasLiveInfoMessageOverride)
@@ -1017,6 +1065,20 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(CartTotal));
         OnPropertyChanged(nameof(CartItemCount));
         OnPropertyChanged(nameof(HasItemsInCart));
+        NotifyMinimumOrderMetricsChanged();
+    }
+
+    private void NotifyMinimumOrderMetricsChanged()
+    {
+        OnPropertyChanged(nameof(HasMinimumOrderAmount));
+        OnPropertyChanged(nameof(IsCartBelowMinimum));
+        OnPropertyChanged(nameof(CanSubmitCart));
+        OnPropertyChanged(nameof(MinimumOrderRemaining));
+        OnPropertyChanged(nameof(MinimumOrderProgressPercent));
+        OnPropertyChanged(nameof(MinimumOrderProgressFill));
+        OnPropertyChanged(nameof(MinimumOrderProgressRemainder));
+        OnPropertyChanged(nameof(MinimumOrderText));
+        OnPropertyChanged(nameof(MinimumOrderRemainingText));
     }
 
     private async Task RefreshCatalogAsync()
@@ -1266,6 +1328,8 @@ public sealed partial class MainViewModel : ObservableObject
     partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(IsBlockingOverlayVisible));
 
     partial void OnIsAwaitingApprovalChanged(bool value) => OnPropertyChanged(nameof(IsBlockingOverlayVisible));
+
+    partial void OnMinimumOrderAmountChanged(decimal? value) => NotifyMinimumOrderMetricsChanged();
 
     public async Task ShutdownAsync()
     {

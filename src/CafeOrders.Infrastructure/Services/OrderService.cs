@@ -42,6 +42,22 @@ public sealed class OrderService(
         };
 
         order.RecalculateTotal();
+        if (order.OrderLines.Count == 0)
+        {
+            throw new InvalidOperationException("Siparis olusturmak icin sepete urun eklemelisiniz.");
+        }
+
+        var minimumOrderAmount = await dbContext.AppSettings
+            .AsNoTracking()
+            .OrderBy(x => x.Id)
+            .Select(x => x.MinimumOrderAmount)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (minimumOrderAmount is > 0 && order.TotalPrice < minimumOrderAmount.Value)
+        {
+            var remaining = minimumOrderAmount.Value - order.TotalPrice;
+            throw new InvalidOperationException($"Minimum siparis tutari {minimumOrderAmount.Value:N2} TL. Siparis vermek icin {remaining:N2} TL daha eklemelisiniz.");
+        }
+
         await dbContext.Orders.AddAsync(order, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
