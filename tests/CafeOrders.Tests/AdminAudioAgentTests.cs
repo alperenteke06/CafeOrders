@@ -126,6 +126,7 @@ public sealed class AdminAudioAgentTests
         Assert.Contains("SingleReader = true", program);
         Assert.Contains("ProcessPlaybackQueueAsync", program);
         Assert.Contains("ReadAllAsync", program);
+        Assert.Contains("OrderSoundPlaybackStarted", program);
         Assert.Contains("OrderSoundAcknowledged", program);
     }
 
@@ -140,9 +141,12 @@ public sealed class AdminAudioAgentTests
         Assert.Contains("api/v1/orders?soundPendingOnly=true", program);
         Assert.Contains("api/v1/orders/{orderId}/sound-played", program);
         Assert.Contains("MarkOrderSoundPlayedAsync", program);
+        Assert.Contains("webPlaybackStartedAt", program);
+        Assert.Contains("MaxPlaybackSeconds", program);
         Assert.Contains("order.Status, \"Pending\"", program);
         Assert.Contains("!order.IsSoundPlayed", program);
         Assert.Contains("\"poll\"", program);
+        Assert.DoesNotContain("announcedOrderIds", program);
         Assert.Contains("PollIntervalMilliseconds", options);
     }
 

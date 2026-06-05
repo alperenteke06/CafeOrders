@@ -12,7 +12,7 @@ using var httpClient = new HttpClient { BaseAddress = new Uri(EnsureTrailingSlas
 var audioService = new AdminAudioService(httpClient, options, new WindowsMediaAudioPlayer(options), logger);
 var pendingOrders = new ConcurrentDictionary<int, CancellationTokenSource>();
 var queuedOrderIds = new ConcurrentDictionary<int, byte>();
-var announcedOrderIds = new ConcurrentDictionary<int, DateTime>();
+var webPlaybackStartedAt = new ConcurrentDictionary<int, DateTime>();
 var playbackQueue = Channel.CreateUnbounded<int>(new UnboundedChannelOptions
 {
     SingleReader = true,
@@ -30,7 +30,7 @@ _ = Task.Run(() => PollPendingOrdersAsync(
     options,
     pendingOrders,
     queuedOrderIds,
-    announcedOrderIds,
+    webPlaybackStartedAt,
     playbackQueue.Writer,
     logger,
     CancellationToken.None));
@@ -43,15 +43,27 @@ hubConnection.On<OrderDto>(CafeHubEvents.OrderCreated, order =>
         options,
         pendingOrders,
         queuedOrderIds,
-        announcedOrderIds,
+        webPlaybackStartedAt,
         playbackQueue.Writer,
         logger);
 });
 
+hubConnection.On<int>(CafeHubEvents.OrderSoundPlaybackStarted, orderId =>
+{
+    webPlaybackStartedAt[orderId] = DateTime.UtcNow;
+    if (pendingOrders.TryRemove(orderId, out var pending))
+    {
+        logger.Info($"Order sound playback started by WebUI. Fallback delayed. OrderId={orderId}");
+        pending.Cancel();
+    }
+
+    queuedOrderIds.TryRemove(orderId, out _);
+});
+
 hubConnection.On<int>(CafeHubEvents.OrderSoundAcknowledged, orderId =>
 {
-    announcedOrderIds.TryAdd(orderId, DateTime.UtcNow);
-    if (pendingOrders.TryGetValue(orderId, out var pending))
+    webPlaybackStartedAt.TryRemove(orderId, out _);
+    if (pendingOrders.TryRemove(orderId, out var pending))
     {
         logger.Info($"Order sound acknowledged. OrderId={orderId}");
         pending.Cancel();
@@ -131,11 +143,23 @@ static void ScheduleFallbackPlayback(
     AgentOptions options,
     ConcurrentDictionary<int, CancellationTokenSource> pendingOrders,
     ConcurrentDictionary<int, byte> queuedOrderIds,
-    ConcurrentDictionary<int, DateTime> announcedOrderIds,
+    ConcurrentDictionary<int, DateTime> webPlaybackStartedAt,
     ChannelWriter<int> playbackQueue,
     AgentLogger logger)
 {
-    if (!announcedOrderIds.TryAdd(orderId, DateTime.UtcNow))
+    if (webPlaybackStartedAt.TryGetValue(orderId, out var webStartedAt))
+    {
+        var webPlaybackCooldown = TimeSpan.FromMilliseconds(
+            Math.Max(15000, options.MaxPlaybackSeconds * 1000 + options.FallbackDelayMilliseconds));
+        if (DateTime.UtcNow - webStartedAt < webPlaybackCooldown)
+        {
+            return;
+        }
+
+        webPlaybackStartedAt.TryRemove(orderId, out _);
+    }
+
+    if (pendingOrders.ContainsKey(orderId) || queuedOrderIds.ContainsKey(orderId))
     {
         return;
     }
@@ -182,7 +206,7 @@ static async Task PollPendingOrdersAsync(
     AgentOptions options,
     ConcurrentDictionary<int, CancellationTokenSource> pendingOrders,
     ConcurrentDictionary<int, byte> queuedOrderIds,
-    ConcurrentDictionary<int, DateTime> announcedOrderIds,
+    ConcurrentDictionary<int, DateTime> webPlaybackStartedAt,
     ChannelWriter<int> playbackQueue,
     AgentLogger logger,
     CancellationToken cancellationToken)
@@ -195,7 +219,7 @@ static async Task PollPendingOrdersAsync(
             options,
             pendingOrders,
             queuedOrderIds,
-            announcedOrderIds,
+            webPlaybackStartedAt,
             playbackQueue,
             logger,
             cancellationToken);
@@ -209,7 +233,7 @@ static async Task QueuePendingOrdersFromApiAsync(
     AgentOptions options,
     ConcurrentDictionary<int, CancellationTokenSource> pendingOrders,
     ConcurrentDictionary<int, byte> queuedOrderIds,
-    ConcurrentDictionary<int, DateTime> announcedOrderIds,
+    ConcurrentDictionary<int, DateTime> webPlaybackStartedAt,
     ChannelWriter<int> playbackQueue,
     AgentLogger logger,
     CancellationToken cancellationToken)
@@ -229,7 +253,7 @@ static async Task QueuePendingOrdersFromApiAsync(
                 options,
                 pendingOrders,
                 queuedOrderIds,
-                announcedOrderIds,
+                webPlaybackStartedAt,
                 playbackQueue,
                 logger);
         }

@@ -21,7 +21,7 @@ public static class DependencyInjection
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
 
         var connectionString = configuration.GetConnectionString("CafeOrders")
-            ?? "Server=192.168.11.24\\SQLEXPRESS;Database=CafeOrders;User Id=sa;Password=sa@Alperen123!;TrustServerCertificate=True;MultipleActiveResultSets=True";
+            ?? "Server=.\\SQLEXPRESS;Database=CafeOrders;User Id=sa;Password=sa@Alperen123!;TrustServerCertificate=True;MultipleActiveResultSets=True";
         services.AddDbContext<CafeOrdersDbContext>(options =>
             options.UseSqlServer(connectionString, sqlOptions =>
                 sqlOptions.MigrationsAssembly(typeof(CafeOrdersDbContext).Assembly.FullName)));

@@ -2359,6 +2359,11 @@
                 return true;
             }
 
+            if (!canUseWebUiNewOrderSound()) {
+                pendingNewOrderSound = true;
+                return false;
+            }
+
             const now = Date.now();
             if (now - lastNewOrderSoundAttemptAt < 350) {
                 await delay(350 - (now - lastNewOrderSoundAttemptAt));
@@ -2370,9 +2375,15 @@
             audio.currentTime = 0;
             try {
                 await audio.play();
-                acknowledgeNewOrderSound(orderId);
-                await waitForAudioEnd(audio, 12000);
-                return true;
+                reportNewOrderSoundPlaybackStarted(orderId);
+                const completion = await waitForAudioEnd(audio, 12000);
+                if (completion === 'ended' && canUseWebUiNewOrderSound()) {
+                    acknowledgeNewOrderSound(orderId);
+                    return true;
+                }
+
+                pendingNewOrderSound = true;
+                return false;
             } catch {
                 pendingNewOrderSound = true;
                 playFallbackOrderBeep();
@@ -2383,20 +2394,28 @@
         function waitForAudioEnd(audio, timeoutMilliseconds) {
             return new Promise(resolve => {
                 let finished = false;
-                const complete = () => {
+                let timeoutId = null;
+                const complete = result => {
                     if (finished) {
                         return;
                     }
 
                     finished = true;
-                    audio.removeEventListener('ended', complete);
-                    audio.removeEventListener('error', complete);
-                    resolve();
+                    if (timeoutId !== null) {
+                        window.clearTimeout(timeoutId);
+                    }
+
+                    audio.removeEventListener('ended', onEnded);
+                    audio.removeEventListener('error', onError);
+                    resolve(result);
                 };
 
-                audio.addEventListener('ended', complete, { once: true });
-                audio.addEventListener('error', complete, { once: true });
-                window.setTimeout(complete, timeoutMilliseconds);
+                const onEnded = () => complete('ended');
+                const onError = () => complete('error');
+
+                audio.addEventListener('ended', onEnded, { once: true });
+                audio.addEventListener('error', onError, { once: true });
+                timeoutId = window.setTimeout(() => complete('timeout'), timeoutMilliseconds);
             });
         }
 
@@ -2408,6 +2427,18 @@
             const candidate = order?.id ?? order?.order?.id ?? order?.orderId ?? null;
             const parsed = Number(candidate);
             return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+        }
+
+        function canUseWebUiNewOrderSound() {
+            return document.visibilityState === 'visible' && !document.hidden;
+        }
+
+        function reportNewOrderSoundPlaybackStarted(orderId) {
+            if (!orderId || !hubConnection || hubConnection.state !== signalR.HubConnectionState.Connected) {
+                return;
+            }
+
+            hubConnection.invoke('ReportOrderSoundPlaybackStarted', Number(orderId)).catch(() => {});
         }
 
         function acknowledgeNewOrderSound(orderId) {

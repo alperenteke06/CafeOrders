@@ -16,8 +16,26 @@ public sealed class WebUiRegressionTests
         Assert.Contains("visibilitychange", index);
         Assert.Contains("pointerdown", index);
         Assert.Contains("playFallbackOrderBeep", index);
+        Assert.Contains("canUseWebUiNewOrderSound", index);
+        Assert.Contains("ReportOrderSoundPlaybackStarted", index);
+        Assert.Contains("completion === 'ended'", index);
         Assert.Contains("AcknowledgeOrderSound", index);
         Assert.Contains("OrderSoundAcknowledged", index);
+    }
+
+    [Fact]
+    public void DevConnectionStrings_UseLocalSqlInstanceInsteadOfIpAddress()
+    {
+        var apiSettings = ReadRepoFile("src", "CafeOrders.API", "appsettings.json");
+        var webSettings = ReadRepoFile("src", "CafeOrders.WebUI", "appsettings.json");
+        var dependencyInjection = ReadRepoFile("src", "CafeOrders.Infrastructure", "DependencyInjection.cs");
+
+        Assert.Contains("Server=.\\\\SQLEXPRESS", apiSettings);
+        Assert.Contains("Server=.\\\\SQLEXPRESS", webSettings);
+        Assert.Contains("Server=.\\\\SQLEXPRESS", dependencyInjection);
+        Assert.DoesNotContain("Server=192.168.11.24\\\\SQLEXPRESS", apiSettings);
+        Assert.DoesNotContain("Server=192.168.11.24\\\\SQLEXPRESS", webSettings);
+        Assert.DoesNotContain("Server=192.168.11.24\\\\SQLEXPRESS", dependencyInjection);
     }
 
     [Fact]
