@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<ISettingsService, SettingsService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<ITableService, TableService>();
+        services.AddScoped<IApplicationLogService, ApplicationLogService>();
         services.AddScoped<IAdminAuthService, AdminAuthService>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IRealtimeNotifier, SignalRRealtimeNotifier>();

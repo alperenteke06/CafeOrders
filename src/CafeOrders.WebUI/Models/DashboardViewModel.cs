@@ -1,5 +1,6 @@
 using CafeOrders.Application.Contracts.Catalog;
 using CafeOrders.Application.Contracts.Dashboard;
+using CafeOrders.Application.Contracts.Logging;
 using CafeOrders.Application.Contracts.Orders;
 using CafeOrders.Application.Contracts.Settings;
 using CafeOrders.Application.Contracts.Tables;
@@ -12,6 +13,8 @@ public sealed class DashboardViewModel
     public required string SelectedRange { get; init; }
     public required string SearchQuery { get; init; }
     public required string CategoryFilter { get; init; }
+    public required string LogSourceFilter { get; init; }
+    public required string LogLevelFilter { get; init; }
     public required int CurrentPage { get; init; }
     public required DashboardSnapshotDto Snapshot { get; init; }
     public required CatalogResponseDto Catalog { get; init; }
@@ -20,6 +23,7 @@ public sealed class DashboardViewModel
     public required IReadOnlyCollection<OrderDto> RecentOrders { get; init; }
     public required IReadOnlyCollection<ProductCardViewModel> ProductCards { get; init; }
     public required IReadOnlyCollection<NotificationItemViewModel> Notifications { get; init; }
+    public required IReadOnlyCollection<ApplicationLogDto> ApplicationLogs { get; init; }
 }
 
 public sealed class ProductCardViewModel

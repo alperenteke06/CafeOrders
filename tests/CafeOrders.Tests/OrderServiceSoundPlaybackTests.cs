@@ -1,4 +1,5 @@
 using CafeOrders.Application.Abstractions;
+using CafeOrders.Application.Contracts.Logging;
 using CafeOrders.Application.Contracts.Orders;
 using CafeOrders.Application.Contracts.Settings;
 using CafeOrders.Domain.Entities;
@@ -156,5 +157,7 @@ public sealed class OrderServiceSoundPlaybackTests
         public Task NotifyAppSettingsUpdatedAsync(AppSettingsDto settings, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task NotifyInfoMessageUpdatedAsync(InfoMessageDto infoMessage, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task NotifyApplicationLogCreatedAsync(ApplicationLogDto log, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

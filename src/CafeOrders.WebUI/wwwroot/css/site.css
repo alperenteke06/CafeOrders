@@ -3390,6 +3390,343 @@ input[type="number"]::-webkit-outer-spin-button {
   margin-bottom: 16px;
 }
 
+.logs-section {
+  display: grid;
+  gap: 22px;
+}
+
+.log-filter-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.8fr);
+  gap: 18px;
+}
+
+.log-filter-card,
+.log-terminal-shell,
+.log-stat-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(145deg, rgba(25, 31, 47, 0.96), rgba(12, 19, 34, 0.98));
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.24);
+}
+
+.log-filter-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 22px;
+}
+
+.filter-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.log-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.log-filter-chip,
+.log-level-chip {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text);
+  font-weight: 800;
+  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.log-filter-chip {
+  flex: 1 1 130px;
+  padding: 0 16px;
+}
+
+.log-filter-chip .material-symbols-outlined {
+  color: rgba(255, 184, 0, 0.72);
+  font-size: 20px;
+}
+
+.log-filter-chip:hover,
+.log-level-chip:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 184, 0, 0.36);
+  background: rgba(255, 184, 0, 0.1);
+}
+
+.log-filter-chip.active,
+.log-level-chip.active {
+  border-color: rgba(255, 184, 0, 0.62);
+  background: linear-gradient(135deg, #ffce4d, #ffb800);
+  color: #2f2100;
+  box-shadow: 0 12px 32px rgba(255, 184, 0, 0.18);
+}
+
+.log-level-chip {
+  padding: 0 14px;
+}
+
+.log-level-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #7d8ba7;
+}
+
+.log-level-chip.info .log-level-dot { background: #38bdf8; }
+.log-level-chip.warning .log-level-dot { background: #ffb800; }
+.log-level-chip.error .log-level-dot,
+.log-level-chip.critical .log-level-dot { background: #f25a67; }
+
+.log-terminal-shell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+}
+
+.log-terminal-head {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 120px 1fr 120px;
+  align-items: center;
+  gap: 16px;
+  padding: 0 18px;
+  background: rgba(46, 53, 69, 0.82);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.terminal-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.terminal-dots .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.terminal-dots .red { background: #f25a67; }
+.terminal-dots .amber { background: #ffb800; }
+.terminal-dots .green { background: #2ddf7f; }
+
+.terminal-title,
+.terminal-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: rgba(213, 196, 171, 0.78);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 0.84rem;
+}
+
+.terminal-title .material-symbols-outlined {
+  color: var(--accent-strong);
+  font-size: 18px;
+}
+
+.terminal-actions {
+  justify-content: flex-end;
+}
+
+.terminal-actions #applicationLogTotal {
+  color: var(--accent-strong);
+  font-weight: 900;
+}
+
+.log-terminal-body {
+  position: relative;
+  min-height: 560px;
+  max-height: 68vh;
+  overflow-y: auto;
+  padding: 16px;
+  background: radial-gradient(circle at top right, rgba(255, 184, 0, 0.08), transparent 34%), rgba(0, 0, 0, 0.38);
+}
+
+.terminal-scanline {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 50%, rgba(255, 184, 0, 0.024) 50%);
+  background-size: 100% 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(7, 14, 29, 0.9);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(7, 14, 29, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 184, 0, 0.55);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 184, 0, 0.86);
+}
+
+.log-entry-row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 94px 142px 28px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  color: var(--text);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 0.9rem;
+  animation: logRowEnter 240ms ease both;
+}
+
+.log-entry-row:hover,
+.log-entry-row.fresh {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.log-time {
+  color: rgba(213, 196, 171, 0.5);
+  user-select: none;
+}
+
+.log-source {
+  font-weight: 900;
+}
+
+.log-source.api { color: #38bdf8; }
+.log-source.webui { color: #c084fc; }
+.log-source.desktop { color: #ffba20; }
+.log-source.agent { color: #2ddf7f; }
+.log-source.system { color: #94a3b8; }
+
+.log-icon {
+  font-size: 19px;
+}
+
+.log-entry-row.info .log-icon { color: #38bdf8; }
+.log-entry-row.warning .log-icon { color: #ffb800; }
+.log-entry-row.error .log-icon,
+.log-entry-row.critical .log-icon { color: #f25a67; }
+.log-entry-row.debug .log-icon { color: #94a3b8; }
+
+.log-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.log-context {
+  display: block;
+  margin-top: 4px;
+  color: rgba(213, 196, 171, 0.64);
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+
+.log-exception {
+  margin-top: 8px;
+  color: #ffb4ab;
+}
+
+.log-exception summary {
+  cursor: pointer;
+  color: var(--accent-strong);
+}
+
+.log-exception pre {
+  max-height: 180px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(147, 0, 10, 0.18);
+  white-space: pre-wrap;
+}
+
+.log-empty-state {
+  position: relative;
+  z-index: 1;
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.log-empty-state .material-symbols-outlined {
+  color: var(--accent-strong);
+  font-size: 42px;
+}
+
+.log-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.log-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 22px;
+}
+
+.log-stat-card .material-symbols-outlined {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.log-stat-card small {
+  display: block;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.log-stat-card strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 1.7rem;
+  font-weight: 900;
+}
+
+.log-stat-card.info .material-symbols-outlined { color: #38bdf8; }
+.log-stat-card.warning .material-symbols-outlined { color: #ffb800; }
+.log-stat-card.error .material-symbols-outlined { color: #f25a67; }
+
+@keyframes logRowEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 1280px) {
   .assignment-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -3400,6 +3737,26 @@ input[type="number"]::-webkit-outer-spin-button {
 @media (max-width: 900px) {
   .chart-layout {
     grid-template-columns: 1fr;
+  }
+
+  .log-filter-grid,
+  .log-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .log-terminal-head {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    padding: 14px 18px;
+  }
+
+  .terminal-actions {
+    justify-content: flex-start;
+  }
+
+  .log-entry-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 
   .chart-y-axis {

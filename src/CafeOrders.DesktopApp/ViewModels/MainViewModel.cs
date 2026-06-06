@@ -195,6 +195,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public MainViewModel()
     {
+        DesktopAppLogger.ConfigureRemote(EndpointOptions.ApiBaseUrl);
         _httpClient = new HttpClient { BaseAddress = new Uri(EndpointOptions.ApiBaseUrl) };
         _apiService = new ClientApiService(_httpClient);
         DesktopAppLogger.Info(
@@ -228,6 +229,7 @@ public sealed partial class MainViewModel : ObservableObject
             _deviceIdentityService.GetIpAddress(),
             CurrentSessionRemainingSeconds);
         _registrationRequest = registrationRequest;
+        DesktopAppLogger.ConfigureRemote(EndpointOptions.ApiBaseUrl, registrationRequest.MacAddress);
         DesktopAppLogger.Info(
             $"Initialize started. HostName={registrationRequest.HostName}, MacAddress={registrationRequest.MacAddress}, IpAddress={registrationRequest.IpAddress}, SessionRemaining={registrationRequest.SessionDurationSeconds}");
 
@@ -271,6 +273,7 @@ public sealed partial class MainViewModel : ObservableObject
         _deviceId = registration.DeviceId;
         _tableId = registration.TableId;
         _deviceKey = registration.DeviceKey;
+        DesktopAppLogger.ConfigureRemote(EndpointOptions.ApiBaseUrl, _deviceKey, _tableId);
         DisplayTableName = _tableId.HasValue ? $"Masa {_tableId.Value:00}" : "Masa -";
         StatusText = registration.Message ?? "Onay bekleniyor.";
         BlockingTitle = registration.IsApproved ? "Hazirlaniyor" : "Masa Onayi Bekleniyor";
@@ -285,6 +288,7 @@ public sealed partial class MainViewModel : ObservableObject
                 {
                     DesktopAppLogger.Info($"Realtime DeviceApproved received. TableId={tableId}, Message={message}");
                     _tableId = tableId;
+                    DesktopAppLogger.ConfigureRemote(EndpointOptions.ApiBaseUrl, _deviceKey, _tableId);
                     DisplayTableName = _tableId.HasValue ? $"Masa {_tableId.Value:00}" : "Masa -";
                     StatusText = message ?? "Masa onaylandi.";
                     BlockingTitle = "Sistem Hazirlaniyor";
@@ -380,6 +384,7 @@ public sealed partial class MainViewModel : ObservableObject
                 _deviceId = registration.DeviceId;
                 _tableId = registration.TableId;
                 _deviceKey = registration.DeviceKey;
+                DesktopAppLogger.ConfigureRemote(EndpointOptions.ApiBaseUrl, _deviceKey, _tableId);
                 DesktopAppLogger.Info($"Approval polling detected approved device. DeviceId={_deviceId}, TableId={_tableId}");
                 DisplayTableName = _tableId.HasValue ? $"Masa {_tableId.Value:00}" : "Masa -";
                 StatusText = registration.Message ?? "Masa onaylandi.";
@@ -1138,6 +1143,7 @@ public sealed partial class MainViewModel : ObservableObject
             _deviceId = registration.DeviceId;
             _tableId = registration.TableId;
             _deviceKey = registration.DeviceKey;
+            DesktopAppLogger.ConfigureRemote(EndpointOptions.ApiBaseUrl, _deviceKey, _tableId);
             DesktopAppLogger.Info($"Device registration refreshed. DeviceId={_deviceId}, Approved={registration.IsApproved}, TableId={_tableId}");
             DisplayTableName = _tableId.HasValue ? $"Masa {_tableId.Value:00}" : "Masa -";
 

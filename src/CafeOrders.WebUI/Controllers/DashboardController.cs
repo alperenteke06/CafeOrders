@@ -20,6 +20,7 @@ public sealed class DashboardController(
     IOrderService orderService,
     ISettingsService settingsService,
     ITableService tableService,
+    IApplicationLogService applicationLogService,
     IWebHostEnvironment webHostEnvironment,
     IHttpClientFactory httpClientFactory,
     IConfiguration configuration) : Controller
@@ -34,7 +35,8 @@ public sealed class DashboardController(
         "devices",
         "tables",
         "settings",
-        "notifications"
+        "notifications",
+        "logs"
     ];
 
     [HttpGet("/")]
@@ -43,11 +45,13 @@ public sealed class DashboardController(
         [FromQuery] string? range,
         [FromQuery] string? search,
         [FromQuery] string? category,
+        [FromQuery] string? source,
+        [FromQuery] string? level,
         [FromQuery] int? page,
         CancellationToken cancellationToken)
     {
         var activeSection = NormalizeSection(section);
-        var viewModel = await BuildViewModelAsync(activeSection, range, search, category, page, cancellationToken);
+        var viewModel = await BuildViewModelAsync(activeSection, range, search, category, source, level, page, cancellationToken);
 
         return View(viewModel);
     }
@@ -58,11 +62,13 @@ public sealed class DashboardController(
         [FromQuery] string? range,
         [FromQuery] string? search,
         [FromQuery] string? category,
+        [FromQuery] string? source,
+        [FromQuery] string? level,
         [FromQuery] int? page,
         CancellationToken cancellationToken)
     {
         var activeSection = NormalizeSection(section);
-        var viewModel = await BuildViewModelAsync(activeSection, range, search, category, page, cancellationToken);
+        var viewModel = await BuildViewModelAsync(activeSection, range, search, category, source, level, page, cancellationToken);
 
         return PartialView(GetSectionViewName(activeSection), viewModel);
     }
@@ -305,6 +311,8 @@ public sealed class DashboardController(
         string? range,
         string? search,
         string? category,
+        string? source,
+        string? level,
         int? page,
         CancellationToken cancellationToken)
     {
@@ -318,6 +326,8 @@ public sealed class DashboardController(
         var searchQuery = search?.Trim() ?? string.Empty;
         var currentPage = Math.Max(page ?? 1, 1);
         var categoryFilter = string.IsNullOrWhiteSpace(category) ? "all" : category.Trim().ToLowerInvariant();
+        var logSourceFilter = NormalizeLogSource(source);
+        var logLevelFilter = NormalizeLogLevel(level);
         var rangeStart = selectedRange switch
         {
             "1a" => DateTime.UtcNow.AddMonths(-1),
@@ -338,6 +348,12 @@ public sealed class DashboardController(
             .Take(100)
             .Select(MapNotification)
             .ToArray();
+        var applicationLogs = await applicationLogService.GetRecentAsync(
+            logSourceFilter == "all" ? null : logSourceFilter,
+            logLevelFilter == "all" ? null : logLevelFilter,
+            searchQuery,
+            300,
+            cancellationToken);
 
         return new DashboardViewModel
         {
@@ -345,6 +361,8 @@ public sealed class DashboardController(
             SelectedRange = selectedRange,
             SearchQuery = searchQuery,
             CategoryFilter = categoryFilter,
+            LogSourceFilter = logSourceFilter,
+            LogLevelFilter = logLevelFilter,
             CurrentPage = currentPage,
             Snapshot = snapshot,
             Catalog = catalog,
@@ -352,6 +370,7 @@ public sealed class DashboardController(
             Tables = tables,
             RecentOrders = recentOrders,
             Notifications = notifications,
+            ApplicationLogs = applicationLogs,
             ProductCards = catalog.Products.Select(product => new ProductCardViewModel
             {
                 Id = product.Id,
@@ -467,7 +486,28 @@ public sealed class DashboardController(
             "tables" => "_TablesSection",
             "settings" => "_SettingsSection",
             "notifications" => "_NotificationsSection",
+            "logs" => "_LogsSection",
             _ => "_DashboardSection"
+        };
+
+    private static string NormalizeLogSource(string? source)
+        => source?.Trim() switch
+        {
+            "API" => "API",
+            "WebUI" => "WebUI",
+            "DesktopApp" => "DesktopApp",
+            "AdminAudioAgent" => "AdminAudioAgent",
+            _ => "all"
+        };
+
+    private static string NormalizeLogLevel(string? level)
+        => level?.Trim() switch
+        {
+            "Info" => "Info",
+            "Warning" => "Warning",
+            "Error" => "Error",
+            "Critical" => "Critical",
+            _ => "all"
         };
 
     private static string GetVisualClass(string productName, int productId)

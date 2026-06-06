@@ -43,6 +43,10 @@
                 <span class="material-symbols-outlined nav-icon">notifications</span>
                 <span>Bildirimler</span>
             </button>
+            <button type="button" class="nav-item @(Model.ActiveSection == "logs" ? "active" : "")" data-section="logs" onclick="loadSection('logs', true)">
+                <span class="material-symbols-outlined nav-icon">terminal</span>
+                <span>Sistem Loglari</span>
+            </button>
         </nav>
 
         <div class="sidebar-footer">
@@ -653,6 +657,9 @@
                 refreshShellPresentation();
                 requestSnapshotRefresh(['dashboard', 'settings']);
             });
+            connection.on('ApplicationLogCreated', log => {
+                appendApplicationLogEntry(log);
+            });
         }
 
         function getCurrentSection() {
@@ -665,7 +672,7 @@
         }
 
         function isSearchVisibleForSection(section) {
-            return ['orders', 'products', 'categories', 'devices', 'tables', 'notifications'].includes(section);
+            return ['orders', 'products', 'categories', 'devices', 'tables', 'notifications', 'logs'].includes(section);
         }
 
         function syncSearchInputFromUrl(params, section = getCurrentSection()) {
@@ -709,7 +716,7 @@
             const url = new URL(window.location.href);
             url.searchParams.set('section', section);
 
-            const keys = ['range', 'search', 'category', 'page'];
+            const keys = ['range', 'search', 'category', 'source', 'level', 'page'];
             for (const key of keys) {
                 if (Object.prototype.hasOwnProperty.call(overrides, key)) {
                     const value = overrides[key];
@@ -731,6 +738,14 @@
 
             if ((overrides.category ?? url.searchParams.get('category') ?? 'all') === 'all') {
                 url.searchParams.delete('category');
+            }
+
+            if ((overrides.source ?? url.searchParams.get('source') ?? 'all') === 'all') {
+                url.searchParams.delete('source');
+            }
+
+            if ((overrides.level ?? url.searchParams.get('level') ?? 'all') === 'all') {
+                url.searchParams.delete('level');
             }
 
             if (String(overrides.page ?? url.searchParams.get('page') ?? '1') === '1') {
@@ -2243,6 +2258,160 @@
 
         function escapeAttribute(value) {
             return escapeHtml(value);
+        }
+
+        function getLogSourceFilter() {
+            return document.querySelector('.logs-section')?.dataset.logSource ?? new URL(window.location.href).searchParams.get('source') ?? 'all';
+        }
+
+        function getLogLevelFilter() {
+            return document.querySelector('.logs-section')?.dataset.logLevel ?? new URL(window.location.href).searchParams.get('level') ?? 'all';
+        }
+
+        function appendApplicationLogEntry(log) {
+            if (getCurrentSection() !== 'logs' || !logMatchesActiveFilters(log)) {
+                return;
+            }
+
+            const stream = document.getElementById('applicationLogStream');
+            if (!stream) {
+                return;
+            }
+
+            const empty = document.getElementById('applicationLogEmpty');
+            if (empty) {
+                empty.hidden = true;
+            }
+
+            const row = document.createElement('article');
+            const level = normalizeLogLevel(log?.level);
+            const source = log?.source ?? 'Unknown';
+            row.className = `log-entry-row ${level.css}`;
+            row.dataset.logId = log?.id ?? '';
+            row.dataset.logSource = source;
+            row.dataset.logLevel = level.name;
+            row.innerHTML = `
+                <span class="log-time">[${formatLogTime(log?.createdAtUtc)}]</span>
+                <span class="log-source ${resolveLogSourceCss(source)}">[${escapeHtml(source)}]</span>
+                <span class="material-symbols-outlined log-icon">${level.icon}</span>
+                <span class="log-message">${escapeHtml(log?.message ?? '')}${renderLogContext(log)}${renderLogException(log)}</span>`;
+
+            const firstLog = stream.querySelector('.log-entry-row');
+            if (firstLog) {
+                stream.insertBefore(row, firstLog);
+            } else {
+                stream.appendChild(row);
+            }
+
+            row.classList.add('fresh');
+            window.setTimeout(() => row.classList.remove('fresh'), 800);
+            trimLogStream(stream, 300);
+            updateApplicationLogTotal();
+        }
+
+        function logMatchesActiveFilters(log) {
+            const sourceFilter = getLogSourceFilter();
+            const levelFilter = getLogLevelFilter();
+            const search = (getSearchValue?.() ?? '').trim().toLowerCase();
+            const source = log?.source ?? '';
+            const level = normalizeLogLevel(log?.level).name;
+
+            if (sourceFilter !== 'all' && source !== sourceFilter) {
+                return false;
+            }
+
+            if (levelFilter !== 'all' && level !== levelFilter) {
+                return false;
+            }
+
+            if (!search) {
+                return true;
+            }
+
+            return [
+                log?.message,
+                log?.exception,
+                log?.category,
+                log?.machineName,
+                log?.deviceKey,
+                log?.orderId
+            ].some(value => String(value ?? '').toLowerCase().includes(search));
+        }
+
+        function renderLogContext(log) {
+            const parts = [];
+            if (log?.machineName) {
+                parts.push(`Makine: ${escapeHtml(log.machineName)}`);
+            }
+            if (log?.deviceKey) {
+                parts.push(`Cihaz: ${escapeHtml(log.deviceKey)}`);
+            }
+            if (log?.tableId) {
+                parts.push(`Masa: ${String(log.tableId).padStart(2, '0')}`);
+            }
+            if (log?.orderId) {
+                parts.push(`Siparis: #${escapeHtml(log.orderId)}`);
+            }
+
+            return parts.length ? `<small class="log-context">${parts.join(' | ')}</small>` : '';
+        }
+
+        function renderLogException(log) {
+            if (!log?.exception) {
+                return '';
+            }
+
+            return `<details class="log-exception"><summary>Detay</summary><pre>${escapeHtml(log.exception)}</pre></details>`;
+        }
+
+        function normalizeLogLevel(level) {
+            switch (level) {
+                case 'Critical':
+                    return { name: 'Critical', css: 'critical', icon: 'error' };
+                case 'Error':
+                    return { name: 'Error', css: 'error', icon: 'error' };
+                case 'Warning':
+                case 'Warn':
+                    return { name: 'Warning', css: 'warning', icon: 'warning' };
+                case 'Info':
+                case 'Information':
+                    return { name: 'Info', css: 'info', icon: 'info' };
+                default:
+                    return { name: 'Debug', css: 'debug', icon: 'terminal' };
+            }
+        }
+
+        function resolveLogSourceCss(source) {
+            switch (source) {
+                case 'API':
+                    return 'api';
+                case 'WebUI':
+                    return 'webui';
+                case 'DesktopApp':
+                    return 'desktop';
+                case 'AdminAudioAgent':
+                    return 'agent';
+                default:
+                    return 'system';
+            }
+        }
+
+        function formatLogTime(value) {
+            const date = value ? new Date(value) : new Date();
+            return date.toLocaleTimeString('tr-TR', { hour12: false });
+        }
+
+        function trimLogStream(stream, maxRows) {
+            const rows = Array.from(stream.querySelectorAll('.log-entry-row'));
+            rows.slice(maxRows).forEach(row => row.remove());
+        }
+
+        function updateApplicationLogTotal() {
+            const total = document.getElementById('applicationLogTotal');
+            const stream = document.getElementById('applicationLogStream');
+            if (total && stream) {
+                total.textContent = String(stream.querySelectorAll('.log-entry-row').length);
+            }
         }
 
         function prepareNewOrderSoundGuard() {

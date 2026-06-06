@@ -6,8 +6,12 @@ using CafeOrders.Infrastructure.Realtime;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+var applicationLogQueue = new ApplicationLogQueue();
 builder.Logging.AddLocalFile(builder.Configuration, "CafeOrders.API.log");
+builder.Logging.AddApplicationLogQueue(builder.Configuration, "API", applicationLogQueue);
 
+builder.Services.AddSingleton<IApplicationLogQueue>(applicationLogQueue);
+builder.Services.AddHostedService<ApplicationLogWriterService>();
 builder.Services.AddCafeOrdersInfrastructure(builder.Configuration);
 builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));

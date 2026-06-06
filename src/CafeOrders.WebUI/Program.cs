@@ -7,13 +7,17 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+var applicationLogQueue = new ApplicationLogQueue();
 builder.Logging.AddLocalFile(builder.Configuration, "CafeOrders.WebUI.log");
+builder.Logging.AddApplicationLogQueue(builder.Configuration, "WebUI", applicationLogQueue);
 var adminCookieDays = builder.Configuration.GetValue<int?>("SessionSettings:AdminCookieDays") ?? 3650;
 var slidingExpiration = builder.Configuration.GetValue<bool?>("SessionSettings:SlidingExpiration") ?? true;
 var adminCookieLifetime = TimeSpan.FromDays(Math.Max(adminCookieDays, 1));
 var dataProtectionApplicationName = builder.Configuration["SessionSettings:DataProtectionApplicationName"] ?? "CafeOrders.WebUI";
 var dataProtectionKeysPath = builder.Configuration["SessionSettings:DataProtectionKeysPath"];
 
+builder.Services.AddSingleton<IApplicationLogQueue>(applicationLogQueue);
+builder.Services.AddHostedService<ApplicationLogWriterService>();
 builder.Services.AddCafeOrdersInfrastructure(builder.Configuration);
 var dataProtectionBuilder = builder.Services.AddDataProtection()
     .SetApplicationName(dataProtectionApplicationName);

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 var options = AgentOptions.Load(AppContext.BaseDirectory);
 var logger = new AgentLogger(options.LogPath, AppContext.BaseDirectory);
+logger.ConfigureRemote(options.ApiBaseUrl);
 using var httpClient = new HttpClient { BaseAddress = new Uri(EnsureTrailingSlash(options.ApiBaseUrl)) };
 var audioService = new AdminAudioService(httpClient, options, new WindowsMediaAudioPlayer(options, logger), logger);
 var pendingOrders = new ConcurrentDictionary<int, CancellationTokenSource>();

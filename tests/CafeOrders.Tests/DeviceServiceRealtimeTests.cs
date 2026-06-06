@@ -1,4 +1,5 @@
 using CafeOrders.Application.Abstractions;
+using CafeOrders.Application.Contracts.Logging;
 using CafeOrders.Application.Contracts.Devices;
 using CafeOrders.Application.Contracts.Orders;
 using CafeOrders.Application.Contracts.Settings;
@@ -128,5 +129,7 @@ public sealed class DeviceServiceRealtimeTests
         public Task NotifyAppSettingsUpdatedAsync(AppSettingsDto settings, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task NotifyInfoMessageUpdatedAsync(InfoMessageDto infoMessage, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task NotifyApplicationLogCreatedAsync(ApplicationLogDto log, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

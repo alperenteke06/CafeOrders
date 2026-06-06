@@ -17,4 +17,5 @@ public static class CafeHubEvents
     public const string TablesUpdated = nameof(TablesUpdated);
     public const string AppSettingsUpdated = nameof(AppSettingsUpdated);
     public const string InfoMessageUpdated = nameof(InfoMessageUpdated);
+    public const string ApplicationLogCreated = nameof(ApplicationLogCreated);
 }

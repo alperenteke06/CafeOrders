@@ -1,4 +1,5 @@
 using CafeOrders.Application.Abstractions;
+using CafeOrders.Application.Contracts.Logging;
 using CafeOrders.Application.Contracts.Orders;
 using CafeOrders.Application.Contracts.Realtime;
 using CafeOrders.Application.Contracts.Settings;
@@ -70,4 +71,7 @@ public sealed class SignalRRealtimeNotifier(IHubContext<CafeHub> hubContext) : I
 
     public Task NotifyInfoMessageUpdatedAsync(InfoMessageDto infoMessage, CancellationToken cancellationToken = default)
         => hubContext.Clients.All.SendAsync(CafeHubEvents.InfoMessageUpdated, infoMessage, cancellationToken);
+
+    public Task NotifyApplicationLogCreatedAsync(ApplicationLogDto log, CancellationToken cancellationToken = default)
+        => hubContext.Clients.Group("admin").SendAsync(CafeHubEvents.ApplicationLogCreated, log, cancellationToken);
 }

@@ -245,6 +245,52 @@ public sealed class WebUiRegressionTests
         Assert.Contains(".topbar-search-clear", css);
     }
 
+    [Fact]
+    public void SystemLogsSection_IsReachableFilteredAndRealtime()
+    {
+        var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
+        var logsSection = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "_LogsSection.cshtml");
+        var css = ReadRepoFile("src", "CafeOrders.WebUI", "wwwroot", "css", "site.css");
+
+        Assert.Contains("data-section=\"logs\"", index);
+        Assert.Contains("Sistem Loglari", index);
+        Assert.Contains("connection.on('ApplicationLogCreated'", index);
+        Assert.Contains("appendApplicationLogEntry(log)", index);
+        Assert.Contains("logMatchesActiveFilters", index);
+        Assert.Contains("getLogSourceFilter", index);
+        Assert.Contains("getLogLevelFilter", index);
+        Assert.Contains("applicationLogStream", logsSection);
+        Assert.Contains("log-filter-chip", logsSection);
+        Assert.Contains("loadSection('logs'", logsSection);
+        Assert.Contains(".log-terminal-shell", css);
+        Assert.Contains(".terminal-scanline", css);
+        Assert.Contains(".log-entry-row", css);
+    }
+
+    [Fact]
+    public void ApplicationLogs_AreStoredFromServerAndClientSources()
+    {
+        var apiProgram = ReadRepoFile("src", "CafeOrders.API", "Program.cs");
+        var webProgram = ReadRepoFile("src", "CafeOrders.WebUI", "Program.cs");
+        var logsController = ReadRepoFile("src", "CafeOrders.API", "Controllers", "LogsController.cs");
+        var desktopLogger = ReadRepoFile("src", "CafeOrders.DesktopApp", "Services", "DesktopAppLogger.cs");
+        var agentLogger = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "AgentLogger.cs");
+        var migration = ReadRepoFile("src", "CafeOrders.Infrastructure", "Persistence", "Migrations", "20260606120000_AddApplicationLogEntries.cs");
+
+        Assert.Contains("AddApplicationLogQueue(builder.Configuration, \"API\"", apiProgram);
+        Assert.Contains("AddApplicationLogQueue(builder.Configuration, \"WebUI\"", webProgram);
+        Assert.Contains("[Route(\"api/v1/logs\")]", logsController);
+        Assert.Contains("[HttpPost(\"client\")]", logsController);
+        Assert.Contains("ConfigureRemote", desktopLogger);
+        Assert.Contains("api/v1/logs/client", desktopLogger);
+        Assert.Contains("Channel.CreateBounded<ApplicationLogCreateRequest>", desktopLogger);
+        Assert.Contains("ConfigureRemote", agentLogger);
+        Assert.Contains("api/v1/logs/client", agentLogger);
+        Assert.Contains("OrderId=", agentLogger);
+        Assert.Contains("CreateTable", migration);
+        Assert.Contains("ApplicationLogEntries", migration);
+    }
+
     private static string ReadRepoFile(params string[] segments)
     {
         var root = FindRepoRoot();

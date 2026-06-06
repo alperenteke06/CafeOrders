@@ -1,4 +1,5 @@
 using CafeOrders.Application.Contracts.Orders;
+using CafeOrders.Application.Contracts.Logging;
 using CafeOrders.Application.Contracts.Settings;
 using CafeOrders.Domain.Entities;
 
@@ -18,4 +19,5 @@ public interface IRealtimeNotifier
     Task NotifyTablesUpdatedAsync(CancellationToken cancellationToken = default);
     Task NotifyAppSettingsUpdatedAsync(AppSettingsDto settings, CancellationToken cancellationToken = default);
     Task NotifyInfoMessageUpdatedAsync(InfoMessageDto infoMessage, CancellationToken cancellationToken = default);
+    Task NotifyApplicationLogCreatedAsync(ApplicationLogDto log, CancellationToken cancellationToken = default);
 }
