@@ -10,7 +10,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace CafeOrders.WebUI.Controllers;
 
 [AllowAnonymous]
-public sealed class AccountController(IAdminAuthService adminAuthService, IConfiguration configuration) : Controller
+public sealed class AccountController(
+    IAdminAuthService adminAuthService,
+    IConfiguration configuration,
+    ILogger<AccountController> logger) : Controller
 {
     [HttpGet("/account/login")]
     public IActionResult Login([FromQuery] string? returnUrl = null)
@@ -30,12 +33,14 @@ public sealed class AccountController(IAdminAuthService adminAuthService, IConfi
     {
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Admin login validation failed. UserName={UserName}, RemoteIp={RemoteIp}", model.UserName, ResolveRemoteIp());
             return View(model);
         }
 
         var user = await adminAuthService.ValidateCredentialsAsync(new AdminLoginRequest(model.UserName, model.Password), cancellationToken);
         if (user is null)
         {
+            logger.LogWarning("Admin login failed. UserName={UserName}, RemoteIp={RemoteIp}", model.UserName, ResolveRemoteIp());
             model.ErrorMessage = "Kullanici adi veya sifre hatali.";
             return View(model);
         }
@@ -62,6 +67,7 @@ public sealed class AccountController(IAdminAuthService adminAuthService, IConfi
                 ExpiresUtc = DateTimeOffset.UtcNow.Add(cookieLifetime)
             });
         await adminAuthService.RecordLoginAsync(user.Id, cancellationToken);
+        logger.LogInformation("Admin login succeeded. UserId={UserId}, UserName={UserName}, DisplayName={DisplayName}, RemoteIp={RemoteIp}", user.Id, user.UserName, user.DisplayName, ResolveRemoteIp());
 
         if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
         {
@@ -76,7 +82,11 @@ public sealed class AccountController(IAdminAuthService adminAuthService, IConfi
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
+        logger.LogInformation("Admin logout. User={User}, RemoteIp={RemoteIp}", User.Identity?.Name ?? "(unknown)", ResolveRemoteIp());
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return RedirectToAction(nameof(Login));
     }
+
+    private string ResolveRemoteIp()
+        => HttpContext.Connection.RemoteIpAddress?.ToString() ?? "(unknown)";
 }

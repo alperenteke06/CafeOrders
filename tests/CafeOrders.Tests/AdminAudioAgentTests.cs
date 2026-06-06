@@ -166,9 +166,11 @@ public sealed class AdminAudioAgentTests
         Assert.Equal(Path.Combine(directory, "AdminAudioAgent.log"), options.LogPath);
         Assert.False(options.UseSystemBeepFallback);
         Assert.Contains("mciSendString", player);
-        Assert.Contains("GetDefaultAudioEndpoint", player);
-        Assert.Contains("SetMute(false", player);
-        Assert.Contains("PC sesi kapaliydi", player);
+        Assert.Contains("waveOutGetVolume", player);
+        Assert.Contains("waveOutSetVolume", player);
+        Assert.Contains("Windows wave output volume", player);
+        Assert.DoesNotContain("IAudioEndpointVolume", player);
+        Assert.DoesNotContain("GetDefaultAudioEndpoint", player);
         Assert.Contains("OrderId=", player);
         Assert.DoesNotContain("Console.Beep", player);
     }

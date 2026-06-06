@@ -29,6 +29,12 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+var systemLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CafeOrders.API.System");
+systemLogger.LogInformation(
+    "CafeOrders API starting. Environment={Environment}, Urls={Urls}, ContentRoot={ContentRoot}",
+    app.Environment.EnvironmentName,
+    builder.Configuration["Urls"] ?? "(default)",
+    app.Environment.ContentRootPath);
 
 using (var scope = app.Services.CreateScope())
 {
@@ -36,6 +42,7 @@ using (var scope = app.Services.CreateScope())
     await dbContext.Database.MigrateAsync();
     await DbSeeder.SeedAsync(dbContext);
 }
+systemLogger.LogInformation("CafeOrders API database migration and seed completed.");
 
 if (app.Environment.IsDevelopment())
 {
@@ -46,6 +53,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("Lan");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseCafeOrdersHttpActivityLogging("API");
 app.MapControllers();
 app.MapHub<CafeHub>("/hubs/cafe");
 

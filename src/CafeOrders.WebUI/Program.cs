@@ -47,6 +47,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+var systemLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CafeOrders.WebUI.System");
+systemLogger.LogInformation(
+    "CafeOrders WebUI starting. Environment={Environment}, Urls={Urls}, ContentRoot={ContentRoot}, ApiBaseUrl={ApiBaseUrl}",
+    app.Environment.EnvironmentName,
+    builder.Configuration["Urls"] ?? "(default)",
+    app.Environment.ContentRootPath,
+    builder.Configuration["ApiBaseUrl"] ?? "(auto)");
 
 using (var scope = app.Services.CreateScope())
 {
@@ -54,6 +61,7 @@ using (var scope = app.Services.CreateScope())
     await dbContext.Database.MigrateAsync();
     await DbSeeder.SeedAsync(dbContext);
 }
+systemLogger.LogInformation("CafeOrders WebUI database migration and seed completed.");
 
 if (!app.Environment.IsDevelopment())
 {
@@ -65,6 +73,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseCafeOrdersHttpActivityLogging("WebUI");
 app.MapHub<CafeHub>("/hubs/cafe");
 app.MapControllerRoute(
     name: "default",

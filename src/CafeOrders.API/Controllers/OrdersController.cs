@@ -6,7 +6,7 @@ namespace CafeOrders.API.Controllers;
 
 [ApiController]
 [Route("api/v1/orders")]
-public sealed class OrdersController(IOrderService orderService) : ControllerBase
+public sealed class OrdersController(IOrderService orderService, ILogger<OrdersController> logger) : ControllerBase
 {
     [HttpGet]
     public Task<IReadOnlyCollection<OrderDto>> Get([FromQuery] bool soundPendingOnly, CancellationToken cancellationToken)
@@ -24,10 +24,24 @@ public sealed class OrdersController(IOrderService orderService) : ControllerBas
     {
         try
         {
-            return Ok(await orderService.CreateAsync(request, cancellationToken));
+            var order = await orderService.CreateAsync(request, cancellationToken);
+            logger.LogInformation(
+                "Order created. OrderId={OrderId}, DeviceId={DeviceId}, TableId={TableId}, LineCount={LineCount}, TotalPrice={TotalPrice}",
+                order.Id,
+                request.DeviceId,
+                request.TableId,
+                request.Lines.Count,
+                order.TotalPrice);
+            return Ok(order);
         }
         catch (InvalidOperationException exception)
         {
+            logger.LogWarning(
+                exception,
+                "Order create rejected. DeviceId={DeviceId}, TableId={TableId}, LineCount={LineCount}",
+                request.DeviceId,
+                request.TableId,
+                request.Lines.Count);
             return BadRequest(new { message = exception.Message });
         }
     }
@@ -36,6 +50,10 @@ public sealed class OrdersController(IOrderService orderService) : ControllerBas
     public async Task<IActionResult> Accept(int orderId, CancellationToken cancellationToken)
     {
         var result = await orderService.AcceptAsync(orderId, cancellationToken);
+        if (result is not null)
+        {
+            logger.LogInformation("Order accepted. OrderId={OrderId}, Status={Status}, TotalPrice={TotalPrice}", result.Id, result.Status, result.TotalPrice);
+        }
         return result is null ? NotFound() : Ok(result);
     }
 
@@ -43,6 +61,10 @@ public sealed class OrdersController(IOrderService orderService) : ControllerBas
     public async Task<IActionResult> Reject(int orderId, CancellationToken cancellationToken)
     {
         var result = await orderService.RejectAsync(orderId, cancellationToken);
+        if (result is not null)
+        {
+            logger.LogInformation("Order rejected. OrderId={OrderId}, Status={Status}, TotalPrice={TotalPrice}", result.Id, result.Status, result.TotalPrice);
+        }
         return result is null ? NotFound() : Ok(result);
     }
 
@@ -50,6 +72,10 @@ public sealed class OrdersController(IOrderService orderService) : ControllerBas
     public async Task<IActionResult> Complete(int orderId, CancellationToken cancellationToken)
     {
         var result = await orderService.CompleteAsync(orderId, cancellationToken);
+        if (result is not null)
+        {
+            logger.LogInformation("Order completed. OrderId={OrderId}, Status={Status}, TotalPrice={TotalPrice}", result.Id, result.Status, result.TotalPrice);
+        }
         return result is null ? NotFound() : Ok(result);
     }
 
@@ -57,6 +83,10 @@ public sealed class OrdersController(IOrderService orderService) : ControllerBas
     public async Task<IActionResult> MarkSoundPlayed(int orderId, CancellationToken cancellationToken)
     {
         var result = await orderService.MarkSoundPlayedAsync(orderId, cancellationToken);
+        if (result is not null)
+        {
+            logger.LogInformation("Order sound marked as played. OrderId={OrderId}, SoundPlayedAt={SoundPlayedAt}", result.Id, result.SoundPlayedAt);
+        }
         return result is null ? NotFound() : Ok(result);
     }
 }

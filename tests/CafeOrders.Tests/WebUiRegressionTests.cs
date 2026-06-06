@@ -278,14 +278,22 @@ public sealed class WebUiRegressionTests
         var apiProgram = ReadRepoFile("src", "CafeOrders.API", "Program.cs");
         var webProgram = ReadRepoFile("src", "CafeOrders.WebUI", "Program.cs");
         var logsController = ReadRepoFile("src", "CafeOrders.API", "Controllers", "LogsController.cs");
+        var httpActivityLogging = ReadRepoFile("src", "CafeOrders.Infrastructure", "Logging", "HttpActivityLoggingExtensions.cs");
         var desktopLogger = ReadRepoFile("src", "CafeOrders.DesktopApp", "Services", "DesktopAppLogger.cs");
         var agentLogger = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "AgentLogger.cs");
         var migration = ReadRepoFile("src", "CafeOrders.Infrastructure", "Persistence", "Migrations", "20260606120000_AddApplicationLogEntries.cs");
 
         Assert.Contains("AddApplicationLogQueue(builder.Configuration, \"API\"", apiProgram);
         Assert.Contains("AddApplicationLogQueue(builder.Configuration, \"WebUI\"", webProgram);
+        Assert.Contains("UseCafeOrdersHttpActivityLogging(\"API\")", apiProgram);
+        Assert.Contains("UseCafeOrdersHttpActivityLogging(\"WebUI\")", webProgram);
+        Assert.Contains("CafeOrders API starting", apiProgram);
+        Assert.Contains("CafeOrders WebUI starting", webProgram);
         Assert.Contains("[Route(\"api/v1/logs\")]", logsController);
         Assert.Contains("[HttpPost(\"client\")]", logsController);
+        Assert.Contains("CafeOrders.{source}.HttpActivity", httpActivityLogging);
+        Assert.Contains("/api/v1/devices/heartbeat", httpActivityLogging);
+        Assert.Contains("/api/v1/logs/client", httpActivityLogging);
         Assert.Contains("ConfigureRemote", desktopLogger);
         Assert.Contains("api/v1/logs/client", desktopLogger);
         Assert.Contains("Channel.CreateBounded<ApplicationLogCreateRequest>", desktopLogger);
@@ -294,6 +302,31 @@ public sealed class WebUiRegressionTests
         Assert.Contains("OrderId=", agentLogger);
         Assert.Contains("CreateTable", migration);
         Assert.Contains("ApplicationLogEntries", migration);
+    }
+
+    [Fact]
+    public void ApiAndWebUi_LogImportantUserAndSystemActivities()
+    {
+        var accountController = ReadRepoFile("src", "CafeOrders.WebUI", "Controllers", "AccountController.cs");
+        var dashboardController = ReadRepoFile("src", "CafeOrders.WebUI", "Controllers", "DashboardController.cs");
+        var ordersController = ReadRepoFile("src", "CafeOrders.API", "Controllers", "OrdersController.cs");
+        var devicesController = ReadRepoFile("src", "CafeOrders.API", "Controllers", "DevicesController.cs");
+        var catalogController = ReadRepoFile("src", "CafeOrders.API", "Controllers", "CatalogController.cs");
+        var settingsController = ReadRepoFile("src", "CafeOrders.API", "Controllers", "SettingsController.cs");
+
+        Assert.Contains("Admin login succeeded", accountController);
+        Assert.Contains("Admin login failed", accountController);
+        Assert.Contains("Admin logout", accountController);
+        Assert.Contains("Admin action requested", dashboardController);
+        Assert.Contains("ProductUpsert", dashboardController);
+        Assert.Contains("OrderAccept", dashboardController);
+        Assert.Contains("Admin product image uploaded", dashboardController);
+        Assert.Contains("Order created", ordersController);
+        Assert.Contains("Order accepted", ordersController);
+        Assert.Contains("Device registration received", devicesController);
+        Assert.Contains("Device approved", devicesController);
+        Assert.Contains("Product upserted", catalogController);
+        Assert.Contains("Application settings updated", settingsController);
     }
 
     private static string ReadRepoFile(params string[] segments)

@@ -23,7 +23,8 @@ public sealed class DashboardController(
     IApplicationLogService applicationLogService,
     IWebHostEnvironment webHostEnvironment,
     IHttpClientFactory httpClientFactory,
-    IConfiguration configuration) : Controller
+    IConfiguration configuration,
+    ILogger<DashboardController> logger) : Controller
 {
     private static readonly JsonSerializerOptions ApiJsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly HashSet<string> ValidSections =
@@ -110,6 +111,7 @@ public sealed class DashboardController(
     [HttpPost("/dashboard/devices/approve")]
     public async Task<IActionResult> ApproveDevice([FromBody] ApproveDeviceRequest request, CancellationToken cancellationToken)
     {
+        LogAdminAction("DeviceApprove", "DeviceId={DeviceId}, TableId={TableId}", request.DeviceId, request.TableId);
         var response = await CreateApiClient().PostAsJsonAsync("/api/v1/devices/approve", request, cancellationToken);
         return await ToApiActionResultAsync(response, cancellationToken);
     }
@@ -117,6 +119,7 @@ public sealed class DashboardController(
     [HttpPost("/dashboard/orders/{orderId:int}/accept")]
     public async Task<IActionResult> AcceptOrder(int orderId, CancellationToken cancellationToken)
     {
+        LogAdminAction("OrderAccept", "OrderId={OrderId}", orderId);
         var response = await CreateApiClient().PostAsync($"/api/v1/orders/{orderId}/accept", content: null, cancellationToken);
         return await ToApiActionResultAsync(response, cancellationToken);
     }
@@ -124,6 +127,7 @@ public sealed class DashboardController(
     [HttpPost("/dashboard/orders/{orderId:int}/reject")]
     public async Task<IActionResult> RejectOrder(int orderId, CancellationToken cancellationToken)
     {
+        LogAdminAction("OrderReject", "OrderId={OrderId}", orderId);
         var response = await CreateApiClient().PostAsync($"/api/v1/orders/{orderId}/reject", content: null, cancellationToken);
         return await ToApiActionResultAsync(response, cancellationToken);
     }
@@ -131,6 +135,7 @@ public sealed class DashboardController(
     [HttpPost("/dashboard/orders/{orderId:int}/complete")]
     public async Task<IActionResult> CompleteOrder(int orderId, CancellationToken cancellationToken)
     {
+        LogAdminAction("OrderComplete", "OrderId={OrderId}", orderId);
         var response = await CreateApiClient().PostAsync($"/api/v1/orders/{orderId}/complete", content: null, cancellationToken);
         return await ToApiActionResultAsync(response, cancellationToken);
     }
@@ -142,6 +147,14 @@ public sealed class DashboardController(
     [HttpPut("/dashboard/settings/app")]
     public async Task<IActionResult> UpdateAppSettings([FromBody] UpdateAppSettingsRequest request, CancellationToken cancellationToken)
     {
+        LogAdminAction(
+            "AppSettingsUpdate",
+            "CafeName={CafeName}, SoundEnabled={SoundEnabled}, QuickApprove={QuickApprove}, LiveAnnouncements={LiveAnnouncements}, MinimumOrderAmount={MinimumOrderAmount}",
+            request.CafeName,
+            request.EnableNewOrderSound,
+            request.EnableQuickApproveMode,
+            request.EnableLiveAnnouncements,
+            request.MinimumOrderAmount);
         var response = await CreateApiClient().PutAsJsonAsync("/api/v1/settings/app", request, cancellationToken);
         return await ToApiActionResultAsync(response, cancellationToken);
     }
@@ -152,16 +165,19 @@ public sealed class DashboardController(
     {
         if (file is null || file.Length == 0)
         {
+            logger.LogWarning("Admin sound upload rejected. Reason=EmptyFile, Admin={Admin}, RemoteIp={RemoteIp}", ResolveAdmin(), ResolveRemoteIp());
             return BadRequest(new { message = "Ses dosyasi secilmedi." });
         }
 
         if (file.Length > UploadValidation.MaxSoundBytes)
         {
+            logger.LogWarning("Admin sound upload rejected. Reason=TooLarge, FileName={FileName}, Length={Length}, Admin={Admin}, RemoteIp={RemoteIp}", file.FileName, file.Length, ResolveAdmin(), ResolveRemoteIp());
             return BadRequest(new { message = "Ses dosyasi 10MB sinirini asmamali." });
         }
 
         if (!UploadValidation.IsAllowedSound(file.FileName, file.ContentType))
         {
+            logger.LogWarning("Admin sound upload rejected. Reason=InvalidType, FileName={FileName}, ContentType={ContentType}, Admin={Admin}, RemoteIp={RemoteIp}", file.FileName, file.ContentType, ResolveAdmin(), ResolveRemoteIp());
             return BadRequest(new { message = "Yalnizca MP3, WAV, OGG, M4A, AAC, FLAC veya WEBM ses dosyalari yuklenebilir." });
         }
 
@@ -176,6 +192,7 @@ public sealed class DashboardController(
         {
             await file.CopyToAsync(stream, cancellationToken);
         }
+        logger.LogInformation("Admin sound uploaded. FileName={FileName}, StoredName={StoredName}, Length={Length}, Admin={Admin}, RemoteIp={RemoteIp}", file.FileName, fileName, file.Length, ResolveAdmin(), ResolveRemoteIp());
 
         return Json(new
         {
@@ -190,16 +207,19 @@ public sealed class DashboardController(
     {
         if (file is null || file.Length == 0)
         {
+            logger.LogWarning("Admin product image upload rejected. Reason=EmptyFile, Admin={Admin}, RemoteIp={RemoteIp}", ResolveAdmin(), ResolveRemoteIp());
             return BadRequest(new { message = "Gorsel dosyasi secilmedi." });
         }
 
         if (file.Length > UploadValidation.MaxProductImageBytes)
         {
+            logger.LogWarning("Admin product image upload rejected. Reason=TooLarge, FileName={FileName}, Length={Length}, Admin={Admin}, RemoteIp={RemoteIp}", file.FileName, file.Length, ResolveAdmin(), ResolveRemoteIp());
             return BadRequest(new { message = "Gorsel dosyasi 20MB sinirini asmamali." });
         }
 
         if (!UploadValidation.IsAllowedImage(file.FileName, file.ContentType))
         {
+            logger.LogWarning("Admin product image upload rejected. Reason=InvalidType, FileName={FileName}, ContentType={ContentType}, Admin={Admin}, RemoteIp={RemoteIp}", file.FileName, file.ContentType, ResolveAdmin(), ResolveRemoteIp());
             return BadRequest(new { message = "Yalnizca JPG, PNG, WEBP veya GIF gorselleri yuklenebilir." });
         }
 
@@ -214,6 +234,7 @@ public sealed class DashboardController(
         {
             await file.CopyToAsync(stream, cancellationToken);
         }
+        logger.LogInformation("Admin product image uploaded. FileName={FileName}, StoredName={StoredName}, Length={Length}, Admin={Admin}, RemoteIp={RemoteIp}", file.FileName, fileName, file.Length, ResolveAdmin(), ResolveRemoteIp());
 
         return Json(new
         {
@@ -225,6 +246,7 @@ public sealed class DashboardController(
     [HttpPost("/dashboard/products")]
     public async Task<IActionResult> UpsertProduct([FromBody] UpsertProductRequest request, CancellationToken cancellationToken)
     {
+        LogAdminAction("ProductUpsert", "ProductId={ProductId}, Name={Name}, CategoryId={CategoryId}, Price={Price}, IsActive={IsActive}", request.Id, request.Name, request.CategoryId, request.Price, request.IsActive);
         var response = await CreateApiClient().PostAsJsonAsync("/api/v1/catalog/products", request, cancellationToken);
         return await ToApiActionResultAsync(response, cancellationToken);
     }
@@ -234,8 +256,10 @@ public sealed class DashboardController(
     {
         if (request.Items is null || request.Items.Count == 0)
         {
+            logger.LogWarning("Admin bulk price update rejected. Reason=EmptyItems, Admin={Admin}, RemoteIp={RemoteIp}", ResolveAdmin(), ResolveRemoteIp());
             return BadRequest(new { message = "Fiyat guncellemesi icin en az bir urun secilmelidir." });
         }
+        LogAdminAction("BulkPriceUpdate", "ItemCount={ItemCount}", request.Items.Count);
 
         using var apiClient = CreateApiClient();
         foreach (var item in request.Items)
@@ -261,7 +285,10 @@ public sealed class DashboardController(
 
     [HttpDelete("/dashboard/products/{productId:int}")]
     public async Task<IActionResult> DeleteProduct(int productId, CancellationToken cancellationToken)
-        => await ToApiActionResultAsync(await CreateApiClient().DeleteAsync($"/api/v1/catalog/products/{productId}", cancellationToken), cancellationToken);
+    {
+        LogAdminAction("ProductDelete", "ProductId={ProductId}", productId);
+        return await ToApiActionResultAsync(await CreateApiClient().DeleteAsync($"/api/v1/catalog/products/{productId}", cancellationToken), cancellationToken);
+    }
 
     [HttpGet("/dashboard/catalog/categories")]
     public async Task<IActionResult> GetProductCategoryOptions(CancellationToken cancellationToken)
@@ -280,17 +307,22 @@ public sealed class DashboardController(
     [HttpPost("/dashboard/categories")]
     public async Task<IActionResult> UpsertCategory([FromBody] UpsertCategoryRequest request, CancellationToken cancellationToken)
     {
+        LogAdminAction("CategoryUpsert", "CategoryId={CategoryId}, Name={Name}, SortOrder={SortOrder}, IsActive={IsActive}", request.Id, request.Name, request.SortOrder, request.IsActive);
         var response = await CreateApiClient().PostAsJsonAsync("/api/v1/catalog/categories", request, cancellationToken);
         return await ToApiActionResultAsync(response, cancellationToken);
     }
 
     [HttpDelete("/dashboard/categories/{categoryId:int}")]
     public async Task<IActionResult> DeleteCategory(int categoryId, CancellationToken cancellationToken)
-        => await ToApiActionResultAsync(await CreateApiClient().DeleteAsync($"/api/v1/catalog/categories/{categoryId}", cancellationToken), cancellationToken);
+    {
+        LogAdminAction("CategoryDelete", "CategoryId={CategoryId}", categoryId);
+        return await ToApiActionResultAsync(await CreateApiClient().DeleteAsync($"/api/v1/catalog/categories/{categoryId}", cancellationToken), cancellationToken);
+    }
 
     [HttpPost("/dashboard/tables")]
     public async Task<IActionResult> UpsertTable([FromBody] UpsertTableRequest request, CancellationToken cancellationToken)
     {
+        LogAdminAction("TableUpsert", "TableId={TableId}, Name={Name}, IsActive={IsActive}", request.Id, request.Name, request.IsActive);
         var response = await CreateApiClient().PostAsJsonAsync("/api/v1/tables", request, cancellationToken);
         return await ToApiActionResultAsync(response, cancellationToken);
     }
@@ -298,13 +330,17 @@ public sealed class DashboardController(
     [HttpPost("/dashboard/devices/assign-table")]
     public async Task<IActionResult> AssignDeviceTable([FromBody] AssignDeviceTableRequest request, CancellationToken cancellationToken)
     {
+        LogAdminAction("DeviceAssignTable", "DeviceId={DeviceId}, TableId={TableId}", request.DeviceId, request.TableId);
         var response = await CreateApiClient().PostAsJsonAsync("/api/v1/devices/assign-table", request, cancellationToken);
         return await ToApiActionResultAsync(response, cancellationToken);
     }
 
     [HttpDelete("/dashboard/devices/{deviceId:guid}")]
     public async Task<IActionResult> RejectDevice(Guid deviceId, CancellationToken cancellationToken)
-        => await ToApiActionResultAsync(await CreateApiClient().DeleteAsync($"/api/v1/devices/{deviceId}", cancellationToken), cancellationToken);
+    {
+        LogAdminAction("DeviceReject", "DeviceId={DeviceId}", deviceId);
+        return await ToApiActionResultAsync(await CreateApiClient().DeleteAsync($"/api/v1/devices/{deviceId}", cancellationToken), cancellationToken);
+    }
 
     private async Task<DashboardViewModel> BuildViewModelAsync(
         string activeSection,
@@ -387,7 +423,29 @@ public sealed class DashboardController(
     }
 
     private async Task<IActionResult> UpdateInfoMessageCore(UpdateInfoMessageRequest request, CancellationToken cancellationToken)
-        => await ToApiActionResultAsync(await CreateApiClient().PutAsJsonAsync("/api/v1/settings/info-message", request, cancellationToken), cancellationToken);
+    {
+        LogAdminAction("InfoMessageUpdate", "Type={Type}, IconKey={IconKey}, IsActive={IsActive}, MessageLength={MessageLength}", request.Type, request.IconKey, request.IsActive, request.Message?.Length ?? 0);
+        return await ToApiActionResultAsync(await CreateApiClient().PutAsJsonAsync("/api/v1/settings/info-message", request, cancellationToken), cancellationToken);
+    }
+
+    private void LogAdminAction(string action, string detailTemplate, params object?[] detailArgs)
+    {
+        var args = new object?[detailArgs.Length + 3];
+        args[0] = action;
+        args[1] = ResolveAdmin();
+        args[2] = ResolveRemoteIp();
+        Array.Copy(detailArgs, 0, args, 3, detailArgs.Length);
+
+        logger.LogInformation(
+            "Admin action requested. Action={Action}, Admin={Admin}, RemoteIp={RemoteIp}, " + detailTemplate,
+            args);
+    }
+
+    private string ResolveAdmin()
+        => User.Identity?.Name ?? "(unknown)";
+
+    private string ResolveRemoteIp()
+        => HttpContext.Connection.RemoteIpAddress?.ToString() ?? "(unknown)";
 
     private string ResolveWebRootPath()
     {
