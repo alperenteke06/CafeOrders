@@ -50,13 +50,18 @@ public sealed class WebUiRegressionTests
         var apiSettings = ReadRepoFile("src", "CafeOrders.API", "appsettings.json");
         var webSettings = ReadRepoFile("src", "CafeOrders.WebUI", "appsettings.json");
         var dependencyInjection = ReadRepoFile("src", "CafeOrders.Infrastructure", "DependencyInjection.cs");
+        var dbContextFactory = ReadRepoFile("src", "CafeOrders.Infrastructure", "Persistence", "CafeOrdersDbContextFactory.cs");
 
         Assert.Contains("Server=.\\\\SQLEXPRESS", apiSettings);
         Assert.Contains("Server=.\\\\SQLEXPRESS", webSettings);
         Assert.Contains("Server=.\\\\SQLEXPRESS", dependencyInjection);
+        Assert.Contains("BuildConfiguration", dbContextFactory);
+        Assert.Contains("GetConnectionString(\"CafeOrders\")", dbContextFactory);
+        Assert.Contains("AddEnvironmentVariables", dbContextFactory);
         Assert.DoesNotContain("Server=192.168.11.24\\\\SQLEXPRESS", apiSettings);
         Assert.DoesNotContain("Server=192.168.11.24\\\\SQLEXPRESS", webSettings);
         Assert.DoesNotContain("Server=192.168.11.24\\\\SQLEXPRESS", dependencyInjection);
+        Assert.DoesNotContain("Server=192.168.11.24\\\\SQLEXPRESS", dbContextFactory);
     }
 
     [Fact]
