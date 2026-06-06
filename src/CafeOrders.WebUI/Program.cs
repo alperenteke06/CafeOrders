@@ -1,4 +1,5 @@
 using CafeOrders.Infrastructure;
+using CafeOrders.Infrastructure.Logging;
 using CafeOrders.Infrastructure.Persistence;
 using CafeOrders.Infrastructure.Realtime;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.AddLocalFile(builder.Configuration, "CafeOrders.WebUI.log");
 var adminCookieDays = builder.Configuration.GetValue<int?>("SessionSettings:AdminCookieDays") ?? 3650;
 var slidingExpiration = builder.Configuration.GetValue<bool?>("SessionSettings:SlidingExpiration") ?? true;
 var adminCookieLifetime = TimeSpan.FromDays(Math.Max(adminCookieDays, 1));

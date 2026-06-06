@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 var options = AgentOptions.Load(AppContext.BaseDirectory);
 var logger = new AgentLogger(options.LogPath, AppContext.BaseDirectory);
 using var httpClient = new HttpClient { BaseAddress = new Uri(EnsureTrailingSlash(options.ApiBaseUrl)) };
-var audioService = new AdminAudioService(httpClient, options, new WindowsMediaAudioPlayer(options), logger);
+var audioService = new AdminAudioService(httpClient, options, new WindowsMediaAudioPlayer(options, logger), logger);
 var pendingOrders = new ConcurrentDictionary<int, CancellationTokenSource>();
 var queuedOrderIds = new ConcurrentDictionary<int, byte>();
 var webPlaybackStartedAt = new ConcurrentDictionary<int, DateTime>();
@@ -48,25 +48,29 @@ hubConnection.On<OrderDto>(CafeHubEvents.OrderCreated, order =>
         logger);
 });
 
-hubConnection.On<int>(CafeHubEvents.OrderSoundPlaybackStarted, orderId =>
+hubConnection.On<int, string>(CafeHubEvents.OrderSoundPlaybackStarted, (orderId, playedBy) =>
 {
     webPlaybackStartedAt[orderId] = DateTime.UtcNow;
     if (pendingOrders.TryRemove(orderId, out var pending))
     {
-        logger.Info($"Order sound playback started by WebUI. Fallback delayed. OrderId={orderId}");
+        logger.Info($"Order sound playback started by another channel. OrderId={orderId}, PlayedBy={playedBy}");
         pending.Cancel();
     }
 
     queuedOrderIds.TryRemove(orderId, out _);
 });
 
-hubConnection.On<int>(CafeHubEvents.OrderSoundAcknowledged, orderId =>
+hubConnection.On<int, string>(CafeHubEvents.OrderSoundAcknowledged, (orderId, playedBy) =>
 {
     webPlaybackStartedAt.TryRemove(orderId, out _);
     if (pendingOrders.TryRemove(orderId, out var pending))
     {
-        logger.Info($"Order sound acknowledged. OrderId={orderId}");
+        logger.Info($"Order sound acknowledged. OrderId={orderId}, PlayedBy={playedBy}");
         pending.Cancel();
+    }
+    else
+    {
+        logger.Info($"Order sound acknowledged. OrderId={orderId}, PlayedBy={playedBy}");
     }
 
     queuedOrderIds.TryRemove(orderId, out _);
@@ -102,34 +106,37 @@ static async Task ProcessPlaybackQueueAsync(
 
         try
         {
-            logger.Info($"Fallback audio playback started. OrderId={orderId}");
-            await ReportFallbackPlaybackStartedAsync(hubConnection, orderId, logger, CancellationToken.None);
-            var played = await audioService.PlayNewOrderSoundAsync(pending.Token);
+            logger.Info($"Order sound playback owner=AdminAudioAgent starting. OrderId={orderId}");
+            await ReportAgentPlaybackStartedAsync(hubConnection, orderId, logger, CancellationToken.None);
+            var played = await audioService.PlayNewOrderSoundAsync(orderId, pending.Token);
             if (played)
             {
+                logger.Info($"Order sound playback owner=AdminAudioAgent completed. OrderId={orderId}");
                 await MarkOrderSoundPlayedAsync(audioService.HttpClient, orderId, logger, CancellationToken.None);
                 if (hubConnection.State == HubConnectionState.Connected)
                 {
-                    await hubConnection.InvokeAsync(CafeHubMethods.AcknowledgeOrderSound, orderId, CancellationToken.None);
-                    logger.Info($"Fallback audio playback acknowledged. OrderId={orderId}");
+                    await hubConnection.InvokeAsync(CafeHubMethods.AcknowledgeOrderSound, orderId, "AdminAudioAgent", CancellationToken.None);
+                    logger.Info($"Order sound playback owner=AdminAudioAgent acknowledged. OrderId={orderId}");
                 }
                 else
                 {
-                    logger.Warning($"Fallback audio playback persisted without hub acknowledgement. HubState={hubConnection.State}, OrderId={orderId}");
+                    logger.Warning($"Order sound playback owner=AdminAudioAgent persisted without hub acknowledgement. HubState={hubConnection.State}, OrderId={orderId}");
                 }
             }
             else
             {
-                logger.Warning($"Fallback audio playback could not be acknowledged. Played={played}, HubState={hubConnection.State}, OrderId={orderId}");
+                logger.Warning($"Order sound playback owner=AdminAudioAgent failed. WebUI fallback will be requested. HubState={hubConnection.State}, OrderId={orderId}");
+                await ReportAgentPlaybackFailedAsync(hubConnection, orderId, "AdminAudioAgent playback failed", logger, CancellationToken.None);
             }
         }
         catch (OperationCanceledException)
         {
-            logger.Info($"Fallback audio playback cancelled. OrderId={orderId}");
+            logger.Info($"Order sound playback owner=AdminAudioAgent cancelled. OrderId={orderId}");
         }
         catch (Exception exception)
         {
-            logger.Error($"Fallback audio playback failed. OrderId={orderId}", exception);
+            logger.Error($"Order sound playback owner=AdminAudioAgent crashed. WebUI fallback will be requested. OrderId={orderId}", exception);
+            await ReportAgentPlaybackFailedAsync(hubConnection, orderId, exception.Message, logger, CancellationToken.None);
         }
         finally
         {
@@ -138,7 +145,7 @@ static async Task ProcessPlaybackQueueAsync(
     }
 }
 
-static async Task ReportFallbackPlaybackStartedAsync(
+static async Task ReportAgentPlaybackStartedAsync(
     HubConnection hubConnection,
     int orderId,
     AgentLogger logger,
@@ -151,12 +158,36 @@ static async Task ReportFallbackPlaybackStartedAsync(
 
     try
     {
-        await hubConnection.InvokeAsync(CafeHubMethods.ReportOrderSoundPlaybackStarted, orderId, cancellationToken);
-        logger.Info($"Fallback audio playback start reported. OrderId={orderId}");
+        await hubConnection.InvokeAsync(CafeHubMethods.ReportOrderSoundPlaybackStarted, orderId, "AdminAudioAgent", cancellationToken);
+        logger.Info($"Order sound playback start reported. OrderId={orderId}, PlayedBy=AdminAudioAgent");
     }
     catch (Exception exception) when (exception is not OperationCanceledException)
     {
-        logger.Warning($"Fallback audio playback start report failed. {exception.Message}, OrderId={orderId}");
+        logger.Warning($"Order sound playback start report failed. {exception.Message}, OrderId={orderId}");
+    }
+}
+
+static async Task ReportAgentPlaybackFailedAsync(
+    HubConnection hubConnection,
+    int orderId,
+    string reason,
+    AgentLogger logger,
+    CancellationToken cancellationToken)
+{
+    if (hubConnection.State != HubConnectionState.Connected)
+    {
+        logger.Warning($"Order sound playback failure could not be reported because hub is disconnected. OrderId={orderId}, Reason={reason}");
+        return;
+    }
+
+    try
+    {
+        await hubConnection.InvokeAsync(CafeHubMethods.ReportOrderSoundPlaybackFailed, orderId, "AdminAudioAgent", reason, cancellationToken);
+        logger.Warning($"Order sound playback failure reported. OrderId={orderId}, FailedBy=AdminAudioAgent, Reason={reason}");
+    }
+    catch (Exception exception) when (exception is not OperationCanceledException)
+    {
+        logger.Warning($"Order sound playback failure report failed. {exception.Message}, OrderId={orderId}");
     }
 }
 
@@ -194,7 +225,7 @@ static void ScheduleFallbackPlayback(
         return;
     }
 
-    logger.Info($"Order observed for fallback audio. Source={source}, OrderId={orderId}");
+    logger.Info($"Order observed for AdminAudioAgent audio playback. Source={source}, OrderId={orderId}");
     _ = Task.Run(async () =>
     {
         try
@@ -208,7 +239,7 @@ static void ScheduleFallbackPlayback(
             if (queuedOrderIds.TryAdd(orderId, 0))
             {
                 await playbackQueue.WriteAsync(orderId, CancellationToken.None);
-                logger.Info($"Order queued for fallback audio. Source={source}, OrderId={orderId}");
+                logger.Info($"Order queued for AdminAudioAgent audio playback. Source={source}, OrderId={orderId}");
             }
         }
         catch (OperationCanceledException)

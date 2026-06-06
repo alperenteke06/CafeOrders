@@ -41,12 +41,17 @@ public sealed class CafeHub(CafeOrdersDbContext dbContext, IRealtimeNotifier rea
         return Groups.AddToGroupAsync(Context.ConnectionId, "admin");
     }
 
-    public Task ReportOrderSoundPlaybackStarted(int orderId)
+    public Task ReportOrderSoundPlaybackStarted(int orderId, string playedBy = "Unknown")
     {
-        return Clients.OthersInGroup("admin").SendAsync(CafeOrders.Application.Contracts.Realtime.CafeHubEvents.OrderSoundPlaybackStarted, orderId);
+        return Clients.OthersInGroup("admin").SendAsync(CafeOrders.Application.Contracts.Realtime.CafeHubEvents.OrderSoundPlaybackStarted, orderId, playedBy);
     }
 
-    public async Task AcknowledgeOrderSound(int orderId)
+    public Task ReportOrderSoundPlaybackFailed(int orderId, string failedBy = "Unknown", string reason = "")
+    {
+        return Clients.OthersInGroup("admin").SendAsync(CafeOrders.Application.Contracts.Realtime.CafeHubEvents.OrderSoundPlaybackFailed, orderId, failedBy, reason);
+    }
+
+    public async Task AcknowledgeOrderSound(int orderId, string playedBy = "WebUI")
     {
         var order = await dbContext.Orders.FirstOrDefaultAsync(x => x.Id == orderId);
         if (order is not null && !order.IsSoundPlayed)
@@ -56,7 +61,7 @@ public sealed class CafeHub(CafeOrdersDbContext dbContext, IRealtimeNotifier rea
             await dbContext.SaveChangesAsync();
         }
 
-        await Clients.Group("admin").SendAsync(CafeOrders.Application.Contracts.Realtime.CafeHubEvents.OrderSoundAcknowledged, orderId);
+        await Clients.Group("admin").SendAsync(CafeOrders.Application.Contracts.Realtime.CafeHubEvents.OrderSoundAcknowledged, orderId, playedBy);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

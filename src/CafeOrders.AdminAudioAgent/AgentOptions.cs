@@ -23,12 +23,8 @@ public sealed record AgentOptions(
             "http://localhost:5002/",
             null,
             null,
-            Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "CafeOrders",
-                "AdminAudioAgent",
-                "AdminAudioAgent.log"),
-            1000,
+            Path.Combine(baseDirectory, "AdminAudioAgent.log"),
+            0,
             2000,
             12,
             90,
@@ -64,7 +60,7 @@ public sealed record AgentOptions(
             WebUiBaseUrl = ReadString(agent, nameof(WebUiBaseUrl), defaults.WebUiBaseUrl),
             SharedWebRootPath = ReadNullableString(agent, nameof(SharedWebRootPath)),
             FallbackSoundPath = ReadNullableString(agent, nameof(FallbackSoundPath)),
-            LogPath = ReadString(agent, nameof(LogPath), defaults.LogPath),
+            LogPath = ResolvePath(baseDirectory, ReadString(agent, nameof(LogPath), defaults.LogPath)),
             FallbackDelayMilliseconds = ReadInt(agent, nameof(FallbackDelayMilliseconds), defaults.FallbackDelayMilliseconds),
             PollIntervalMilliseconds = ReadInt(agent, nameof(PollIntervalMilliseconds), defaults.PollIntervalMilliseconds),
             MaxPlaybackSeconds = ReadInt(agent, nameof(MaxPlaybackSeconds), defaults.MaxPlaybackSeconds),
@@ -92,4 +88,7 @@ public sealed record AgentOptions(
         => element.TryGetProperty(name, out var property) && property.ValueKind is JsonValueKind.True or JsonValueKind.False
             ? property.GetBoolean()
             : fallback;
+
+    private static string ResolvePath(string baseDirectory, string path)
+        => Path.IsPathRooted(path) ? path : Path.Combine(baseDirectory, path);
 }

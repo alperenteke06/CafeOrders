@@ -1,10 +1,12 @@
 using System.Text.Json.Serialization;
 using CafeOrders.Infrastructure;
+using CafeOrders.Infrastructure.Logging;
 using CafeOrders.Infrastructure.Persistence;
 using CafeOrders.Infrastructure.Realtime;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.AddLocalFile(builder.Configuration, "CafeOrders.API.log");
 
 builder.Services.AddCafeOrdersInfrastructure(builder.Configuration);
 builder.Services.AddControllers()

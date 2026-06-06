@@ -127,9 +127,12 @@ public sealed class AdminAudioAgentTests
         Assert.Contains("ProcessPlaybackQueueAsync", program);
         Assert.Contains("ReadAllAsync", program);
         Assert.Contains("OrderSoundPlaybackStarted", program);
-        Assert.Contains("ReportFallbackPlaybackStartedAsync", program);
+        Assert.Contains("ReportAgentPlaybackStartedAsync", program);
+        Assert.Contains("ReportAgentPlaybackFailedAsync", program);
         Assert.Contains("CafeHubMethods.ReportOrderSoundPlaybackStarted", program);
+        Assert.Contains("CafeHubMethods.ReportOrderSoundPlaybackFailed", program);
         Assert.Contains("OrderSoundAcknowledged", program);
+        Assert.Contains("\"AdminAudioAgent\"", program);
     }
 
     [Fact]
@@ -153,14 +156,20 @@ public sealed class AdminAudioAgentTests
     }
 
     [Fact]
-    public void AgentDefaults_PlayConfiguredSoundAfterOneSecondWithoutSystemBeep()
+    public void AgentDefaults_PlayConfiguredSoundImmediatelyWithoutSystemBeep()
     {
-        var options = AgentOptions.Load(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
+        var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var options = AgentOptions.Load(directory);
         var player = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "WindowsMediaAudioPlayer.cs");
 
-        Assert.Equal(1000, options.FallbackDelayMilliseconds);
+        Assert.Equal(0, options.FallbackDelayMilliseconds);
+        Assert.Equal(Path.Combine(directory, "AdminAudioAgent.log"), options.LogPath);
         Assert.False(options.UseSystemBeepFallback);
         Assert.Contains("mciSendString", player);
+        Assert.Contains("GetDefaultAudioEndpoint", player);
+        Assert.Contains("SetMute(false", player);
+        Assert.Contains("PC sesi kapaliydi", player);
+        Assert.Contains("OrderId=", player);
         Assert.DoesNotContain("Console.Beep", player);
     }
 

@@ -7,11 +7,7 @@ public static class DesktopAppLogger
 {
     private const long MaxLogSizeBytes = 5 * 1024 * 1024;
     private static readonly object SyncRoot = new();
-    private static readonly string LogPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-        "CafeOrders",
-        "DesktopApp",
-        "DesktopApp.log");
+    private static readonly string LogPath = Path.Combine(AppContext.BaseDirectory, "DesktopApp.log");
 
     public static void Info(string message) => Write("INFO", message);
 

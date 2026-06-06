@@ -375,6 +375,7 @@
         let lastNewOrderSoundAttemptAt = 0;
         let newOrderAudioContext = null;
         const externallyHandledNewOrderSoundIds = new Set();
+        const agentSoundGuardTimers = new Map();
         let deviceSessionCountdownTimer = null;
         const recentToastKeys = new Map();
         const suppressedHubToastKeys = new Map();
@@ -566,19 +567,26 @@
                 const orderId = extractOrderId(order);
                 showToast('Yeni siparis geldi.', 'info', `order:${orderId}:created`);
                 appendNotificationFromOrderCreated(order);
-                queueNewOrderSound(order);
+                scheduleWebUiFallbackIfAgentSilent(orderId);
                 requestSnapshotRefresh(['dashboard', 'orders', 'notifications']);
             });
-            connection.on('OrderSoundAcknowledged', orderId => {
+            connection.on('OrderSoundAcknowledged', (orderId, playedBy) => {
                 const acknowledgedOrderId = Number(orderId);
                 if (activeNewOrderSoundOrderId === acknowledgedOrderId) {
                     return;
                 }
 
                 clearNewOrderSoundQueueItem(acknowledgedOrderId);
+                clearAgentSoundGuard(acknowledgedOrderId);
             });
-            connection.on('OrderSoundPlaybackStarted', orderId => {
+            connection.on('OrderSoundPlaybackStarted', (orderId, playedBy) => {
+                clearAgentSoundGuard(orderId);
                 markNewOrderSoundHandledElsewhere(orderId);
+            });
+            connection.on('OrderSoundPlaybackFailed', (orderId, failedBy, reason) => {
+                clearAgentSoundGuard(orderId);
+                externallyHandledNewOrderSoundIds.delete(Number(orderId));
+                queueNewOrderSoundById(orderId, 'agent-failed');
             });
             connection.on('OrderAccepted', order => {
                 const orderId = extractOrderId(order);
@@ -2255,10 +2263,52 @@
 
         function queueNewOrderSound(order) {
             const orderId = extractOrderId(order);
-            newOrderSoundQueue.push({ orderId, attempts: 0 });
+            queueNewOrderSoundById(orderId, 'order-created');
+        }
+
+        function queueNewOrderSoundById(orderId, reason) {
+            const normalizedOrderId = Number(orderId);
+            if (!Number.isFinite(normalizedOrderId) || normalizedOrderId <= 0) {
+                return;
+            }
+
+            if (newOrderSoundQueue.some(item => Number(item.orderId) === normalizedOrderId)) {
+                return;
+            }
+
+            if (externallyHandledNewOrderSoundIds.has(normalizedOrderId)) {
+                return;
+            }
+
+            newOrderSoundQueue.push({ orderId: normalizedOrderId, attempts: 0 });
             pendingNewOrderSound = true;
-            pendingNewOrderSoundOrderId = orderId;
-            drainNewOrderSoundQueue('order-created');
+            pendingNewOrderSoundOrderId = normalizedOrderId;
+            drainNewOrderSoundQueue(reason ?? 'queued');
+        }
+
+        function scheduleWebUiFallbackIfAgentSilent(orderId) {
+            const normalizedOrderId = Number(orderId);
+            if (!Number.isFinite(normalizedOrderId) || normalizedOrderId <= 0) {
+                return;
+            }
+
+            clearAgentSoundGuard(normalizedOrderId);
+            const timerId = window.setTimeout(() => {
+                agentSoundGuardTimers.delete(normalizedOrderId);
+                if (!externallyHandledNewOrderSoundIds.has(normalizedOrderId)) {
+                    queueNewOrderSoundById(normalizedOrderId, 'agent-silent');
+                }
+            }, 3500);
+            agentSoundGuardTimers.set(normalizedOrderId, timerId);
+        }
+
+        function clearAgentSoundGuard(orderId) {
+            const normalizedOrderId = Number(orderId);
+            const timerId = agentSoundGuardTimers.get(normalizedOrderId);
+            if (timerId) {
+                window.clearTimeout(timerId);
+                agentSoundGuardTimers.delete(normalizedOrderId);
+            }
         }
 
         function flushPendingNewOrderSound(reason) {
@@ -2486,7 +2536,7 @@
                 return;
             }
 
-            hubConnection.invoke('ReportOrderSoundPlaybackStarted', Number(orderId)).catch(() => {});
+            hubConnection.invoke('ReportOrderSoundPlaybackStarted', Number(orderId), 'WebUI').catch(() => {});
         }
 
         function acknowledgeNewOrderSound(orderId) {
@@ -2494,7 +2544,7 @@
                 return;
             }
 
-            hubConnection.invoke('AcknowledgeOrderSound', Number(orderId)).catch(() => {});
+            hubConnection.invoke('AcknowledgeOrderSound', Number(orderId), 'WebUI').catch(() => {});
         }
 
         function playFallbackOrderBeep() {

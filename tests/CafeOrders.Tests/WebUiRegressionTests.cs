@@ -8,6 +8,9 @@ public sealed class WebUiRegressionTests
         var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
 
         Assert.Contains("queueNewOrderSound(order)", index);
+        Assert.Contains("scheduleWebUiFallbackIfAgentSilent(orderId)", index);
+        Assert.Contains("connection.on('OrderSoundPlaybackFailed'", index);
+        Assert.Contains("queueNewOrderSoundById(orderId, 'agent-failed')", index);
         Assert.Contains("newOrderSoundQueue", index);
         Assert.Contains("drainNewOrderSoundQueue", index);
         Assert.Contains("waitForAudioEnd", index);
@@ -18,13 +21,16 @@ public sealed class WebUiRegressionTests
         Assert.Contains("playFallbackOrderBeep", index);
         Assert.Contains("canUseWebUiNewOrderSound", index);
         Assert.Contains("ReportOrderSoundPlaybackStarted", index);
+        Assert.Contains("ReportOrderSoundPlaybackStarted', Number(orderId), 'WebUI'", index);
         Assert.Contains("connection.on('OrderSoundPlaybackStarted'", index);
         Assert.Contains("markNewOrderSoundHandledElsewhere", index);
         Assert.Contains("externallyHandledNewOrderSoundIds", index);
         Assert.Contains("cafeordersaudiohandled", index);
         Assert.Contains("completion === 'ended'", index);
         Assert.Contains("AcknowledgeOrderSound", index);
+        Assert.Contains("AcknowledgeOrderSound', Number(orderId), 'WebUI'", index);
         Assert.Contains("OrderSoundAcknowledged", index);
+        Assert.DoesNotContain("appendNotificationFromOrderCreated(order);\r\n                queueNewOrderSound(order);", index);
     }
 
     [Fact]
@@ -33,6 +39,7 @@ public sealed class WebUiRegressionTests
         var hub = ReadRepoFile("src", "CafeOrders.Infrastructure", "Realtime", "CafeHub.cs");
 
         Assert.Contains("ReportOrderSoundPlaybackStarted", hub);
+        Assert.Contains("ReportOrderSoundPlaybackFailed", hub);
         Assert.Contains("Clients.OthersInGroup(\"admin\")", hub);
         Assert.DoesNotContain("Clients.Group(\"admin\").SendAsync(CafeOrders.Application.Contracts.Realtime.CafeHubEvents.OrderSoundPlaybackStarted", hub);
     }
@@ -126,8 +133,26 @@ public sealed class WebUiRegressionTests
         Assert.Contains("Desktop appsettings recovered from loose text", viewModel);
         Assert.Contains("Realtime connect failed. Continuing with API polling/register flow.", viewModel);
         Assert.Contains("DesktopApp.log", logger);
+        Assert.Contains("AppContext.BaseDirectory", logger);
         Assert.Contains("MaxLogSizeBytes", logger);
         Assert.Contains("Logging must never interrupt the kiosk flow.", logger);
+    }
+
+    [Fact]
+    public void ApiWebUiAndDesktop_LogToApplicationDirectories()
+    {
+        var apiProgram = ReadRepoFile("src", "CafeOrders.API", "Program.cs");
+        var webProgram = ReadRepoFile("src", "CafeOrders.WebUI", "Program.cs");
+        var apiSettings = ReadRepoFile("src", "CafeOrders.API", "appsettings.json");
+        var webSettings = ReadRepoFile("src", "CafeOrders.WebUI", "appsettings.json");
+        var fileLogger = ReadRepoFile("src", "CafeOrders.Infrastructure", "Logging", "LocalFileLogger.cs");
+
+        Assert.Contains("AddLocalFile(builder.Configuration, \"CafeOrders.API.log\")", apiProgram);
+        Assert.Contains("AddLocalFile(builder.Configuration, \"CafeOrders.WebUI.log\")", webProgram);
+        Assert.Contains("\"FilePath\": \"CafeOrders.API.log\"", apiSettings);
+        Assert.Contains("\"FilePath\": \"CafeOrders.WebUI.log\"", webSettings);
+        Assert.Contains("AppContext.BaseDirectory", fileLogger);
+        Assert.Contains("previous", fileLogger);
     }
 
     [Fact]

@@ -4,11 +4,7 @@ public sealed class AgentLogger(string logPath, string? fallbackDirectory = null
 {
     private readonly object _syncRoot = new();
     private readonly string _logPath = string.IsNullOrWhiteSpace(logPath)
-        ? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "CafeOrders",
-            "AdminAudioAgent",
-            "AdminAudioAgent.log")
+        ? Path.Combine(string.IsNullOrWhiteSpace(fallbackDirectory) ? AppContext.BaseDirectory : fallbackDirectory, "AdminAudioAgent.log")
         : logPath;
     private readonly string _fallbackLogPath = Path.Combine(
         string.IsNullOrWhiteSpace(fallbackDirectory) ? AppContext.BaseDirectory : fallbackDirectory,

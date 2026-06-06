@@ -8,7 +8,7 @@ public sealed class AdminAudioService(HttpClient httpClient, AgentOptions option
 {
     public HttpClient HttpClient => httpClient;
 
-    public async Task<bool> PlayNewOrderSoundAsync(CancellationToken cancellationToken = default)
+    public async Task<bool> PlayNewOrderSoundAsync(int? orderId = null, CancellationToken cancellationToken = default)
     {
         var settings = await httpClient.GetFromJsonAsync<AppSettingsDto>("api/v1/settings/app", cancellationToken);
         if (settings is null || !settings.EnableNewOrderSound)
@@ -21,21 +21,23 @@ public sealed class AdminAudioService(HttpClient httpClient, AgentOptions option
         if (string.IsNullOrWhiteSpace(source))
         {
             logger?.Warning("New order sound source is empty. Playback skipped.");
-            return options.UseSystemBeepFallback && await audioPlayer.PlayFallbackAsync(cancellationToken);
+            return options.UseSystemBeepFallback && await audioPlayer.PlayFallbackAsync(orderId, cancellationToken);
         }
 
         try
         {
             var localSource = await ResolveLocalSourceAsync(source, cancellationToken);
-            logger?.Info($"Playing new order sound: {localSource}");
-            return await audioPlayer.PlayAsync(localSource, cancellationToken);
+            logger?.Info($"Playing new order sound. OrderId={FormatOrderId(orderId)}, Source={localSource}");
+            return await audioPlayer.PlayAsync(localSource, orderId, cancellationToken);
         }
         catch (Exception exception)
         {
             logger?.Error("New order sound playback failed.", exception);
-            return options.UseSystemBeepFallback && await audioPlayer.PlayFallbackAsync(cancellationToken);
+            return options.UseSystemBeepFallback && await audioPlayer.PlayFallbackAsync(orderId, cancellationToken);
         }
     }
+
+    private static string FormatOrderId(int? orderId) => orderId?.ToString() ?? "(unknown)";
 
     private async Task<string> ResolveLocalSourceAsync(string source, CancellationToken cancellationToken)
     {

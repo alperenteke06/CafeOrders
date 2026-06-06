@@ -8,6 +8,7 @@ public static class CafeHubEvents
     public const string DevicesUpdated = nameof(DevicesUpdated);
     public const string OrderCreated = nameof(OrderCreated);
     public const string OrderSoundPlaybackStarted = nameof(OrderSoundPlaybackStarted);
+    public const string OrderSoundPlaybackFailed = nameof(OrderSoundPlaybackFailed);
     public const string OrderSoundAcknowledged = nameof(OrderSoundAcknowledged);
     public const string OrderAccepted = nameof(OrderAccepted);
     public const string OrderRejected = nameof(OrderRejected);
