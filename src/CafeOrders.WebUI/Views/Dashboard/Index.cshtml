@@ -374,6 +374,7 @@
         let soundUnlocked = false;
         let lastNewOrderSoundAttemptAt = 0;
         let newOrderAudioContext = null;
+        const externallyHandledNewOrderSoundIds = new Set();
         let deviceSessionCountdownTimer = null;
         const recentToastKeys = new Map();
         const suppressedHubToastKeys = new Map();
@@ -574,11 +575,10 @@
                     return;
                 }
 
-                newOrderSoundQueue = newOrderSoundQueue.filter(item => Number(item.orderId) !== acknowledgedOrderId);
-                if (pendingNewOrderSoundOrderId === acknowledgedOrderId) {
-                    pendingNewOrderSound = newOrderSoundQueue.length > 0;
-                    pendingNewOrderSoundOrderId = newOrderSoundQueue[0]?.orderId ?? null;
-                }
+                clearNewOrderSoundQueueItem(acknowledgedOrderId);
+            });
+            connection.on('OrderSoundPlaybackStarted', orderId => {
+                markNewOrderSoundHandledElsewhere(orderId);
             });
             connection.on('OrderAccepted', order => {
                 const orderId = extractOrderId(order);
@@ -2351,6 +2351,12 @@
         }
 
         async function playNewOrderSound(reason, orderId) {
+            const normalizedOrderId = Number(orderId);
+            if (externallyHandledNewOrderSoundIds.has(normalizedOrderId)) {
+                externallyHandledNewOrderSoundIds.delete(normalizedOrderId);
+                return true;
+            }
+
             const audio = document.getElementById('newOrderAudio');
             const url = normalizeMediaUrl(audio?.dataset.soundUrl ?? '', 'audio');
             const enabled = audio?.dataset.soundEnabled === 'true';
@@ -2377,6 +2383,11 @@
                 await audio.play();
                 reportNewOrderSoundPlaybackStarted(orderId);
                 const completion = await waitForAudioEnd(audio, 12000);
+                if (completion === 'handled' || externallyHandledNewOrderSoundIds.has(normalizedOrderId)) {
+                    externallyHandledNewOrderSoundIds.delete(normalizedOrderId);
+                    return true;
+                }
+
                 if (completion === 'ended' && canUseWebUiNewOrderSound()) {
                     acknowledgeNewOrderSound(orderId);
                     return true;
@@ -2407,14 +2418,17 @@
 
                     audio.removeEventListener('ended', onEnded);
                     audio.removeEventListener('error', onError);
+                    audio.removeEventListener('cafeordersaudiohandled', onHandled);
                     resolve(result);
                 };
 
                 const onEnded = () => complete('ended');
                 const onError = () => complete('error');
+                const onHandled = () => complete('handled');
 
                 audio.addEventListener('ended', onEnded, { once: true });
                 audio.addEventListener('error', onError, { once: true });
+                audio.addEventListener('cafeordersaudiohandled', onHandled, { once: true });
                 timeoutId = window.setTimeout(() => complete('timeout'), timeoutMilliseconds);
             });
         }
@@ -2427,6 +2441,40 @@
             const candidate = order?.id ?? order?.order?.id ?? order?.orderId ?? null;
             const parsed = Number(candidate);
             return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+        }
+
+        function clearNewOrderSoundQueueItem(orderId) {
+            const normalizedOrderId = Number(orderId);
+            if (!Number.isFinite(normalizedOrderId) || normalizedOrderId <= 0) {
+                return;
+            }
+
+            newOrderSoundQueue = newOrderSoundQueue.filter(item => Number(item.orderId) !== normalizedOrderId);
+            if (pendingNewOrderSoundOrderId === normalizedOrderId) {
+                pendingNewOrderSound = newOrderSoundQueue.length > 0;
+                pendingNewOrderSoundOrderId = newOrderSoundQueue[0]?.orderId ?? null;
+            }
+        }
+
+        function markNewOrderSoundHandledElsewhere(orderId) {
+            const normalizedOrderId = Number(orderId);
+            if (!Number.isFinite(normalizedOrderId) || normalizedOrderId <= 0) {
+                return;
+            }
+
+            externallyHandledNewOrderSoundIds.add(normalizedOrderId);
+            clearNewOrderSoundQueueItem(normalizedOrderId);
+            if (activeNewOrderSoundOrderId === normalizedOrderId) {
+                const audio = document.getElementById('newOrderAudio');
+                try {
+                    audio?.pause();
+                    if (audio) {
+                        audio.currentTime = 0;
+                        audio.dispatchEvent(new Event('cafeordersaudiohandled'));
+                    }
+                } catch {
+                }
+            }
         }
 
         function canUseWebUiNewOrderSound() {

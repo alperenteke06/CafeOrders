@@ -103,6 +103,7 @@ static async Task ProcessPlaybackQueueAsync(
         try
         {
             logger.Info($"Fallback audio playback started. OrderId={orderId}");
+            await ReportFallbackPlaybackStartedAsync(hubConnection, orderId, logger, CancellationToken.None);
             var played = await audioService.PlayNewOrderSoundAsync(pending.Token);
             if (played)
             {
@@ -134,6 +135,28 @@ static async Task ProcessPlaybackQueueAsync(
         {
             pendingOrders.TryRemove(orderId, out _);
         }
+    }
+}
+
+static async Task ReportFallbackPlaybackStartedAsync(
+    HubConnection hubConnection,
+    int orderId,
+    AgentLogger logger,
+    CancellationToken cancellationToken)
+{
+    if (hubConnection.State != HubConnectionState.Connected)
+    {
+        return;
+    }
+
+    try
+    {
+        await hubConnection.InvokeAsync(CafeHubMethods.ReportOrderSoundPlaybackStarted, orderId, cancellationToken);
+        logger.Info($"Fallback audio playback start reported. OrderId={orderId}");
+    }
+    catch (Exception exception) when (exception is not OperationCanceledException)
+    {
+        logger.Warning($"Fallback audio playback start report failed. {exception.Message}, OrderId={orderId}");
     }
 }
 

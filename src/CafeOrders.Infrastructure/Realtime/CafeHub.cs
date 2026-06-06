@@ -43,7 +43,7 @@ public sealed class CafeHub(CafeOrdersDbContext dbContext, IRealtimeNotifier rea
 
     public Task ReportOrderSoundPlaybackStarted(int orderId)
     {
-        return Clients.Group("admin").SendAsync(CafeOrders.Application.Contracts.Realtime.CafeHubEvents.OrderSoundPlaybackStarted, orderId);
+        return Clients.OthersInGroup("admin").SendAsync(CafeOrders.Application.Contracts.Realtime.CafeHubEvents.OrderSoundPlaybackStarted, orderId);
     }
 
     public async Task AcknowledgeOrderSound(int orderId)

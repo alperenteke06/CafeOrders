@@ -18,9 +18,23 @@ public sealed class WebUiRegressionTests
         Assert.Contains("playFallbackOrderBeep", index);
         Assert.Contains("canUseWebUiNewOrderSound", index);
         Assert.Contains("ReportOrderSoundPlaybackStarted", index);
+        Assert.Contains("connection.on('OrderSoundPlaybackStarted'", index);
+        Assert.Contains("markNewOrderSoundHandledElsewhere", index);
+        Assert.Contains("externallyHandledNewOrderSoundIds", index);
+        Assert.Contains("cafeordersaudiohandled", index);
         Assert.Contains("completion === 'ended'", index);
         Assert.Contains("AcknowledgeOrderSound", index);
         Assert.Contains("OrderSoundAcknowledged", index);
+    }
+
+    [Fact]
+    public void PlaybackStartedSignal_IsBroadcastOnlyToOtherAdminClients()
+    {
+        var hub = ReadRepoFile("src", "CafeOrders.Infrastructure", "Realtime", "CafeHub.cs");
+
+        Assert.Contains("ReportOrderSoundPlaybackStarted", hub);
+        Assert.Contains("Clients.OthersInGroup(\"admin\")", hub);
+        Assert.DoesNotContain("Clients.Group(\"admin\").SendAsync(CafeOrders.Application.Contracts.Realtime.CafeHubEvents.OrderSoundPlaybackStarted", hub);
     }
 
     [Fact]

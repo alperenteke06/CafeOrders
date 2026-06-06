@@ -127,6 +127,8 @@ public sealed class AdminAudioAgentTests
         Assert.Contains("ProcessPlaybackQueueAsync", program);
         Assert.Contains("ReadAllAsync", program);
         Assert.Contains("OrderSoundPlaybackStarted", program);
+        Assert.Contains("ReportFallbackPlaybackStartedAsync", program);
+        Assert.Contains("CafeHubMethods.ReportOrderSoundPlaybackStarted", program);
         Assert.Contains("OrderSoundAcknowledged", program);
     }
 
