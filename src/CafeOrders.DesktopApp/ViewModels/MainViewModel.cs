@@ -21,9 +21,7 @@ namespace CafeOrders.DesktopApp.ViewModels;
 
 public sealed partial class MainViewModel : ObservableObject
 {
-    private static readonly TimeSpan StartupRetryDelay = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan StatusPopupDedupeWindow = TimeSpan.FromSeconds(4);
-    private const int StartupRetryCount = 15;
     private static readonly DesktopEndpointOptions EndpointOptions = DesktopEndpointOptions.Load();
     private readonly DateTime _sessionStartedAtUtc = DateTime.UtcNow;
 
@@ -235,13 +233,13 @@ public sealed partial class MainViewModel : ObservableObject
 
         DeviceRegistrationResponse? registration = null;
 
-        for (var attempt = 1; attempt <= StartupRetryCount; attempt++)
+        for (var attempt = 1; attempt <= EndpointOptions.StartupRetryCount; attempt++)
         {
             try
             {
-                StatusText = $"API baglantisi bekleniyor... deneme {attempt}/{StartupRetryCount}";
+                StatusText = $"API baglantisi bekleniyor... deneme {attempt}/{EndpointOptions.StartupRetryCount}";
                 BlockingTitle = "Sunucuya Baglaniliyor";
-                DesktopAppLogger.Info($"Device register attempt {attempt}/{StartupRetryCount} started.");
+                DesktopAppLogger.Info($"Device register attempt {attempt}/{EndpointOptions.StartupRetryCount} started.");
                 registration = await _apiService.RegisterAsync(registrationRequest);
                 DesktopAppLogger.Info($"Device register attempt {attempt} succeeded. DeviceId={registration?.DeviceId}, IsApproved={registration?.IsApproved}, TableId={registration?.TableId}");
                 break;
@@ -249,7 +247,7 @@ public sealed partial class MainViewModel : ObservableObject
             catch (HttpRequestException exception)
             {
                 DesktopAppLogger.Warning($"Device register attempt {attempt} failed. {exception.Message}");
-                if (attempt == StartupRetryCount)
+                if (attempt == EndpointOptions.StartupRetryCount)
                 {
                     StatusText = "API baglantisi kurulamadi. Sunucunun acik oldugunu kontrol edin.";
                     BlockingTitle = "Sunucuya Ulasilamadi";
@@ -258,7 +256,7 @@ public sealed partial class MainViewModel : ObservableObject
                     return;
                 }
 
-                await Task.Delay(StartupRetryDelay);
+                await Task.Delay(EndpointOptions.StartupRetryDelay);
             }
         }
 
@@ -1344,11 +1342,19 @@ public sealed partial class MainViewModel : ObservableObject
         await _realtimeClient.DisconnectAsync();
     }
 
-    private sealed record DesktopEndpointOptions(string ApiBaseUrl, string HubUrl, string? SharedWebRootPath, TimeSpan AutoCloseAfter)
+    private sealed record DesktopEndpointOptions(
+        string ApiBaseUrl,
+        string HubUrl,
+        string? SharedWebRootPath,
+        TimeSpan AutoCloseAfter,
+        int StartupRetryCount,
+        TimeSpan StartupRetryDelay)
     {
         private const string DefaultApiBaseUrl = "http://localhost:5001/";
         private const string DefaultHubUrl = "http://localhost:5001/hubs/cafe";
         private static readonly TimeSpan DefaultAutoCloseAfter = TimeSpan.FromSeconds(150);
+        private const int DefaultStartupRetryCount = 60;
+        private static readonly TimeSpan DefaultStartupRetryDelay = TimeSpan.FromSeconds(2);
 
         public static DesktopEndpointOptions Load()
         {
@@ -1356,7 +1362,7 @@ public sealed partial class MainViewModel : ObservableObject
             if (!File.Exists(appSettingsPath))
             {
                 DesktopAppLogger.Warning($"Desktop appsettings not found. Defaults will be used. Path={appSettingsPath}");
-                return new DesktopEndpointOptions(DefaultApiBaseUrl, DefaultHubUrl, null, DefaultAutoCloseAfter);
+                return CreateDefault();
             }
 
             string rawSettings;
@@ -1367,7 +1373,7 @@ public sealed partial class MainViewModel : ObservableObject
             catch (Exception exception)
             {
                 DesktopAppLogger.Error($"Desktop appsettings could not be read. Path={appSettingsPath}", exception);
-                return new DesktopEndpointOptions(DefaultApiBaseUrl, DefaultHubUrl, null, DefaultAutoCloseAfter);
+                return CreateDefault();
             }
 
             try
@@ -1385,9 +1391,18 @@ public sealed partial class MainViewModel : ObservableObject
             catch (Exception exception)
             {
                 DesktopAppLogger.Error("Desktop appsettings load failed. Defaults will be used.", exception);
-                return new DesktopEndpointOptions(DefaultApiBaseUrl, DefaultHubUrl, null, DefaultAutoCloseAfter);
+                return CreateDefault();
             }
         }
+
+        private static DesktopEndpointOptions CreateDefault()
+            => new(
+                DefaultApiBaseUrl,
+                DefaultHubUrl,
+                null,
+                DefaultAutoCloseAfter,
+                DefaultStartupRetryCount,
+                DefaultStartupRetryDelay);
 
         private static DesktopEndpointOptions LoadFromJson(JsonElement rootElement)
         {
@@ -1404,12 +1419,16 @@ public sealed partial class MainViewModel : ObservableObject
                 ? sharedRootElement.GetString()
                 : null;
             var autoCloseAfter = ResolveAutoCloseAfter(rootElement);
+            var startupRetryCount = ResolveStartupRetryCount(rootElement);
+            var startupRetryDelay = ResolveStartupRetryDelay(rootElement);
 
             return new DesktopEndpointOptions(
                 NormalizeApiBaseUrl(apiBaseUrl),
                 NormalizeHubUrl(hubUrl),
                 NormalizeSharedWebRootPath(sharedWebRootPath),
-                autoCloseAfter);
+                autoCloseAfter,
+                startupRetryCount,
+                startupRetryDelay);
         }
 
         private static DesktopEndpointOptions LoadFromLooseText(string rawSettings)
@@ -1418,14 +1437,18 @@ public sealed partial class MainViewModel : ObservableObject
             var hubUrl = ExtractStringValue(rawSettings, "HubUrl");
             var sharedWebRootPath = ExtractStringValue(rawSettings, "SharedWebRootPath");
             var autoCloseSeconds = ExtractIntValue(rawSettings, "AutoCloseAfterSeconds");
+            var startupRetryCount = ExtractIntValue(rawSettings, "StartupRetryCount");
+            var startupRetryDelaySeconds = ExtractIntValue(rawSettings, "StartupRetryDelaySeconds");
 
             var recovered = new DesktopEndpointOptions(
                 NormalizeApiBaseUrl(apiBaseUrl),
                 NormalizeHubUrl(hubUrl),
                 NormalizeSharedWebRootPath(sharedWebRootPath),
-                autoCloseSeconds.HasValue ? ResolveAutoCloseAfter(autoCloseSeconds.Value) : DefaultAutoCloseAfter);
+                autoCloseSeconds.HasValue ? ResolveAutoCloseAfter(autoCloseSeconds.Value) : DefaultAutoCloseAfter,
+                ResolveStartupRetryCount(startupRetryCount),
+                ResolveStartupRetryDelay(startupRetryDelaySeconds));
             DesktopAppLogger.Warning(
-                $"Desktop appsettings recovered from loose text. ApiBaseUrl={recovered.ApiBaseUrl}, HubUrl={recovered.HubUrl}, SharedWebRootPath={recovered.SharedWebRootPath ?? "-"}, AutoCloseAfterSeconds={recovered.AutoCloseAfter.TotalSeconds:0}");
+                $"Desktop appsettings recovered from loose text. ApiBaseUrl={recovered.ApiBaseUrl}, HubUrl={recovered.HubUrl}, SharedWebRootPath={recovered.SharedWebRootPath ?? "-"}, AutoCloseAfterSeconds={recovered.AutoCloseAfter.TotalSeconds:0}, StartupRetryCount={recovered.StartupRetryCount}, StartupRetryDelaySeconds={recovered.StartupRetryDelay.TotalSeconds:0}");
             return recovered;
         }
 
@@ -1471,6 +1494,36 @@ public sealed partial class MainViewModel : ObservableObject
 
         private static TimeSpan ResolveAutoCloseAfter(int seconds)
             => seconds <= 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(seconds);
+
+        private static int ResolveStartupRetryCount(JsonElement rootElement)
+        {
+            if (!rootElement.TryGetProperty("Startup", out var startupElement) ||
+                !startupElement.TryGetProperty("RetryCount", out var countElement) ||
+                !countElement.TryGetInt32(out var count))
+            {
+                return DefaultStartupRetryCount;
+            }
+
+            return ResolveStartupRetryCount(count);
+        }
+
+        private static int ResolveStartupRetryCount(int? count)
+            => Math.Clamp(count ?? DefaultStartupRetryCount, 1, 600);
+
+        private static TimeSpan ResolveStartupRetryDelay(JsonElement rootElement)
+        {
+            if (!rootElement.TryGetProperty("Startup", out var startupElement) ||
+                !startupElement.TryGetProperty("RetryDelaySeconds", out var delayElement) ||
+                !delayElement.TryGetInt32(out var seconds))
+            {
+                return DefaultStartupRetryDelay;
+            }
+
+            return ResolveStartupRetryDelay(seconds);
+        }
+
+        private static TimeSpan ResolveStartupRetryDelay(int? seconds)
+            => TimeSpan.FromSeconds(Math.Clamp(seconds ?? (int)DefaultStartupRetryDelay.TotalSeconds, 1, 30));
 
         private static string? ExtractStringValue(string rawSettings, string propertyName)
         {

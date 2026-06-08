@@ -115,11 +115,16 @@ public sealed class WebUiRegressionTests
     {
         var xaml = ReadRepoFile("src", "CafeOrders.DesktopApp", "MainWindow.xaml");
         var appSettings = ReadRepoFile("src", "CafeOrders.DesktopApp", "appsettings.json");
+        var viewModel = ReadRepoFile("src", "CafeOrders.DesktopApp", "ViewModels", "MainViewModel.cs");
 
         Assert.Contains("KALAN SURE", xaml);
         Assert.Contains("SessionRemainingText", xaml);
         Assert.Contains("IsSessionCountdownVisible", xaml);
         Assert.Contains("AutoCloseAfterSeconds", appSettings);
+        Assert.Contains("StartupRetryCount", viewModel);
+        Assert.Contains("StartupRetryDelay", viewModel);
+        Assert.Contains("\"RetryCount\": 60", appSettings);
+        Assert.Contains("\"RetryDelaySeconds\": 2", appSettings);
     }
 
     [Fact]

@@ -35,6 +35,12 @@ _ = Task.Run(() => PollPendingOrdersAsync(
     playbackQueue.Writer,
     logger,
     CancellationToken.None));
+_ = Task.Run(async () =>
+{
+    await StartAndJoinAsync(hubConnection, logger);
+    hubConnection.Reconnected += async _ => await JoinAdminChannelAsync(hubConnection, logger);
+    logger.Info("CafeOrders AdminAudioAgent connected.");
+});
 
 hubConnection.On<OrderDto>(CafeHubEvents.OrderCreated, order =>
 {
@@ -78,9 +84,6 @@ hubConnection.On<int, string>(CafeHubEvents.OrderSoundAcknowledged, (orderId, pl
 });
 
 logger.Info($"CafeOrders AdminAudioAgent starting. ApiBaseUrl={options.ApiBaseUrl}, HubUrl={options.HubUrl}, WebUiBaseUrl={options.WebUiBaseUrl}, SharedWebRootPath={options.SharedWebRootPath ?? "(empty)"}, LogPath={options.LogPath}");
-await StartAndJoinAsync(hubConnection);
-hubConnection.Reconnected += async _ => await JoinAdminChannelAsync(hubConnection);
-logger.Info("CafeOrders AdminAudioAgent connected.");
 await Task.Delay(Timeout.InfiniteTimeSpan);
 
 static async Task ProcessPlaybackQueueAsync(
@@ -277,6 +280,7 @@ static async Task PollPendingOrdersAsync(
     CancellationToken cancellationToken)
 {
     using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(Math.Max(1000, options.PollIntervalMilliseconds)));
+    logger.Info($"Pending sound polling started. ApiBaseUrl={httpClient.BaseAddress}, IntervalMs={Math.Max(1000, options.PollIntervalMilliseconds)}");
     while (!cancellationToken.IsCancellationRequested)
     {
         await QueuePendingOrdersFromApiAsync(
@@ -341,7 +345,7 @@ static async Task QueuePendingOrdersFromApiAsync(
     }
     catch (Exception exception)
     {
-        logger.Warning($"Pending order polling failed: {exception.Message}");
+        logger.Warning($"Pending order polling failed. ApiBaseUrl={httpClient.BaseAddress}, WillRetryInMs={Math.Max(1000, options.PollIntervalMilliseconds)}, Error={exception.Message}");
     }
 }
 
@@ -367,25 +371,32 @@ static async Task MarkOrderSoundPlayedAsync(HttpClient httpClient, int orderId, 
     }
 }
 
-static async Task StartAndJoinAsync(HubConnection hubConnection)
+static async Task StartAndJoinAsync(HubConnection hubConnection, AgentLogger logger)
 {
+    var attempt = 0;
     while (true)
     {
+        attempt++;
         try
         {
+            logger.Info($"AdminAudioAgent hub connect attempt {attempt} started.");
             await hubConnection.StartAsync();
-            await JoinAdminChannelAsync(hubConnection);
+            await JoinAdminChannelAsync(hubConnection, logger);
             return;
         }
-        catch
+        catch (Exception exception)
         {
+            logger.Warning($"AdminAudioAgent hub connect attempt {attempt} failed. Will retry in 5 seconds. {exception.Message}");
             await Task.Delay(TimeSpan.FromSeconds(5));
         }
     }
 }
 
-static Task JoinAdminChannelAsync(HubConnection hubConnection)
-    => hubConnection.InvokeAsync(CafeHubMethods.JoinAdminChannel);
+static async Task JoinAdminChannelAsync(HubConnection hubConnection, AgentLogger logger)
+{
+    await hubConnection.InvokeAsync(CafeHubMethods.JoinAdminChannel);
+    logger.Info("AdminAudioAgent joined admin hub channel.");
+}
 
 static string EnsureTrailingSlash(string value)
     => value.EndsWith("/", StringComparison.Ordinal) ? value : $"{value}/";

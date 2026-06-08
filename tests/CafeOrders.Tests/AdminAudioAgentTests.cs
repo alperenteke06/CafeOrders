@@ -143,6 +143,8 @@ public sealed class AdminAudioAgentTests
 
         Assert.Contains("PollPendingOrdersAsync", program);
         Assert.Contains("QueuePendingOrdersFromApiAsync", program);
+        Assert.Contains("Pending sound polling started", program);
+        Assert.Contains("WillRetryInMs", program);
         Assert.Contains("api/v1/orders?soundPendingOnly=true", program);
         Assert.Contains("api/v1/orders/{orderId}/sound-played", program);
         Assert.Contains("MarkOrderSoundPlayedAsync", program);
@@ -204,9 +206,14 @@ public sealed class AdminAudioAgentTests
         var registerScript = ReadRepoFile("scripts", "Register-CafeOrders.WatchDogTask.ps1");
 
         Assert.Contains("Ensure-AdminAudioAgentRunning", script);
+        Assert.Contains("ApiHealthUrl", script);
+        Assert.Contains("Wait-HttpHealth -Name \"API\"", script);
+        Assert.Contains("API is not healthy. AdminAudioAgent and browser launch skipped.", script);
         Assert.Contains("Start-Process -FilePath $resolvedPath", script);
         Assert.Contains(@"C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe", script);
+        Assert.Contains("-ApiHealthUrl", hiddenRunner);
         Assert.Contains("-AdminAudioAgentPath", hiddenRunner);
+        Assert.Contains("ApiHealthUrl", registerScript);
         Assert.Contains("AdminAudioAgentPath", registerScript);
     }
 

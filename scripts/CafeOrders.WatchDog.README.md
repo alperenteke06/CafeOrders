@@ -2,7 +2,7 @@
 
 ## Amac
 
-Bu script, IIS uzerindeki `CafeOrders.API` ve `CafeOrders.WebUI` AppPool/Site durumlarini kontrol eder. Herhangi biri calismiyorsa baslatir. IIS taraflari ayaga kalktiktan sonra WebUI icin HTTP health check yapar. WebUI saglikliysa `CafeOrders.AdminAudioAgent` calisiyor mu kontrol eder ve calismiyorsa baslatir. Son olarak Chrome/default tarayici uzerinde admin panelinin zaten acik olup olmadigini kontrol eder.
+Bu script, IIS uzerindeki `CafeOrders.API` ve `CafeOrders.WebUI` AppPool/Site durumlarini kontrol eder. Herhangi biri calismiyorsa baslatir. IIS taraflari ayaga kalktiktan sonra once API, sonra WebUI icin HTTP health check yapar. API ve WebUI saglikliysa `CafeOrders.AdminAudioAgent` calisiyor mu kontrol eder ve calismiyorsa baslatir. Son olarak Chrome/default tarayici uzerinde admin panelinin zaten acik olup olmadigini kontrol eder.
 
 ## Dosyalar
 
@@ -42,7 +42,7 @@ powershell.exe -ExecutionPolicy Bypass -NoProfile -File "C:\Scripts\CafeOrders.W
 Task Scheduler ile ayni gizli calisma davranisini test etmek icin:
 
 ```powershell
-wscript.exe "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs" "C:\Scripts\CafeOrders.WatchDog.ps1" "http://192.168.11.24:5002/" "CafeOrders.API" "CafeOrders.WebUI" "CafeOrders.API" "CafeOrders.WebUI" "C:\Scripts\CafeOrders.WatchDog.log" "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"
+wscript.exe "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs" "C:\Scripts\CafeOrders.WatchDog.ps1" "http://192.168.11.24:5001/api/v1/settings/app" "http://192.168.11.24:5002/" "CafeOrders.API" "CafeOrders.WebUI" "CafeOrders.API" "CafeOrders.WebUI" "C:\Scripts\CafeOrders.WatchDog.log" "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"
 ```
 
 ## Parametreler
@@ -52,6 +52,7 @@ wscript.exe "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs" "C:\Scripts\CafeOrder
 -WebUiAppPoolName "CafeOrders.WebUI"
 -ApiSiteName "CafeOrders.API"
 -WebUiSiteName "CafeOrders.WebUI"
+-ApiHealthUrl "http://192.168.11.24:5001/api/v1/settings/app"
 -WebUiUrl "http://192.168.11.24:5002/"
 -LogPath "C:\Scripts\CafeOrders.WatchDog.log"
 -AdminAudioAgentPath "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"

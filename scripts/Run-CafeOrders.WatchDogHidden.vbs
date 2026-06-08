@@ -1,19 +1,21 @@
 Option Explicit
 
-Dim args, scriptPath, webUiUrl, apiAppPoolName, webUiAppPoolName, apiSiteName, webUiSiteName, logPath, adminAudioAgentPath
+Dim args, scriptPath, apiHealthUrl, webUiUrl, apiAppPoolName, webUiAppPoolName, apiSiteName, webUiSiteName, logPath, adminAudioAgentPath
 Set args = WScript.Arguments
 
 scriptPath = ReadArg(args, 0, "C:\Scripts\CafeOrders.WatchDog.ps1")
-webUiUrl = ReadArg(args, 1, "http://192.168.11.24:5002/")
-apiAppPoolName = ReadArg(args, 2, "CafeOrders.API")
-webUiAppPoolName = ReadArg(args, 3, "CafeOrders.WebUI")
-apiSiteName = ReadArg(args, 4, "CafeOrders.API")
-webUiSiteName = ReadArg(args, 5, "CafeOrders.WebUI")
-logPath = ReadArg(args, 6, "C:\Scripts\CafeOrders.WatchDog.log")
-adminAudioAgentPath = ReadArg(args, 7, "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe")
+apiHealthUrl = ReadArg(args, 1, "http://192.168.11.24:5001/api/v1/settings/app")
+webUiUrl = ReadArg(args, 2, "http://192.168.11.24:5002/")
+apiAppPoolName = ReadArg(args, 3, "CafeOrders.API")
+webUiAppPoolName = ReadArg(args, 4, "CafeOrders.WebUI")
+apiSiteName = ReadArg(args, 5, "CafeOrders.API")
+webUiSiteName = ReadArg(args, 6, "CafeOrders.WebUI")
+logPath = ReadArg(args, 7, "C:\Scripts\CafeOrders.WatchDog.log")
+adminAudioAgentPath = ReadArg(args, 8, "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe")
 
 Dim powershellCommand
 powershellCommand = "powershell.exe -ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File " & Quote(scriptPath) & _
+    " -ApiHealthUrl " & Quote(apiHealthUrl) & _
     " -WebUiUrl " & Quote(webUiUrl) & _
     " -ApiAppPoolName " & Quote(apiAppPoolName) & _
     " -WebUiAppPoolName " & Quote(webUiAppPoolName) & _
