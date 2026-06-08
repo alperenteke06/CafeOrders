@@ -9,6 +9,12 @@ public sealed class WebUiRegressionTests
 
         Assert.Contains("queueNewOrderSound(order)", index);
         Assert.Contains("scheduleWebUiFallbackIfAgentSilent(orderId)", index);
+        Assert.Contains("startPendingOrderSoundPolling", index);
+        Assert.Contains("pollPendingNewOrderSounds('startup')", index);
+        Assert.Contains("/dashboard/orders/pending-sound", index);
+        Assert.Contains("agentSoundGuardTimers.has(normalizedOrderId)", index);
+        Assert.Contains("hasRecentExternalOrderSoundPlayback", index);
+        Assert.Contains("isOrderSoundStillPending", index);
         Assert.Contains("connection.on('OrderSoundPlaybackFailed'", index);
         Assert.Contains("queueNewOrderSoundById(orderId, 'agent-failed')", index);
         Assert.Contains("newOrderSoundQueue", index);

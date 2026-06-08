@@ -378,6 +378,9 @@
         let soundUnlocked = false;
         let lastNewOrderSoundAttemptAt = 0;
         let newOrderAudioContext = null;
+        let pendingSoundPollInFlight = false;
+        let pendingSoundPollTimer = null;
+        let lastExternalOrderSoundPlaybackAt = 0;
         const externallyHandledNewOrderSoundIds = new Set();
         const agentSoundGuardTimers = new Map();
         let deviceSessionCountdownTimer = null;
@@ -397,6 +400,7 @@
             syncSettingsTonePicker('messageType');
             syncProductCategoryOptionsFromSection();
             prepareNewOrderSoundGuard();
+            startPendingOrderSoundPolling();
             startAdminHub();
             document.addEventListener('click', handleGlobalUiClick);
         });
@@ -550,8 +554,10 @@
             try {
                 await hubConnection.start();
                 await hubConnection.invoke('JoinAdminChannel');
+                pollPendingNewOrderSounds('hub-connected');
                 hubConnection.onreconnected(async () => {
                     await hubConnection.invoke('JoinAdminChannel');
+                    pollPendingNewOrderSounds('hub-reconnected');
                     requestSnapshotRefresh(defaultRealtimeRefreshSections);
                 });
                 hubConnection.onclose(async () => {
@@ -576,6 +582,10 @@
             });
             connection.on('OrderSoundAcknowledged', (orderId, playedBy) => {
                 const acknowledgedOrderId = Number(orderId);
+                if (playedBy !== 'WebUI') {
+                    lastExternalOrderSoundPlaybackAt = Date.now();
+                }
+
                 if (activeNewOrderSoundOrderId === acknowledgedOrderId) {
                     return;
                 }
@@ -584,6 +594,7 @@
                 clearAgentSoundGuard(acknowledgedOrderId);
             });
             connection.on('OrderSoundPlaybackStarted', (orderId, playedBy) => {
+                lastExternalOrderSoundPlaybackAt = Date.now();
                 clearAgentSoundGuard(orderId);
                 markNewOrderSoundHandledElsewhere(orderId);
             });
@@ -2423,11 +2434,18 @@
             document.addEventListener('keydown', unlock);
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden) {
+                    pollPendingNewOrderSounds('visibilitychange');
                     flushPendingNewOrderSound('visibilitychange');
                 }
             });
-            window.addEventListener('focus', () => flushPendingNewOrderSound('focus'));
-            window.addEventListener('pageshow', () => flushPendingNewOrderSound('pageshow'));
+            window.addEventListener('focus', () => {
+                pollPendingNewOrderSounds('focus');
+                flushPendingNewOrderSound('focus');
+            });
+            window.addEventListener('pageshow', () => {
+                pollPendingNewOrderSounds('pageshow');
+                flushPendingNewOrderSound('pageshow');
+            });
         }
 
         function queueNewOrderSound(order) {
@@ -2461,14 +2479,85 @@
                 return;
             }
 
-            clearAgentSoundGuard(normalizedOrderId);
-            const timerId = window.setTimeout(() => {
+            if (agentSoundGuardTimers.has(normalizedOrderId)) {
+                return;
+            }
+
+            const timerId = window.setTimeout(async () => {
                 agentSoundGuardTimers.delete(normalizedOrderId);
+                if (hasRecentExternalOrderSoundPlayback()) {
+                    scheduleWebUiFallbackIfAgentSilent(normalizedOrderId);
+                    return;
+                }
+
                 if (!externallyHandledNewOrderSoundIds.has(normalizedOrderId)) {
-                    queueNewOrderSoundById(normalizedOrderId, 'agent-silent');
+                    const stillPending = await isOrderSoundStillPending(normalizedOrderId);
+                    if (stillPending) {
+                        queueNewOrderSoundById(normalizedOrderId, 'agent-silent');
+                    }
                 }
             }, 3500);
             agentSoundGuardTimers.set(normalizedOrderId, timerId);
+        }
+
+        function hasRecentExternalOrderSoundPlayback() {
+            return lastExternalOrderSoundPlaybackAt > 0 && Date.now() - lastExternalOrderSoundPlaybackAt < 8000;
+        }
+
+        function startPendingOrderSoundPolling() {
+            if (pendingSoundPollTimer) {
+                window.clearInterval(pendingSoundPollTimer);
+            }
+
+            pollPendingNewOrderSounds('startup');
+            pendingSoundPollTimer = window.setInterval(() => {
+                pollPendingNewOrderSounds('poll');
+            }, 5000);
+        }
+
+        async function pollPendingNewOrderSounds(reason) {
+            if (pendingSoundPollInFlight) {
+                return;
+            }
+
+            pendingSoundPollInFlight = true;
+            try {
+                const orders = await fetchPendingNewOrderSoundOrders();
+
+                orders
+                    .filter(order => order && Number(order.id) > 0 && order.isSoundPlayed !== true)
+                    .forEach(order => scheduleWebUiFallbackIfAgentSilent(Number(order.id)));
+
+                if (!document.hidden && newOrderSoundQueue.length) {
+                    drainNewOrderSoundQueue(reason ?? 'pending-sound-poll');
+                }
+            } catch {
+            } finally {
+                pendingSoundPollInFlight = false;
+            }
+        }
+
+        async function fetchPendingNewOrderSoundOrders() {
+            const response = await fetch('/dashboard/orders/pending-sound', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                cache: 'no-store'
+            });
+            if (!response.ok) {
+                return [];
+            }
+
+            const orders = await response.json();
+            return Array.isArray(orders) ? orders : [];
+        }
+
+        async function isOrderSoundStillPending(orderId) {
+            try {
+                const normalizedOrderId = Number(orderId);
+                const orders = await fetchPendingNewOrderSoundOrders();
+                return orders.some(order => Number(order?.id) === normalizedOrderId && order.isSoundPlayed !== true);
+            } catch {
+                return false;
+            }
         }
 
         function clearAgentSoundGuard(orderId) {

@@ -31,21 +31,21 @@ public sealed class OrderServiceSoundPlaybackTests
     }
 
     [Fact]
-    public async Task GetActiveOrdersAsync_WithSoundPendingOnly_ReturnsOnlyUnplayedPendingOrders()
+    public async Task GetActiveOrdersAsync_WithSoundPendingOnly_ReturnsAllUnplayedOrdersRegardlessOfCurrentStatus()
     {
         await using var dbContext = CreateDbContext();
         var pendingUnplayed = await SeedOrderAsync(dbContext, status: OrderStatus.Pending, isSoundPlayed: false);
         await SeedOrderAsync(dbContext, status: OrderStatus.Pending, isSoundPlayed: true);
-        await SeedOrderAsync(dbContext, status: OrderStatus.Rejected, isSoundPlayed: false);
-        await SeedOrderAsync(dbContext, status: OrderStatus.Completed, isSoundPlayed: false);
+        var rejectedUnplayed = await SeedOrderAsync(dbContext, status: OrderStatus.Rejected, isSoundPlayed: false);
+        var completedUnplayed = await SeedOrderAsync(dbContext, status: OrderStatus.Completed, isSoundPlayed: false);
         var service = new OrderService(dbContext, new FakeRealtimeNotifier(), new FakeSettingsService());
 
         var result = await service.GetActiveOrdersAsync(soundPendingOnly: true);
 
-        var order = Assert.Single(result);
-        Assert.Equal(pendingUnplayed.Id, order.Id);
-        Assert.False(order.IsSoundPlayed);
-        Assert.Equal(OrderStatus.Pending.ToString(), order.Status);
+        Assert.Equal(
+            [pendingUnplayed.Id, rejectedUnplayed.Id, completedUnplayed.Id],
+            result.Select(order => order.Id));
+        Assert.All(result, order => Assert.False(order.IsSoundPlayed));
     }
 
     private static async Task<Order> SeedOrderAsync(

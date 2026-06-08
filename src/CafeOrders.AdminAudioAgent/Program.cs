@@ -306,9 +306,7 @@ static async Task QueuePendingOrdersFromApiAsync(
         var orders = await httpClient.GetFromJsonAsync<IReadOnlyCollection<OrderDto>>("api/v1/orders?soundPendingOnly=true", cancellationToken)
             ?? Array.Empty<OrderDto>();
 
-        foreach (var order in orders.Where(order =>
-                     string.Equals(order.Status, "Pending", StringComparison.OrdinalIgnoreCase) &&
-                     !order.IsSoundPlayed))
+        foreach (var order in orders.Where(order => !order.IsSoundPlayed))
         {
             ScheduleFallbackPlayback(
                 order.Id,

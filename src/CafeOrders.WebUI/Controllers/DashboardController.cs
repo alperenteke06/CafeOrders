@@ -78,6 +78,19 @@ public sealed class DashboardController(
     public async Task<IActionResult> Live(CancellationToken cancellationToken)
         => Json(await dashboardService.GetSnapshotAsync(cancellationToken));
 
+    [HttpGet("/dashboard/orders/pending-sound")]
+    public async Task<IActionResult> PendingSoundOrders(CancellationToken cancellationToken)
+    {
+        var orders = await orderService.GetActiveOrdersAsync(soundPendingOnly: true, cancellationToken);
+        return Json(orders.Select(order => new
+        {
+            id = order.Id,
+            status = order.Status,
+            isSoundPlayed = order.IsSoundPlayed,
+            createdAt = order.CreatedAt
+        }));
+    }
+
     [HttpGet("/dashboard/presentation")]
     public async Task<IActionResult> Presentation(CancellationToken cancellationToken)
     {

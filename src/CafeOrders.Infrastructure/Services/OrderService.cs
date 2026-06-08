@@ -145,15 +145,20 @@ public sealed class OrderService(
         var query = dbContext.Orders
             .Include(x => x.OrderLines)
             .ThenInclude(x => x.Product)
-            .Where(x => x.Status != OrderStatus.Completed);
+            .AsQueryable();
 
         if (soundPendingOnly)
         {
-            query = query.Where(x => x.Status == OrderStatus.Pending && !x.IsSoundPlayed);
+            query = query.Where(x => !x.IsSoundPlayed);
+        }
+        else
+        {
+            query = query.Where(x => x.Status != OrderStatus.Completed);
         }
 
-        var orders = await query
-            .OrderByDescending(x => x.CreatedAt)
+        var orders = await (soundPendingOnly
+                ? query.OrderBy(x => x.CreatedAt)
+                : query.OrderByDescending(x => x.CreatedAt))
             .ToListAsync(cancellationToken);
 
         return orders.Select(x => x.ToDto()).ToArray();

@@ -136,7 +136,7 @@ public sealed class AdminAudioAgentTests
     }
 
     [Fact]
-    public void AgentProgram_PollsApiForPendingOrdersWhenHubEventIsMissed()
+    public void AgentProgram_PollsApiForUnplayedOrdersWhenHubEventIsMissed()
     {
         var program = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "Program.cs");
         var options = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "AgentOptions.cs");
@@ -148,7 +148,8 @@ public sealed class AdminAudioAgentTests
         Assert.Contains("MarkOrderSoundPlayedAsync", program);
         Assert.Contains("webPlaybackStartedAt", program);
         Assert.Contains("MaxPlaybackSeconds", program);
-        Assert.Contains("order.Status, \"Pending\"", program);
+        Assert.DoesNotContain("order.Status, \"Pending\"", program);
+        Assert.DoesNotContain("StringComparison.OrdinalIgnoreCase) &&\r\n                     !order.IsSoundPlayed", program);
         Assert.Contains("!order.IsSoundPlayed", program);
         Assert.Contains("\"poll\"", program);
         Assert.DoesNotContain("announcedOrderIds", program);
