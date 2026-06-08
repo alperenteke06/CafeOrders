@@ -6,6 +6,7 @@ public sealed class WebUiRegressionTests
     public void NewOrderSoundScript_QueuesPlaybackForBackgroundTabsAndGestureUnlock()
     {
         var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
+        var ordersController = ReadRepoFile("src", "CafeOrders.API", "Controllers", "OrdersController.cs");
 
         Assert.Contains("queueNewOrderSound(order)", index);
         Assert.Contains("scheduleWebUiFallbackIfAgentSilent(orderId)", index);
@@ -36,6 +37,7 @@ public sealed class WebUiRegressionTests
         Assert.Contains("AcknowledgeOrderSound", index);
         Assert.Contains("AcknowledgeOrderSound', Number(orderId), 'WebUI'", index);
         Assert.Contains("OrderSoundAcknowledged", index);
+        Assert.Contains("Sound pending orders requested", ordersController);
         Assert.DoesNotContain("appendNotificationFromOrderCreated(order);\r\n                queueNewOrderSound(order);", index);
     }
 

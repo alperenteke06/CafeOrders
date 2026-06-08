@@ -148,6 +148,9 @@ public sealed class AdminAudioAgentTests
         Assert.Contains("MarkOrderSoundPlayedAsync", program);
         Assert.Contains("webPlaybackStartedAt", program);
         Assert.Contains("MaxPlaybackSeconds", program);
+        Assert.Contains("Pending sound poll returned unplayed orders", program);
+        Assert.Contains("Pending sound poll scheduling completed", program);
+        Assert.Contains("static bool ScheduleFallbackPlayback", program);
         Assert.DoesNotContain("order.Status, \"Pending\"", program);
         Assert.DoesNotContain("StringComparison.OrdinalIgnoreCase) &&\r\n                     !order.IsSoundPlayed", program);
         Assert.Contains("!order.IsSoundPlayed", program);

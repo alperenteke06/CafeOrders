@@ -9,8 +9,19 @@ namespace CafeOrders.API.Controllers;
 public sealed class OrdersController(IOrderService orderService, ILogger<OrdersController> logger) : ControllerBase
 {
     [HttpGet]
-    public Task<IReadOnlyCollection<OrderDto>> Get([FromQuery] bool soundPendingOnly, CancellationToken cancellationToken)
-        => orderService.GetActiveOrdersAsync(soundPendingOnly, cancellationToken);
+    public async Task<IReadOnlyCollection<OrderDto>> Get([FromQuery] bool soundPendingOnly, CancellationToken cancellationToken)
+    {
+        var orders = await orderService.GetActiveOrdersAsync(soundPendingOnly, cancellationToken);
+        if (soundPendingOnly)
+        {
+            logger.LogInformation(
+                "Sound pending orders requested. Count={Count}, OrderIds={OrderIds}",
+                orders.Count,
+                string.Join(",", orders.Select(order => order.Id).Take(50)));
+        }
+
+        return orders;
+    }
 
     [HttpGet("{orderId:int}")]
     public async Task<IActionResult> GetById(int orderId, CancellationToken cancellationToken)

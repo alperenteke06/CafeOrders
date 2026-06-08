@@ -200,7 +200,7 @@ static async Task ReportAgentPlaybackFailedAsync(
     }
 }
 
-static void ScheduleFallbackPlayback(
+static bool ScheduleFallbackPlayback(
     int orderId,
     string source,
     AgentOptions options,
@@ -216,7 +216,7 @@ static void ScheduleFallbackPlayback(
             Math.Max(15000, options.MaxPlaybackSeconds * 1000 + options.FallbackDelayMilliseconds));
         if (DateTime.UtcNow - webStartedAt < webPlaybackCooldown)
         {
-            return;
+            return false;
         }
 
         webPlaybackStartedAt.TryRemove(orderId, out _);
@@ -224,14 +224,14 @@ static void ScheduleFallbackPlayback(
 
     if (pendingOrders.ContainsKey(orderId) || queuedOrderIds.ContainsKey(orderId))
     {
-        return;
+        return false;
     }
 
     var pending = new CancellationTokenSource();
     if (!pendingOrders.TryAdd(orderId, pending))
     {
         pending.Dispose();
-        return;
+        return false;
     }
 
     logger.Info($"Order observed for AdminAudioAgent audio playback. Source={source}, OrderId={orderId}");
@@ -262,6 +262,8 @@ static void ScheduleFallbackPlayback(
             }
         }
     });
+
+    return true;
 }
 
 static async Task PollPendingOrdersAsync(
@@ -306,9 +308,16 @@ static async Task QueuePendingOrdersFromApiAsync(
         var orders = await httpClient.GetFromJsonAsync<IReadOnlyCollection<OrderDto>>("api/v1/orders?soundPendingOnly=true", cancellationToken)
             ?? Array.Empty<OrderDto>();
 
-        foreach (var order in orders.Where(order => !order.IsSoundPlayed))
+        var unplayedOrders = orders.Where(order => !order.IsSoundPlayed).ToArray();
+        if (unplayedOrders.Length > 0)
         {
-            ScheduleFallbackPlayback(
+            logger.Info($"Pending sound poll returned unplayed orders. Count={unplayedOrders.Length}, OrderIds={FormatOrderIds(unplayedOrders)}");
+        }
+
+        var scheduledCount = 0;
+        foreach (var order in unplayedOrders)
+        {
+            if (ScheduleFallbackPlayback(
                 order.Id,
                 "poll",
                 options,
@@ -316,7 +325,15 @@ static async Task QueuePendingOrdersFromApiAsync(
                 queuedOrderIds,
                 webPlaybackStartedAt,
                 playbackQueue,
-                logger);
+                logger))
+            {
+                scheduledCount++;
+            }
+        }
+
+        if (unplayedOrders.Length > 0)
+        {
+            logger.Info($"Pending sound poll scheduling completed. Returned={unplayedOrders.Length}, Scheduled={scheduledCount}, Skipped={unplayedOrders.Length - scheduledCount}");
         }
     }
     catch (OperationCanceledException)
@@ -327,6 +344,9 @@ static async Task QueuePendingOrdersFromApiAsync(
         logger.Warning($"Pending order polling failed: {exception.Message}");
     }
 }
+
+static string FormatOrderIds(IEnumerable<OrderDto> orders)
+    => string.Join(",", orders.Select(order => order.Id).Take(50));
 
 static async Task MarkOrderSoundPlayedAsync(HttpClient httpClient, int orderId, AgentLogger logger, CancellationToken cancellationToken)
 {
