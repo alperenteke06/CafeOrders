@@ -166,13 +166,30 @@ public sealed class AdminAudioAgentTests
         Assert.Equal(Path.Combine(directory, "AdminAudioAgent.log"), options.LogPath);
         Assert.False(options.UseSystemBeepFallback);
         Assert.Contains("mciSendString", player);
-        Assert.Contains("waveOutGetVolume", player);
-        Assert.Contains("waveOutSetVolume", player);
-        Assert.Contains("Windows wave output volume", player);
+        Assert.Contains("NAudio.CoreAudioApi", player);
+        Assert.Contains("GetDefaultAudioEndpoint", player);
+        Assert.Contains("endpointVolume.Mute = false", player);
+        Assert.Contains("MasterVolumeLevelScalar", player);
+        Assert.Contains("PC master endpoint volume verified", player);
+        Assert.Contains("System audio could not be prepared", player);
         Assert.DoesNotContain("IAudioEndpointVolume", player);
-        Assert.DoesNotContain("GetDefaultAudioEndpoint", player);
         Assert.Contains("OrderId=", player);
         Assert.DoesNotContain("Console.Beep", player);
+    }
+
+    [Fact]
+    public void AgentReportsPlaybackStartedOnlyAfterAudioPlaybackStarts()
+    {
+        var program = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "Program.cs");
+        var service = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "AdminAudioService.cs");
+        var player = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "WindowsMediaAudioPlayer.cs");
+        var audioPlayer = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "IAudioPlayer.cs");
+
+        Assert.Contains("Func<int?, CancellationToken, Task>? playbackStarted", audioPlayer);
+        Assert.Contains("playbackStarted", service);
+        Assert.Contains("NotifyPlaybackStarted(playbackStarted", player);
+        Assert.DoesNotContain("await ReportAgentPlaybackStartedAsync(hubConnection, orderId, logger, CancellationToken.None);", program);
+        Assert.Contains("await ReportAgentPlaybackStartedAsync(hubConnection, value, logger, cancellationToken);", program);
     }
 
     [Fact]

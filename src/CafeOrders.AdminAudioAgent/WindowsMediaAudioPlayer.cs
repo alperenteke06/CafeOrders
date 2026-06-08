@@ -1,11 +1,16 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using NAudio.CoreAudioApi;
 
 namespace CafeOrders.AdminAudioAgent;
 
 public sealed class WindowsMediaAudioPlayer(AgentOptions options, AgentLogger? logger = null) : IAudioPlayer
 {
-    public Task<bool> PlayAsync(string source, int? orderId = null, CancellationToken cancellationToken = default)
+    public Task<bool> PlayAsync(
+        string source,
+        int? orderId = null,
+        CancellationToken cancellationToken = default,
+        Func<int?, CancellationToken, Task>? playbackStarted = null)
     {
         if (string.IsNullOrWhiteSpace(source))
         {
@@ -17,7 +22,7 @@ public sealed class WindowsMediaAudioPlayer(AgentOptions options, AgentLogger? l
         {
             try
             {
-                completion.TrySetResult(PlayWithWindowsMediaPlayer(source, orderId, cancellationToken));
+                completion.TrySetResult(PlayWithWindowsMediaPlayer(source, orderId, cancellationToken, playbackStarted));
             }
             catch
             {
@@ -36,12 +41,20 @@ public sealed class WindowsMediaAudioPlayer(AgentOptions options, AgentLogger? l
 
     public Task<bool> PlayFallbackAsync(int? orderId = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
 
-    private bool PlayWithWindowsMediaPlayer(string source, int? orderId, CancellationToken cancellationToken)
+    private bool PlayWithWindowsMediaPlayer(
+        string source,
+        int? orderId,
+        CancellationToken cancellationToken,
+        Func<int?, CancellationToken, Task>? playbackStarted)
     {
         var alias = $"CafeOrdersOrderSound{Guid.NewGuid():N}";
         try
         {
-            EnsureSystemAudioReady(orderId);
+            if (!EnsureSystemAudioReady(orderId))
+            {
+                logger?.Warning($"System audio could not be prepared. MCI playback skipped so WebUI fallback can run. OrderId={FormatOrderId(orderId)}");
+                return false;
+            }
 
             if (SendMciCommand($"open \"{source}\" alias {alias}") != 0
                 && SendMciCommand($"open \"{source}\" type mpegvideo alias {alias}") != 0)
@@ -56,6 +69,7 @@ public sealed class WindowsMediaAudioPlayer(AgentOptions options, AgentLogger? l
                 logger?.Warning($"MCI could not start order sound. OrderId={FormatOrderId(orderId)}, Source={source}");
                 return false;
             }
+            NotifyPlaybackStarted(playbackStarted, orderId, cancellationToken);
 
             var stopAt = DateTime.UtcNow.AddSeconds(Math.Max(1, options.MaxPlaybackSeconds));
             while (!cancellationToken.IsCancellationRequested && DateTime.UtcNow < stopAt)
@@ -85,51 +99,70 @@ public sealed class WindowsMediaAudioPlayer(AgentOptions options, AgentLogger? l
         }
     }
 
-    private void EnsureSystemAudioReady(int? orderId)
+    private bool EnsureSystemAudioReady(int? orderId)
     {
         try
         {
-            var getResult = waveOutGetVolume(IntPtr.Zero, out var currentVolume);
-            if (getResult != 0)
-            {
-                logger?.Warning($"Windows wave output volume could not be read. OrderId={FormatOrderId(orderId)}, Result={getResult}");
-                return;
-            }
-
-            var leftPercent = DecodeWaveVolumePercent(currentVolume & 0xFFFF);
-            var rightPercent = DecodeWaveVolumePercent((currentVolume >> 16) & 0xFFFF);
-            var currentPercent = Math.Min(leftPercent, rightPercent);
+            using var enumerator = new MMDeviceEnumerator();
+            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            var endpointVolume = device.AudioEndpointVolume;
+            var isMuted = endpointVolume.Mute;
+            var currentPercent = (int)Math.Round(endpointVolume.MasterVolumeLevelScalar * 100);
             var targetPercent = Math.Clamp(options.Volume, 1, 100);
-            logger?.Info($"Windows wave output volume check. OrderId={FormatOrderId(orderId)}, Left={leftPercent}%, Right={rightPercent}%, Target={targetPercent}%");
 
-            if (currentPercent >= targetPercent)
+            logger?.Info($"PC master endpoint volume check. OrderId={FormatOrderId(orderId)}, Muted={isMuted}, Volume={currentPercent}%, Target={targetPercent}%");
+
+            if (isMuted)
             {
-                return;
+                endpointVolume.Mute = false;
+                logger?.Warning($"PC sesi sessizdeydi, AdminAudioAgent tarafindan acildi. OrderId={FormatOrderId(orderId)}");
             }
 
-            var encodedTarget = EncodeWaveVolumePercent(targetPercent);
-            var setResult = waveOutSetVolume(IntPtr.Zero, (uint)(encodedTarget | (encodedTarget << 16)));
-            if (setResult == 0)
+            if (currentPercent < targetPercent)
             {
-                logger?.Info($"Windows wave output volume AdminAudioAgent tarafindan yukseltildi. OrderId={FormatOrderId(orderId)}, From={currentPercent}%, To={targetPercent}%");
-                return;
+                endpointVolume.MasterVolumeLevelScalar = targetPercent / 100f;
+                logger?.Info($"PC master endpoint volume AdminAudioAgent tarafindan yukseltildi. OrderId={FormatOrderId(orderId)}, From={currentPercent}%, To={targetPercent}%");
             }
 
-            logger?.Warning($"Windows wave output volume could not be changed. OrderId={FormatOrderId(orderId)}, Result={setResult}, From={currentPercent}%, Target={targetPercent}%");
+            var verifiedMuted = endpointVolume.Mute;
+            var verifiedPercent = (int)Math.Round(endpointVolume.MasterVolumeLevelScalar * 100);
+            var isReady = !verifiedMuted && verifiedPercent >= Math.Max(1, Math.Min(targetPercent, 5));
+            logger?.Info($"PC master endpoint volume verified. OrderId={FormatOrderId(orderId)}, Muted={verifiedMuted}, Volume={verifiedPercent}%, Ready={isReady}");
+            if (!isReady)
+            {
+                logger?.Warning($"PC master endpoint volume is still not audible after preparation. OrderId={FormatOrderId(orderId)}, Muted={verifiedMuted}, Volume={verifiedPercent}%, Target={targetPercent}%");
+            }
+
+            return isReady;
         }
         catch (Exception exception)
         {
-            logger?.Warning($"Windows wave output volume check failed. OrderId={FormatOrderId(orderId)}, Error={exception.Message}");
+            logger?.Warning($"PC master endpoint volume check failed. OrderId={FormatOrderId(orderId)}, Error={exception.Message}");
+            return false;
         }
     }
 
     private static string FormatOrderId(int? orderId) => orderId?.ToString() ?? "(unknown)";
 
-    private static int DecodeWaveVolumePercent(uint value)
-        => (int)Math.Round(value / 65535d * 100d);
+    private void NotifyPlaybackStarted(
+        Func<int?, CancellationToken, Task>? playbackStarted,
+        int? orderId,
+        CancellationToken cancellationToken)
+    {
+        if (playbackStarted is null)
+        {
+            return;
+        }
 
-    private static uint EncodeWaveVolumePercent(int percent)
-        => (uint)Math.Round(Math.Clamp(percent, 0, 100) / 100d * 65535d);
+        try
+        {
+            playbackStarted(orderId, cancellationToken).GetAwaiter().GetResult();
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger?.Warning($"Order sound playback start callback failed. OrderId={FormatOrderId(orderId)}, Error={exception.Message}");
+        }
+    }
 
     private static int SendMciCommand(string command)
         => mciSendString(command, null, 0, IntPtr.Zero);
@@ -143,10 +176,4 @@ public sealed class WindowsMediaAudioPlayer(AgentOptions options, AgentLogger? l
 
     [DllImport("winmm.dll", CharSet = CharSet.Unicode)]
     private static extern int mciSendString(string command, StringBuilder? returnValue, int returnLength, IntPtr callback);
-
-    [DllImport("winmm.dll")]
-    private static extern int waveOutGetVolume(IntPtr deviceId, out uint volume);
-
-    [DllImport("winmm.dll")]
-    private static extern int waveOutSetVolume(IntPtr deviceId, uint volume);
 }

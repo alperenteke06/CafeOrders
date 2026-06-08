@@ -8,7 +8,10 @@ public sealed class AdminAudioService(HttpClient httpClient, AgentOptions option
 {
     public HttpClient HttpClient => httpClient;
 
-    public async Task<bool> PlayNewOrderSoundAsync(int? orderId = null, CancellationToken cancellationToken = default)
+    public async Task<bool> PlayNewOrderSoundAsync(
+        int? orderId = null,
+        Func<int?, CancellationToken, Task>? playbackStarted = null,
+        CancellationToken cancellationToken = default)
     {
         var settings = await httpClient.GetFromJsonAsync<AppSettingsDto>("api/v1/settings/app", cancellationToken);
         if (settings is null || !settings.EnableNewOrderSound)
@@ -28,7 +31,7 @@ public sealed class AdminAudioService(HttpClient httpClient, AgentOptions option
         {
             var localSource = await ResolveLocalSourceAsync(source, cancellationToken);
             logger?.Info($"Playing new order sound. OrderId={FormatOrderId(orderId)}, Source={localSource}");
-            return await audioPlayer.PlayAsync(localSource, orderId, cancellationToken);
+            return await audioPlayer.PlayAsync(localSource, orderId, cancellationToken, playbackStarted);
         }
         catch (Exception exception)
         {

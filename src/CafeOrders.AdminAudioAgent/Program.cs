@@ -108,8 +108,16 @@ static async Task ProcessPlaybackQueueAsync(
         try
         {
             logger.Info($"Order sound playback owner=AdminAudioAgent starting. OrderId={orderId}");
-            await ReportAgentPlaybackStartedAsync(hubConnection, orderId, logger, CancellationToken.None);
-            var played = await audioService.PlayNewOrderSoundAsync(orderId, pending.Token);
+            var played = await audioService.PlayNewOrderSoundAsync(
+                orderId,
+                async (startedOrderId, cancellationToken) =>
+                {
+                    if (startedOrderId is int value)
+                    {
+                        await ReportAgentPlaybackStartedAsync(hubConnection, value, logger, cancellationToken);
+                    }
+                },
+                pending.Token);
             if (played)
             {
                 logger.Info($"Order sound playback owner=AdminAudioAgent completed. OrderId={orderId}");

@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
     <ProjectReference Include="..\CafeOrders.Application\CafeOrders.Application.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.5" />
   </ItemGroup>
