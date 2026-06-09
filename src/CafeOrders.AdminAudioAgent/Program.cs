@@ -26,15 +26,19 @@ await using var hubConnection = new HubConnectionBuilder()
     .Build();
 
 _ = Task.Run(() => ProcessPlaybackQueueAsync(playbackQueue.Reader, pendingOrders, queuedOrderIds, audioService, hubConnection, logger));
-_ = Task.Run(() => PollPendingOrdersAsync(
-    httpClient,
-    options,
-    pendingOrders,
-    queuedOrderIds,
-    webPlaybackStartedAt,
-    playbackQueue.Writer,
-    logger,
-    CancellationToken.None));
+_ = Task.Run(async () =>
+{
+    await WaitForApiReadyAsync(httpClient, options, logger, CancellationToken.None);
+    await PollPendingOrdersAsync(
+        httpClient,
+        options,
+        pendingOrders,
+        queuedOrderIds,
+        webPlaybackStartedAt,
+        playbackQueue.Writer,
+        logger,
+        CancellationToken.None);
+});
 _ = Task.Run(async () =>
 {
     await StartAndJoinAsync(hubConnection, logger);
@@ -294,6 +298,43 @@ static async Task PollPendingOrdersAsync(
             cancellationToken);
 
         await timer.WaitForNextTickAsync(cancellationToken);
+    }
+}
+
+static async Task WaitForApiReadyAsync(
+    HttpClient httpClient,
+    AgentOptions options,
+    AgentLogger logger,
+    CancellationToken cancellationToken)
+{
+    var delay = TimeSpan.FromMilliseconds(options.ApiStartupRetryDelayMilliseconds);
+    logger.Info($"AdminAudioAgent waiting for API readiness. ApiBaseUrl={httpClient.BaseAddress}, RetryCount={options.ApiStartupRetryCount}, RetryDelayMs={options.ApiStartupRetryDelayMilliseconds}");
+
+    for (var attempt = 1; !cancellationToken.IsCancellationRequested; attempt++)
+    {
+        try
+        {
+            using var response = await httpClient.GetAsync("api/v1/settings/app", cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                logger.Info($"AdminAudioAgent API readiness confirmed. Attempt={attempt}, StatusCode={(int)response.StatusCode}");
+                return;
+            }
+
+            logger.Warning($"AdminAudioAgent API readiness attempt {attempt} failed. StatusCode={(int)response.StatusCode}, WillRetryInMs={options.ApiStartupRetryDelayMilliseconds}");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.Warning($"AdminAudioAgent API readiness attempt {attempt} failed. WillRetryInMs={options.ApiStartupRetryDelayMilliseconds}, Error={exception.Message}");
+        }
+
+        if (attempt >= options.ApiStartupRetryCount)
+        {
+            logger.Warning($"AdminAudioAgent API readiness retry window exhausted. Polling will continue with normal retry loop. Attempts={attempt}");
+            return;
+        }
+
+        await Task.Delay(delay, cancellationToken);
     }
 }
 

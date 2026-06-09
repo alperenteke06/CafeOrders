@@ -11,6 +11,8 @@ public sealed record AgentOptions(
     string LogPath,
     int FallbackDelayMilliseconds,
     int PollIntervalMilliseconds,
+    int ApiStartupRetryCount,
+    int ApiStartupRetryDelayMilliseconds,
     int MaxPlaybackSeconds,
     int Volume,
     bool UseSystemBeepFallback)
@@ -25,6 +27,8 @@ public sealed record AgentOptions(
             null,
             Path.Combine(baseDirectory, "AdminAudioAgent.log"),
             0,
+            2000,
+            180,
             2000,
             12,
             90,
@@ -63,6 +67,8 @@ public sealed record AgentOptions(
             LogPath = ResolvePath(baseDirectory, ReadString(agent, nameof(LogPath), defaults.LogPath)),
             FallbackDelayMilliseconds = ReadInt(agent, nameof(FallbackDelayMilliseconds), defaults.FallbackDelayMilliseconds),
             PollIntervalMilliseconds = ReadInt(agent, nameof(PollIntervalMilliseconds), defaults.PollIntervalMilliseconds),
+            ApiStartupRetryCount = Math.Clamp(ReadInt(agent, nameof(ApiStartupRetryCount), defaults.ApiStartupRetryCount), 1, 1000),
+            ApiStartupRetryDelayMilliseconds = Math.Clamp(ReadInt(agent, nameof(ApiStartupRetryDelayMilliseconds), defaults.ApiStartupRetryDelayMilliseconds), 500, 30000),
             MaxPlaybackSeconds = ReadInt(agent, nameof(MaxPlaybackSeconds), defaults.MaxPlaybackSeconds),
             Volume = Math.Clamp(ReadInt(agent, nameof(Volume), defaults.Volume), 0, 100),
             UseSystemBeepFallback = ReadBool(agent, nameof(UseSystemBeepFallback), defaults.UseSystemBeepFallback)

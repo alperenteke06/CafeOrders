@@ -93,6 +93,8 @@ public sealed class AdminAudioAgentTests
                     "LogPath": "C:\\Temp\\CafeOrders.AdminAudioAgent.log",
                     "FallbackDelayMilliseconds": 900,
                     "PollIntervalMilliseconds": 1500,
+                    "ApiStartupRetryCount": 90,
+                    "ApiStartupRetryDelayMilliseconds": 2500,
                     "Volume": 75,
                     "UseSystemBeepFallback": false
                   }
@@ -108,6 +110,8 @@ public sealed class AdminAudioAgentTests
             Assert.Equal(@"C:\Temp\CafeOrders.AdminAudioAgent.log", options.LogPath);
             Assert.Equal(900, options.FallbackDelayMilliseconds);
             Assert.Equal(1500, options.PollIntervalMilliseconds);
+            Assert.Equal(90, options.ApiStartupRetryCount);
+            Assert.Equal(2500, options.ApiStartupRetryDelayMilliseconds);
             Assert.Equal(75, options.Volume);
             Assert.False(options.UseSystemBeepFallback);
         }
@@ -142,6 +146,9 @@ public sealed class AdminAudioAgentTests
         var options = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "AgentOptions.cs");
 
         Assert.Contains("PollPendingOrdersAsync", program);
+        Assert.Contains("WaitForApiReadyAsync", program);
+        Assert.Contains("AdminAudioAgent waiting for API readiness", program);
+        Assert.Contains("AdminAudioAgent API readiness confirmed", program);
         Assert.Contains("QueuePendingOrdersFromApiAsync", program);
         Assert.Contains("Pending sound polling started", program);
         Assert.Contains("WillRetryInMs", program);
