@@ -3,6 +3,7 @@ param(
     [string]$WebUiAppPoolName = "CafeOrders.WebUI",
     [string]$ApiSiteName = "CafeOrders.API",
     [string]$WebUiSiteName = "CafeOrders.WebUI",
+    [string]$ApiHealthUrl = "http://192.168.2.11:5001/api/v1/settings/app",
     [string]$WebUiUrl = "http://192.168.2.11:5002/",
     [string]$LogPath = "C:\Scripts\CafeOrders.WatchDog.log",
     [string]$AdminAudioAgentPath = "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe",
@@ -107,6 +108,48 @@ function Test-WebUiHealth {
         Write-Log "WebUI health failed: $WebUiUrl. $($_.Exception.Message)" "ERROR"
         return $false
     }
+}
+
+function Test-HttpHealth {
+    param(
+        [string]$Name,
+        [string]$Url
+    )
+
+    try {
+        $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec $HealthTimeoutSeconds -MaximumRedirection 5
+        if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+            Write-Log "$Name health OK: $Url HTTP $($response.StatusCode)"
+            return $true
+        }
+
+        Write-Log "$Name health failed: $Url HTTP $($response.StatusCode)" "ERROR"
+        return $false
+    }
+    catch {
+        Write-Log "$Name health failed: $Url. $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
+function Wait-HttpHealth {
+    param(
+        [string]$Name,
+        [string]$Url,
+        [int]$Attempts = 30,
+        [int]$DelaySeconds = 2
+    )
+
+    for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
+        if (Test-HttpHealth -Name $Name -Url $Url) {
+            return $true
+        }
+
+        Write-Log "$Name health is not ready. Attempt $attempt/$Attempts. Waiting $DelaySeconds seconds..." "WARN"
+        Start-Sleep -Seconds $DelaySeconds
+    }
+
+    return $false
 }
 
 function Get-ChromePath {
@@ -288,9 +331,14 @@ if (-not ($apiPoolOk -and $webPoolOk -and $apiSiteOk -and $webSiteOk)) {
     exit 2
 }
 
+if (-not (Wait-HttpHealth -Name "API" -Url $ApiHealthUrl)) {
+    Write-Log "API is not healthy. AdminAudioAgent and browser launch skipped." "ERROR"
+    exit 3
+}
+
 if (-not (Test-WebUiHealth)) {
     Write-Log "WebUI is not healthy. Browser launch skipped." "ERROR"
-    exit 3
+    exit 4
 }
 
 Ensure-AdminAudioAgentRunning | Out-Null
