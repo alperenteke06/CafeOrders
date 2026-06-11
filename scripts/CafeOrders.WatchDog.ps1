@@ -1,10 +1,10 @@
-﻿param(
+param(
     [string]$ApiAppPoolName = "CafeOrders.API",
     [string]$WebUiAppPoolName = "CafeOrders.WebUI",
     [string]$ApiSiteName = "CafeOrders.API",
     [string]$WebUiSiteName = "CafeOrders.WebUI",
-    [string]$ApiHealthUrl = "http://192.168.2.11:5001/api/v1/settings/app",
-    [string]$WebUiUrl = "http://192.168.2.11:5002/",
+    [string]$ApiHealthUrl = "http://192.168.11.24:5001/api/v1/settings/app",
+    [string]$WebUiUrl = "http://192.168.11.24:5002/",
     [string]$LogPath = "C:\Scripts\CafeOrders.WatchDog.log",
     [string]$AdminAudioAgentPath = "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe",
     [string]$ServerNotifierPath = "C:\ServerNotifier\CafeOrders.ServerNotifier.exe",
@@ -400,4 +400,3 @@ if (Test-CafeOrdersAlreadyOpen) {
 
 Open-CafeOrders
 Write-Log "CafeOrders WatchDog completed."
-

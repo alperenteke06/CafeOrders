@@ -1,9 +1,9 @@
-﻿param(
+param(
     [string]$TaskName = "CafeOrders WatchDog",
     [string]$ScriptPath = "C:\Scripts\CafeOrders.WatchDog.ps1",
     [string]$HiddenRunnerPath = "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs",
-    [string]$ApiHealthUrl = "http://192.168.2.11:5001/api/v1/settings/app",
-    [string]$WebUiUrl = "http://192.168.2.11:5002/",
+    [string]$ApiHealthUrl = "http://192.168.11.24:5001/api/v1/settings/app",
+    [string]$WebUiUrl = "http://192.168.11.24:5002/",
     [string]$ApiAppPoolName = "CafeOrders.API",
     [string]$WebUiAppPoolName = "CafeOrders.WebUI",
     [string]$ApiSiteName = "CafeOrders.API",
@@ -69,4 +69,3 @@ Register-ScheduledTask `
     -Force | Out-Null
 
 Write-Output "Task registered: $TaskName"
-

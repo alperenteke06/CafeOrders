@@ -1,11 +1,11 @@
-﻿Option Explicit
+Option Explicit
 
 Dim args, scriptPath, apiHealthUrl, webUiUrl, apiAppPoolName, webUiAppPoolName, apiSiteName, webUiSiteName, logPath, adminAudioAgentPath, serverNotifierPath
 Set args = WScript.Arguments
 
 scriptPath = ReadArg(args, 0, "C:\Scripts\CafeOrders.WatchDog.ps1")
-apiHealthUrl = ReadArg(args, 1, "http://192.168.2.11:5001/api/v1/settings/app")
-webUiUrl = ReadArg(args, 2, "http://192.168.2.11:5002/")
+apiHealthUrl = ReadArg(args, 1, "http://192.168.11.24:5001/api/v1/settings/app")
+webUiUrl = ReadArg(args, 2, "http://192.168.11.24:5002/")
 apiAppPoolName = ReadArg(args, 3, "CafeOrders.API")
 webUiAppPoolName = ReadArg(args, 4, "CafeOrders.WebUI")
 apiSiteName = ReadArg(args, 5, "CafeOrders.API")
@@ -41,4 +41,3 @@ End Function
 Function Quote(value)
     Quote = """" & Replace(CStr(value), """", """""") & """"
 End Function
-

@@ -3616,6 +3616,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .log-source.webui { color: #c084fc; }
 .log-source.desktop { color: #ffba20; }
 .log-source.agent { color: #2ddf7f; }
+.log-source.notifier { color: #38f8d4; }
 .log-source.system { color: #94a3b8; }
 
 .log-icon {
