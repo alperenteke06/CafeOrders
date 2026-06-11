@@ -109,6 +109,8 @@ input[type="number"]::-webkit-outer-spin-button {
 .sidebar-nav {
   display: grid;
   gap: 10px;
+  position: relative;
+  z-index: 1;
 }
 
 .nav-item {
@@ -142,11 +144,12 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .sidebar-footer {
-  margin-top: 12px;
+  margin-top: auto;
   display: grid;
   gap: 18px;
-  position: sticky;
-  bottom: 0;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
   padding-top: 12px;
   background: linear-gradient(180deg, rgba(7, 14, 29, 0) 0%, rgba(7, 14, 29, 0.96) 24%, rgba(7, 14, 29, 1) 100%);
 }

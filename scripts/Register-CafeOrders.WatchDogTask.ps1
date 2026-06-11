@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$TaskName = "CafeOrders WatchDog",
     [string]$ScriptPath = "C:\Scripts\CafeOrders.WatchDog.ps1",
     [string]$HiddenRunnerPath = "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs",
@@ -9,7 +9,8 @@ param(
     [string]$ApiSiteName = "CafeOrders.API",
     [string]$WebUiSiteName = "CafeOrders.WebUI",
     [string]$LogPath = "C:\Scripts\CafeOrders.WatchDog.log",
-    [string]$AdminAudioAgentPath = "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"
+    [string]$AdminAudioAgentPath = "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe",
+    [string]$ServerNotifierPath = "C:\ServerNotifier\CafeOrders.ServerNotifier.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,7 +34,8 @@ $arguments = @(
     "`"$ApiSiteName`"",
     "`"$WebUiSiteName`"",
     "`"$LogPath`"",
-    "`"$AdminAudioAgentPath`""
+    "`"$AdminAudioAgentPath`"",
+    "`"$ServerNotifierPath`""
 ) -join " "
 
 $action = New-ScheduledTaskAction `
@@ -67,3 +69,4 @@ Register-ScheduledTask `
     -Force | Out-Null
 
 Write-Output "Task registered: $TaskName"
+
