@@ -7,6 +7,7 @@ param(
     [string]$WebUiUrl = "http://192.168.11.24:5002/",
     [string]$LogPath = "C:\Scripts\CafeOrders.WatchDog.log",
     [string]$AdminAudioAgentPath = "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe",
+    [string]$ServerNotifierPath = "C:\ServerNotifier\CafeOrders.ServerNotifier.exe",
     [string]$BrowserPath = "",
     [bool]$LaunchThroughExplorerShell = $true,
     [int]$HealthTimeoutSeconds = 10
@@ -303,6 +304,54 @@ function Ensure-AdminAudioAgentRunning {
     return $false
 }
 
+function Ensure-ServerNotifierRunning {
+    if ([string]::IsNullOrWhiteSpace($ServerNotifierPath)) {
+        Write-Log "ServerNotifier path is empty. Notifier check skipped." "WARN"
+        return $false
+    }
+
+    if (-not (Test-Path $ServerNotifierPath)) {
+        Write-Log "ServerNotifier executable not found: $ServerNotifierPath" "WARN"
+        return $false
+    }
+
+    $resolvedPath = (Resolve-Path $ServerNotifierPath).Path
+    $notifierName = [System.IO.Path]::GetFileName($resolvedPath)
+    try {
+        $notifierProcesses = Get-CimInstance Win32_Process -Filter "name = '$notifierName'" -ErrorAction Stop
+        foreach ($process in $notifierProcesses) {
+            if ($process.ExecutablePath -eq $resolvedPath -or ($process.CommandLine -and $process.CommandLine.Contains($resolvedPath))) {
+                Write-Log "ServerNotifier OK. PID: $($process.ProcessId)"
+                return $true
+            }
+        }
+    }
+    catch {
+        Write-Log "ServerNotifier process check failed. $($_.Exception.Message)" "WARN"
+    }
+
+    $workingDirectory = Split-Path -Parent $resolvedPath
+    Write-Log "Starting ServerNotifier: $resolvedPath"
+    Start-Process -FilePath $resolvedPath -WorkingDirectory $workingDirectory -WindowStyle Hidden
+    Start-Sleep -Seconds 2
+
+    try {
+        $notifierProcesses = Get-CimInstance Win32_Process -Filter "name = '$notifierName'" -ErrorAction Stop
+        foreach ($process in $notifierProcesses) {
+            if ($process.ExecutablePath -eq $resolvedPath -or ($process.CommandLine -and $process.CommandLine.Contains($resolvedPath))) {
+                Write-Log "ServerNotifier started. PID: $($process.ProcessId)"
+                return $true
+            }
+        }
+    }
+    catch {
+        Write-Log "ServerNotifier post-start check failed. $($_.Exception.Message)" "WARN"
+    }
+
+    Write-Log "ServerNotifier could not be verified after start." "WARN"
+    return $false
+}
+
 function Open-CafeOrders {
     if ($LaunchThroughExplorerShell) {
         Write-Log "Opening CafeOrders through Windows shell: $WebUiUrl"
@@ -342,6 +391,7 @@ if (-not (Test-WebUiHealth)) {
 }
 
 Ensure-AdminAudioAgentRunning | Out-Null
+Ensure-ServerNotifierRunning | Out-Null
 
 if (Test-CafeOrdersAlreadyOpen) {
     Write-Log "CafeOrders is already open. Browser launch skipped."

@@ -1,0 +1,208 @@
+<Window x:Class="CafeOrders.ServerNotifier.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CafeOrders Server Notifier"
+        Width="342"
+        Height="226"
+        WindowStartupLocation="Manual"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Loaded="OnLoaded"
+        Closing="OnClosing">
+    <Window.Resources>
+        <CubicEase x:Key="NotificationEase" EasingMode="EaseOut" />
+        <Storyboard x:Key="ShowNotificationStoryboard">
+            <DoubleAnimation Storyboard.TargetName="NotificationShell"
+                             Storyboard.TargetProperty="Opacity"
+                             From="0"
+                             To="1"
+                             Duration="0:0:0.22" />
+            <DoubleAnimation Storyboard.TargetName="NotificationTranslate"
+                             Storyboard.TargetProperty="Y"
+                             From="22"
+                             To="0"
+                             Duration="0:0:0.26"
+                             EasingFunction="{StaticResource NotificationEase}" />
+        </Storyboard>
+        <Storyboard x:Key="HideNotificationStoryboard">
+            <DoubleAnimation Storyboard.TargetName="NotificationShell"
+                             Storyboard.TargetProperty="Opacity"
+                             From="1"
+                             To="0"
+                             Duration="0:0:0.18" />
+            <DoubleAnimation Storyboard.TargetName="NotificationTranslate"
+                             Storyboard.TargetProperty="Y"
+                             From="0"
+                             To="18"
+                             Duration="0:0:0.18"
+                             EasingFunction="{StaticResource NotificationEase}" />
+        </Storyboard>
+        <Storyboard x:Key="PulseIconStoryboard" RepeatBehavior="Forever">
+            <DoubleAnimation Storyboard.TargetName="IconPulse"
+                             Storyboard.TargetProperty="Opacity"
+                             From="0.42"
+                             To="0.08"
+                             AutoReverse="True"
+                             Duration="0:0:1.1" />
+            <DoubleAnimation Storyboard.TargetName="IconPulseScale"
+                             Storyboard.TargetProperty="ScaleX"
+                             From="1"
+                             To="1.35"
+                             AutoReverse="True"
+                             Duration="0:0:1.1" />
+            <DoubleAnimation Storyboard.TargetName="IconPulseScale"
+                             Storyboard.TargetProperty="ScaleY"
+                             From="1"
+                             To="1.35"
+                             AutoReverse="True"
+                             Duration="0:0:1.1" />
+        </Storyboard>
+    </Window.Resources>
+
+    <Grid x:Name="NotificationShell" Opacity="0">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="NotificationTranslate" />
+        </Grid.RenderTransform>
+
+        <Border Background="{StaticResource NotifierSurfaceBrush}"
+                BorderBrush="#66514532"
+                BorderThickness="1"
+                CornerRadius="14"
+                Padding="16"
+                SnapsToDevicePixels="True">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000"
+                                  BlurRadius="24"
+                                  ShadowDepth="8"
+                                  Opacity="0.42" />
+            </Border.Effect>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Rectangle Width="3"
+                           HorizontalAlignment="Left"
+                           RadiusX="2"
+                           RadiusY="2"
+                           Fill="{StaticResource NotifierAccentBrush}"
+                           Margin="-16,-16,0,-16"
+                           Grid.RowSpan="3" />
+
+                <Grid Grid.Row="0" Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Width="42" Height="42" Margin="0,0,12,0">
+                        <Ellipse x:Name="IconPulse"
+                                 Width="42"
+                                 Height="42"
+                                 Fill="{StaticResource NotifierAccentSoftBrush}"
+                                 RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.RenderTransform>
+                                <ScaleTransform x:Name="IconPulseScale" />
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+                        <Border Width="36"
+                                Height="36"
+                                CornerRadius="11"
+                                Background="{StaticResource NotifierAccentBrush}">
+                            <Viewbox Width="19" Height="19">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#412D00"
+                                          Data="M12 22a2.98 2.98 0 0 0 2.818-2H9.182A2.98 2.98 0 0 0 12 22zm7-7.414V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C8.64 5.36 7 7.92 7 11v3.586l-1.707 1.707A.996.996 0 0 0 6 18h12a.996.996 0 0 0 .707-1.707L17 14.586z" />
+                                </Canvas>
+                            </Viewbox>
+                        </Border>
+                    </Grid>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="SISTEM BILDIRIMI"
+                                   Foreground="{StaticResource NotifierMutedTextBrush}"
+                                   FontSize="11"
+                                   FontWeight="Bold" />
+                        <TextBlock Text="{Binding HeaderTitle}"
+                                   Foreground="{StaticResource NotifierTextBrush}"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Margin="0,3,0,0" />
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Grid.Row="1" Margin="0,0,0,14">
+                    <TextBlock Text="{Binding MessageTitle}"
+                               Foreground="{StaticResource NotifierTextBrush}"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               TextWrapping="Wrap"
+                               LineHeight="24" />
+                    <TextBlock Text="{Binding MessageContent}"
+                               Foreground="{StaticResource NotifierMutedTextBrush}"
+                               FontSize="13"
+                               LineHeight="18"
+                               TextWrapping="Wrap"
+                               TextTrimming="CharacterEllipsis"
+                               Margin="0,8,0,0"
+                               MaxHeight="42" />
+                </StackPanel>
+
+                <Button Grid.Row="2"
+                        Height="42"
+                        BorderThickness="0"
+                        Command="{Binding OpenOrdersCommand}"
+                        Cursor="Hand"
+                        Focusable="False">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="ButtonRoot"
+                                    CornerRadius="11"
+                                    Background="{StaticResource NotifierAccentBrush}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Siparisleri Goruntule"
+                                               Foreground="#412D00"
+                                               FontSize="14"
+                                               FontWeight="Bold"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1"
+                                               Text=">"
+                                               Foreground="#412D00"
+                                               FontSize="18"
+                                               FontWeight="Bold"
+                                               Margin="0,0,16,1"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ButtonRoot" Property="Background" Value="#FFFFC94A" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="ButtonRoot" Property="RenderTransform">
+                                        <Setter.Value>
+                                            <ScaleTransform ScaleX="0.985" ScaleY="0.985" />
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Setter TargetName="ButtonRoot" Property="RenderTransformOrigin" Value="0.5,0.5" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

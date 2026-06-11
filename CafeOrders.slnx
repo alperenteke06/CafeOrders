@@ -24,6 +24,11 @@
     <File Path="publishes/AdminAudioAgent/CafeOrders.AdminAudioAgent.dll" />
     <File Path="publishes/AdminAudioAgent/CafeOrders.AdminAudioAgent.exe" />
     <File Path="publishes/AdminAudioAgent/CafeOrders.AdminAudioAgent.runtimeconfig.json" />
+    <File Path="publishes/ServerNotifier/appsettings.json" />
+    <File Path="publishes/ServerNotifier/CafeOrders.ServerNotifier.deps.json" />
+    <File Path="publishes/ServerNotifier/CafeOrders.ServerNotifier.dll" />
+    <File Path="publishes/ServerNotifier/CafeOrders.ServerNotifier.exe" />
+    <File Path="publishes/ServerNotifier/CafeOrders.ServerNotifier.runtimeconfig.json" />
     <File Path="publishes/WebUI/appsettings.json" />
     <File Path="publishes/WebUI/CafeOrders.WebUI.deps.json" />
     <File Path="publishes/WebUI/CafeOrders.WebUI.dll" />
@@ -45,6 +50,7 @@
     <Project Path="src/CafeOrders.DesktopApp/CafeOrders.DesktopApp.csproj" />
     <Project Path="src/CafeOrders.Domain/CafeOrders.Domain.csproj" />
     <Project Path="src/CafeOrders.Infrastructure/CafeOrders.Infrastructure.csproj" />
+    <Project Path="src/CafeOrders.ServerNotifier/CafeOrders.ServerNotifier.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CafeOrders.Tests/CafeOrders.Tests.csproj" />

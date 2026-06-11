@@ -9,7 +9,8 @@ param(
     [string]$ApiSiteName = "CafeOrders.API",
     [string]$WebUiSiteName = "CafeOrders.WebUI",
     [string]$LogPath = "C:\Scripts\CafeOrders.WatchDog.log",
-    [string]$AdminAudioAgentPath = "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe"
+    [string]$AdminAudioAgentPath = "C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe",
+    [string]$ServerNotifierPath = "C:\ServerNotifier\CafeOrders.ServerNotifier.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,7 +34,8 @@ $arguments = @(
     "`"$ApiSiteName`"",
     "`"$WebUiSiteName`"",
     "`"$LogPath`"",
-    "`"$AdminAudioAgentPath`""
+    "`"$AdminAudioAgentPath`"",
+    "`"$ServerNotifierPath`""
 ) -join " "
 
 $action = New-ScheduledTaskAction `
