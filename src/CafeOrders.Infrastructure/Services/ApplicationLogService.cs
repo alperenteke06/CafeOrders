@@ -14,7 +14,8 @@ public sealed class ApplicationLogService(CafeOrdersDbContext dbContext, IRealti
         "API",
         "WebUI",
         "DesktopApp",
-        "AdminAudioAgent"
+        "AdminAudioAgent",
+        "ServerNotifier"
     };
 
     private static readonly HashSet<string> KnownLevels = new(StringComparer.OrdinalIgnoreCase)

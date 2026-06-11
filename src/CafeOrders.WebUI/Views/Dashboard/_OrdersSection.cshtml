@@ -1,9 +1,17 @@
 @model CafeOrders.WebUI.Models.DashboardViewModel
 @{
     const int pageSize = 8;
+    static int OrderSortRank(CafeOrders.Application.Contracts.Orders.OrderDto order)
+        => order.Status == "Pending" ? 0 : 1;
+
+    static DateTime OrderSortTimestamp(CafeOrders.Application.Contracts.Orders.OrderDto order)
+        => order.Status == "Pending"
+            ? order.CreatedAt
+            : order.CompletedAt ?? order.RejectedAt ?? order.AcceptedAt ?? order.CreatedAt;
+
     var allOrders = Model.RecentOrders
-        .OrderBy(order => order.Status == "Pending" ? 0 : order.Status == "Accepted" ? 1 : 2)
-        .ThenByDescending(order => order.CreatedAt)
+        .OrderBy(OrderSortRank)
+        .ThenByDescending(OrderSortTimestamp)
         .ToArray();
     var totalOrders = allOrders.Length;
     var completedOrders = allOrders.Where(x => x.Status == "Completed").ToArray();

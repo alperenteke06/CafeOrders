@@ -17,6 +17,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         _options = NotifierOptions.Load();
         _logger = new NotifierLogger(_options.LogPath);
+        _logger.ConfigureRemote(_options.ApiBaseUrl);
         _viewModel = new NotifierViewModel(_options, _logger);
         _service = new ServerNotifierService(_options, _logger);
         _service.SnapshotChanged += OnSnapshotChanged;

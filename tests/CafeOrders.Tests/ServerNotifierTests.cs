@@ -54,6 +54,22 @@ public sealed class ServerNotifierTests
     }
 
     [Fact]
+    public void ServerNotifier_LogsLocallyAndPublishesToCentralLogPanel()
+    {
+        var logger = ReadRepoFile("src", "CafeOrders.ServerNotifier", "NotifierLogger.cs");
+        var window = ReadRepoFile("src", "CafeOrders.ServerNotifier", "MainWindow.xaml.cs");
+        var options = ReadRepoFile("src", "CafeOrders.ServerNotifier", "NotifierOptions.cs");
+
+        Assert.Contains("ServerNotifier.log", options);
+        Assert.Contains("Path.Combine(baseDirectory, \"ServerNotifier.log\")", options);
+        Assert.Contains("ConfigureRemote(_options.ApiBaseUrl)", window);
+        Assert.Contains("Channel.CreateBounded<ApplicationLogCreateRequest>", logger);
+        Assert.Contains("api/v1/logs/client", logger);
+        Assert.Contains("\"ServerNotifier\"", logger);
+        Assert.Contains("Local file remains authoritative when the API is unavailable", logger);
+    }
+
+    [Fact]
     public void WatchDog_StartsServerNotifierWhenMissing()
     {
         var script = ReadRepoFile("scripts", "CafeOrders.WatchDog.ps1");

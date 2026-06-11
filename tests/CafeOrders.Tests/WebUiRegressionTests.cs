@@ -264,6 +264,39 @@ public sealed class WebUiRegressionTests
     }
 
     [Fact]
+    public void OrdersSection_IgnoresDashboardRangeAndKeepsSearchAndPendingFirstOrdering()
+    {
+        var dashboardController = ReadRepoFile("src", "CafeOrders.WebUI", "Controllers", "DashboardController.cs");
+        var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
+        var ordersSection = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "_OrdersSection.cshtml");
+
+        Assert.Contains("activeSection == \"orders\"", dashboardController);
+        Assert.Contains("allRecentOrders.Where(order => order.CreatedAt >= rangeStart)", dashboardController);
+        Assert.Contains("OrderMatchesSearch(order, searchQuery)", dashboardController);
+        Assert.Contains("OrderBy(GetOrderSortRank)", dashboardController);
+        Assert.Contains("ThenByDescending(GetOrderSortTimestamp)", dashboardController);
+        Assert.Contains("section !== 'dashboard'", index);
+        Assert.Contains("url.searchParams.delete('range')", index);
+        Assert.Contains("loadSection('orders', true, { page:", ordersSection);
+        Assert.Contains("search: getSearchValue()", ordersSection);
+        Assert.Contains("OrderBy(OrderSortRank)", ordersSection);
+        Assert.Contains("ThenByDescending(OrderSortTimestamp)", ordersSection);
+    }
+
+    [Fact]
+    public void SidebarProfileMenu_StaysInSidebarFlowInsteadOfOverlappingNavigation()
+    {
+        var css = ReadRepoFile("src", "CafeOrders.WebUI", "wwwroot", "css", "site.css");
+
+        Assert.Contains(".sidebar-footer", css);
+        Assert.Contains("margin-top: auto;", css);
+        Assert.Contains("position: relative;", css);
+        Assert.Contains("flex-shrink: 0;", css);
+        Assert.Contains(".sidebar-nav", css);
+        Assert.Contains("z-index: 1;", css);
+    }
+
+    [Fact]
     public void SystemLogsSection_IsReachableFilteredAndRealtime()
     {
         var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
@@ -279,10 +312,14 @@ public sealed class WebUiRegressionTests
         Assert.Contains("getLogLevelFilter", index);
         Assert.Contains("applicationLogStream", logsSection);
         Assert.Contains("log-filter-chip", logsSection);
+        Assert.Contains("ServerNotifier", logsSection);
+        Assert.Contains("notifier", logsSection);
+        Assert.Contains("case 'ServerNotifier'", index);
         Assert.Contains("loadSection('logs'", logsSection);
         Assert.Contains(".log-terminal-shell", css);
         Assert.Contains(".terminal-scanline", css);
         Assert.Contains(".log-entry-row", css);
+        Assert.Contains(".log-source.notifier", css);
     }
 
     [Fact]
@@ -294,6 +331,8 @@ public sealed class WebUiRegressionTests
         var httpActivityLogging = ReadRepoFile("src", "CafeOrders.Infrastructure", "Logging", "HttpActivityLoggingExtensions.cs");
         var desktopLogger = ReadRepoFile("src", "CafeOrders.DesktopApp", "Services", "DesktopAppLogger.cs");
         var agentLogger = ReadRepoFile("src", "CafeOrders.AdminAudioAgent", "AgentLogger.cs");
+        var notifierLogger = ReadRepoFile("src", "CafeOrders.ServerNotifier", "NotifierLogger.cs");
+        var applicationLogService = ReadRepoFile("src", "CafeOrders.Infrastructure", "Services", "ApplicationLogService.cs");
         var migration = ReadRepoFile("src", "CafeOrders.Infrastructure", "Persistence", "Migrations", "20260606120000_AddApplicationLogEntries.cs");
 
         Assert.Contains("AddApplicationLogQueue(builder.Configuration, \"API\"", apiProgram);
@@ -313,6 +352,10 @@ public sealed class WebUiRegressionTests
         Assert.Contains("ConfigureRemote", agentLogger);
         Assert.Contains("api/v1/logs/client", agentLogger);
         Assert.Contains("OrderId=", agentLogger);
+        Assert.Contains("ConfigureRemote", notifierLogger);
+        Assert.Contains("api/v1/logs/client", notifierLogger);
+        Assert.Contains("\"ServerNotifier\"", notifierLogger);
+        Assert.Contains("\"ServerNotifier\"", applicationLogService);
         Assert.Contains("CreateTable", migration);
         Assert.Contains("ApplicationLogEntries", migration);
     }

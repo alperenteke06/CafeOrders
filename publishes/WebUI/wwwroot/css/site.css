@@ -109,6 +109,8 @@ input[type="number"]::-webkit-outer-spin-button {
 .sidebar-nav {
   display: grid;
   gap: 10px;
+  position: relative;
+  z-index: 1;
 }
 
 .nav-item {
@@ -142,11 +144,12 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .sidebar-footer {
-  margin-top: 12px;
+  margin-top: auto;
   display: grid;
   gap: 18px;
-  position: sticky;
-  bottom: 0;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
   padding-top: 12px;
   background: linear-gradient(180deg, rgba(7, 14, 29, 0) 0%, rgba(7, 14, 29, 0.96) 24%, rgba(7, 14, 29, 1) 100%);
 }
@@ -3613,6 +3616,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .log-source.webui { color: #c084fc; }
 .log-source.desktop { color: #ffba20; }
 .log-source.agent { color: #2ddf7f; }
+.log-source.notifier { color: #38f8d4; }
 .log-source.system { color: #94a3b8; }
 
 .log-icon {

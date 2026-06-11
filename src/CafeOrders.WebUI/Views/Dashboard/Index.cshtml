@@ -739,7 +739,9 @@
                 }
             }
 
-            if (!url.searchParams.has('range')) {
+            if (section !== 'dashboard') {
+                url.searchParams.delete('range');
+            } else if (!url.searchParams.has('range')) {
                 url.searchParams.set('range', '1g');
             }
 
@@ -2402,6 +2404,8 @@
                     return 'desktop';
                 case 'AdminAudioAgent':
                     return 'agent';
+                case 'ServerNotifier':
+                    return 'notifier';
                 default:
                     return 'system';
             }

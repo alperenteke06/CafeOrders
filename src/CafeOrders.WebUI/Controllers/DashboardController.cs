@@ -384,11 +384,14 @@ public sealed class DashboardController(
             _ => DateTime.UtcNow.AddDays(-1)
         };
 
-        var recentOrders = allRecentOrders
-            .Where(order => order.CreatedAt >= rangeStart)
+        var ordersForSection = activeSection == "orders"
+            ? allRecentOrders
+            : allRecentOrders.Where(order => order.CreatedAt >= rangeStart);
+
+        var recentOrders = ordersForSection
             .Where(order => string.IsNullOrWhiteSpace(searchQuery) || OrderMatchesSearch(order, searchQuery))
-            .OrderByDescending(order => order.Status == "Pending")
-            .ThenByDescending(order => order.CreatedAt)
+            .OrderBy(GetOrderSortRank)
+            .ThenByDescending(GetOrderSortTimestamp)
             .ToArray();
 
         var notifications = allRecentOrders
@@ -568,6 +571,7 @@ public sealed class DashboardController(
             "WebUI" => "WebUI",
             "DesktopApp" => "DesktopApp",
             "AdminAudioAgent" => "AdminAudioAgent",
+            "ServerNotifier" => "ServerNotifier",
             _ => "all"
         };
 
@@ -640,6 +644,14 @@ public sealed class DashboardController(
             "Rejected" => order.RejectedAt ?? order.CreatedAt,
             _ => order.CreatedAt
         };
+
+    private static int GetOrderSortRank(Application.Contracts.Orders.OrderDto order)
+        => order.Status == "Pending" ? 0 : 1;
+
+    private static DateTime GetOrderSortTimestamp(Application.Contracts.Orders.OrderDto order)
+        => order.Status == "Pending"
+            ? order.CreatedAt
+            : order.CompletedAt ?? order.RejectedAt ?? order.AcceptedAt ?? order.CreatedAt;
 
     private static NotificationItemViewModel MapNotification(Application.Contracts.Orders.OrderDto order)
     {

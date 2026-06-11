@@ -8,7 +8,8 @@
         ("API", "API", "api"),
         ("WebUI", "WebUI", "language"),
         ("DesktopApp", "DesktopApp", "desktop_windows"),
-        ("AdminAudioAgent", "Audio Agent", "volume_up")
+        ("AdminAudioAgent", "Audio Agent", "volume_up"),
+        ("ServerNotifier", "Notifier", "notifications_active")
     };
     var levels = new[]
     {
@@ -29,7 +30,7 @@
     <div class="section-head">
         <div>
             <h2>Sistem Loglari</h2>
-            <p>API, WebUI, DesktopApp ve AdminAudioAgent akislarini tek terminalden izleyin.</p>
+            <p>API, WebUI, DesktopApp, AdminAudioAgent ve ServerNotifier akislarini tek terminalden izleyin.</p>
         </div>
         <button class="action-button action-button-outline" type="button" onclick="loadSection('logs', false, { source: getLogSourceFilter(), level: getLogLevelFilter(), search: getSearchValue() }, true)">
             <span class="material-symbols-outlined">refresh</span>
@@ -170,6 +171,7 @@
             "WebUI" => "webui",
             "DesktopApp" => "desktop",
             "AdminAudioAgent" => "agent",
+            "ServerNotifier" => "notifier",
             _ => "system"
         };
 
