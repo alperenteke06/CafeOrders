@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using CafeOrders.AdminAudioAgent;
 
 namespace CafeOrders.Tests;
@@ -90,6 +91,7 @@ public sealed class AdminAudioAgentTests
                     "HubUrl": "http://192.168.11.24:5001/hubs/cafe",
                     "WebUiBaseUrl": "http://192.168.11.24:5002/",
                     "SharedWebRootPath": "C:\\inetpub\\wwwroot\\WebUI\\wwwroot",
+                    "CacheDirectory": "agent-cache",
                     "LogPath": "C:\\Temp\\CafeOrders.AdminAudioAgent.log",
                     "FallbackDelayMilliseconds": 900,
                     "PollIntervalMilliseconds": 1500,
@@ -107,6 +109,7 @@ public sealed class AdminAudioAgentTests
             Assert.Equal("http://192.168.11.24:5001/hubs/cafe", options.HubUrl);
             Assert.Equal("http://192.168.11.24:5002/", options.WebUiBaseUrl);
             Assert.Equal(@"C:\inetpub\wwwroot\WebUI\wwwroot", options.SharedWebRootPath);
+            Assert.Equal(Path.Combine(directory, "agent-cache"), options.CacheDirectory);
             Assert.Equal(@"C:\Temp\CafeOrders.AdminAudioAgent.log", options.LogPath);
             Assert.Equal(900, options.FallbackDelayMilliseconds);
             Assert.Equal(1500, options.PollIntervalMilliseconds);
@@ -114,6 +117,50 @@ public sealed class AdminAudioAgentTests
             Assert.Equal(2500, options.ApiStartupRetryDelayMilliseconds);
             Assert.Equal(75, options.Volume);
             Assert.False(options.UseSystemBeepFallback);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AdminAudioService_CachesRemoteSoundWithUniqueOrderScopedFileNames()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var cacheDirectory = Path.Combine(directory, "cache");
+            File.WriteAllText(Path.Combine(directory, "appsettings.json"), $$"""
+                {
+                  "Agent": {
+                    "ApiBaseUrl": "http://192.168.11.24:5001/",
+                    "HubUrl": "http://192.168.11.24:5001/hubs/cafe",
+                    "WebUiBaseUrl": "http://192.168.11.24:5002/",
+                    "CacheDirectory": "{{cacheDirectory.Replace("\\", "\\\\")}}",
+                    "LogPath": "AdminAudioAgent.log",
+                    "UseSystemBeepFallback": false
+                  }
+                }
+                """);
+            var options = AgentOptions.Load(directory);
+            var player = new CapturingAudioPlayer();
+            using var httpClient = new HttpClient(new FakeAudioAgentHandler())
+            {
+                BaseAddress = new Uri(options.ApiBaseUrl)
+            };
+            var service = new AdminAudioService(httpClient, options, player);
+
+            Assert.True(await service.PlayNewOrderSoundAsync(77));
+            Assert.True(await service.PlayNewOrderSoundAsync(78));
+
+            Assert.Equal(2, player.PlayedSources.Count);
+            Assert.All(player.PlayedSources, source => Assert.StartsWith(cacheDirectory, source, StringComparison.OrdinalIgnoreCase));
+            Assert.Contains("new-order-77-", Path.GetFileName(player.PlayedSources[0]));
+            Assert.Contains("new-order-78-", Path.GetFileName(player.PlayedSources[1]));
+            Assert.NotEqual(player.PlayedSources[0], player.PlayedSources[1]);
+            Assert.Equal(2, Directory.GetFiles(cacheDirectory, "new-order-*").Length);
         }
         finally
         {
@@ -247,5 +294,61 @@ public sealed class AdminAudioAgentTests
         }
 
         throw new DirectoryNotFoundException("CafeOrders repository root could not be resolved.");
+    }
+
+    private sealed class CapturingAudioPlayer : IAudioPlayer
+    {
+        public List<string> PlayedSources { get; } = [];
+
+        public Task<bool> PlayAsync(
+            string source,
+            int? orderId = null,
+            CancellationToken cancellationToken = default,
+            Func<int?, CancellationToken, Task>? playbackStarted = null)
+        {
+            PlayedSources.Add(source);
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> PlayFallbackAsync(int? orderId = null, CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
+    }
+
+    private sealed class FakeAudioAgentHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.RequestUri?.AbsolutePath == "/api/v1/settings/app")
+            {
+                var settings = new CafeOrders.Application.Contracts.Settings.AppSettingsDto(
+                    "CafeOrders",
+                    "Alperen TEKE",
+                    "0 (541) 688 88 06",
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    "Info",
+                    "campaign",
+                    true,
+                    false,
+                    false,
+                    null,
+                    "http://192.168.11.24:5002/uploads/sounds/order.mp3");
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(settings)
+                });
+            }
+
+            if (request.RequestUri?.AbsolutePath == "/uploads/sounds/order.mp3")
+            {
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent([1, 2, 3, 4])
+                });
+            }
+
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.NotFound));
+        }
     }
 }

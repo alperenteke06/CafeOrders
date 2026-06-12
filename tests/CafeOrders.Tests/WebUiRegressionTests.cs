@@ -88,6 +88,7 @@ public sealed class WebUiRegressionTests
     public void UploadScripts_SupportDropFileAndWebUrlFlows()
     {
         var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");
+        var project = ReadRepoFile("src", "CafeOrders.WebUI", "CafeOrders.WebUI.csproj");
 
         Assert.Contains("handleProductDrop", index);
         Assert.Contains("handleProductFileChange", index);
@@ -96,6 +97,8 @@ public sealed class WebUiRegressionTests
         Assert.Contains("handleSoundFileChange", index);
         Assert.Contains("updateSoundPreviewFromUrl", index);
         Assert.Contains("normalizeMediaUrl", index);
+        Assert.Contains("Content Remove=\"wwwroot\\uploads\\**\"", project);
+        Assert.Contains("CopyToPublishDirectory=\"Never\"", project);
     }
 
     [Fact]
