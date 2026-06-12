@@ -231,6 +231,23 @@ public sealed class WebUiRegressionTests
     }
 
     [Fact]
+    public void DashboardSections_LoadOnlyRequiredDataForPartialRefreshes()
+    {
+        var dashboardController = ReadRepoFile("src", "CafeOrders.WebUI", "Controllers", "DashboardController.cs");
+
+        Assert.Contains("includeShellData: true", dashboardController);
+        Assert.Contains("includeShellData: false", dashboardController);
+        Assert.Contains("var needsSnapshot = activeSection is \"dashboard\" or \"devices\" or \"settings\";", dashboardController);
+        Assert.Contains("var needsCatalog = includeShellData || activeSection is \"products\" or \"categories\";", dashboardController);
+        Assert.Contains("var needsOrders = includeShellData || activeSection is \"dashboard\" or \"orders\" or \"notifications\";", dashboardController);
+        Assert.Contains("var needsLogs = activeSection == \"logs\";", dashboardController);
+        Assert.Contains(": EmptySnapshot", dashboardController);
+        Assert.Contains(": EmptyCatalog", dashboardController);
+        Assert.Contains("await orderService.GetRecentOrdersAsync(activeSection == \"orders\" ? 500 : 100", dashboardController);
+        Assert.Contains("var applicationLogs = needsLogs", dashboardController);
+    }
+
+    [Fact]
     public void WebUiNumberInputs_UseCustomThemeStylingInsteadOfNativeSpinners()
     {
         var index = ReadRepoFile("src", "CafeOrders.WebUI", "Views", "Dashboard", "Index.cshtml");

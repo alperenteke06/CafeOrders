@@ -1,5 +1,6 @@
 using CafeOrders.Application.Abstractions;
 using CafeOrders.Application.Contracts.Catalog;
+using CafeOrders.Application.Contracts.Dashboard;
 using CafeOrders.Application.Contracts.Devices;
 using CafeOrders.Application.Contracts.Settings;
 using CafeOrders.Application.Contracts.Tables;
@@ -27,6 +28,26 @@ public sealed class DashboardController(
     ILogger<DashboardController> logger) : Controller
 {
     private static readonly JsonSerializerOptions ApiJsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly DashboardSnapshotDto EmptySnapshot = new(
+        new DashboardStatsDto(0, 0, 0, 0),
+        [],
+        [],
+        null);
+    private static readonly CatalogResponseDto EmptyCatalog = new([], []);
+    private static readonly AppSettingsDto EmptyAppSettings = new(
+        "CafeOrders",
+        "Alperen TEKE",
+        "0 (541) 688 88 06",
+        string.Empty,
+        string.Empty,
+        string.Empty,
+        "Info",
+        "campaign",
+        false,
+        false,
+        false,
+        null,
+        null);
     private static readonly HashSet<string> ValidSections =
     [
         "dashboard",
@@ -52,7 +73,7 @@ public sealed class DashboardController(
         CancellationToken cancellationToken)
     {
         var activeSection = NormalizeSection(section);
-        var viewModel = await BuildViewModelAsync(activeSection, range, search, category, source, level, page, cancellationToken);
+        var viewModel = await BuildViewModelAsync(activeSection, range, search, category, source, level, page, includeShellData: true, cancellationToken);
 
         return View(viewModel);
     }
@@ -69,7 +90,7 @@ public sealed class DashboardController(
         CancellationToken cancellationToken)
     {
         var activeSection = NormalizeSection(section);
-        var viewModel = await BuildViewModelAsync(activeSection, range, search, category, source, level, page, cancellationToken);
+        var viewModel = await BuildViewModelAsync(activeSection, range, search, category, source, level, page, includeShellData: false, cancellationToken);
 
         return PartialView(GetSectionViewName(activeSection), viewModel);
     }
@@ -363,14 +384,9 @@ public sealed class DashboardController(
         string? source,
         string? level,
         int? page,
+        bool includeShellData,
         CancellationToken cancellationToken)
     {
-        var snapshot = await dashboardService.GetSnapshotAsync(cancellationToken);
-        var catalog = await catalogService.GetCatalogAsync(includeInactive: true, cancellationToken: cancellationToken);
-        var appSettings = await settingsService.GetAppSettingsAsync(cancellationToken);
-        var tables = await tableService.GetTablesAsync(cancellationToken);
-        var allRecentOrders = await orderService.GetRecentOrdersAsync(500, cancellationToken);
-        var categoryMap = catalog.Categories.ToDictionary(x => x.Id, x => x.Name);
         var selectedRange = NormalizeRange(range);
         var searchQuery = search?.Trim() ?? string.Empty;
         var currentPage = Math.Max(page ?? 1, 1);
@@ -383,6 +399,30 @@ public sealed class DashboardController(
             "1h" => DateTime.UtcNow.AddDays(-7),
             _ => DateTime.UtcNow.AddDays(-1)
         };
+
+        var needsSnapshot = activeSection is "dashboard" or "devices" or "settings";
+        var needsCatalog = includeShellData || activeSection is "products" or "categories";
+        var needsSettings = includeShellData || activeSection == "settings";
+        var needsTables = activeSection is "devices" or "tables";
+        var needsOrders = includeShellData || activeSection is "dashboard" or "orders" or "notifications";
+        var needsLogs = activeSection == "logs";
+
+        var snapshot = needsSnapshot
+            ? await dashboardService.GetSnapshotAsync(cancellationToken)
+            : EmptySnapshot;
+        var catalog = needsCatalog
+            ? await catalogService.GetCatalogAsync(includeInactive: true, cancellationToken: cancellationToken)
+            : EmptyCatalog;
+        var appSettings = needsSettings
+            ? await settingsService.GetAppSettingsAsync(cancellationToken)
+            : EmptyAppSettings;
+        var tables = needsTables
+            ? await tableService.GetTablesAsync(cancellationToken)
+            : Array.Empty<TableDto>();
+        var allRecentOrders = needsOrders
+            ? await orderService.GetRecentOrdersAsync(activeSection == "orders" ? 500 : 100, cancellationToken)
+            : Array.Empty<Application.Contracts.Orders.OrderDto>();
+        var categoryMap = catalog.Categories.ToDictionary(x => x.Id, x => x.Name);
 
         var ordersForSection = activeSection == "orders"
             ? allRecentOrders
@@ -400,12 +440,14 @@ public sealed class DashboardController(
             .Take(100)
             .Select(MapNotification)
             .ToArray();
-        var applicationLogs = await applicationLogService.GetRecentAsync(
-            logSourceFilter == "all" ? null : logSourceFilter,
-            logLevelFilter == "all" ? null : logLevelFilter,
-            searchQuery,
-            300,
-            cancellationToken);
+        var applicationLogs = needsLogs
+            ? await applicationLogService.GetRecentAsync(
+                logSourceFilter == "all" ? null : logSourceFilter,
+                logLevelFilter == "all" ? null : logLevelFilter,
+                searchQuery,
+                300,
+                cancellationToken)
+            : Array.Empty<Application.Contracts.Logging.ApplicationLogDto>();
 
         return new DashboardViewModel
         {

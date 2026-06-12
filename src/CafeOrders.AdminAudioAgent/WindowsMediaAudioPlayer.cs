@@ -24,8 +24,9 @@ public sealed class WindowsMediaAudioPlayer(AgentOptions options, AgentLogger? l
             {
                 completion.TrySetResult(PlayWithWindowsMediaPlayer(source, orderId, cancellationToken, playbackStarted));
             }
-            catch
+            catch (Exception exception)
             {
+                logger?.Error($"AdminAudioAgent audio thread crashed. OrderId={FormatOrderId(orderId)}, Source={source}", exception);
                 completion.TrySetResult(false);
             }
         })
@@ -52,8 +53,7 @@ public sealed class WindowsMediaAudioPlayer(AgentOptions options, AgentLogger? l
         {
             if (!EnsureSystemAudioReady(orderId))
             {
-                logger?.Warning($"System audio could not be prepared. MCI playback skipped so WebUI fallback can run. OrderId={FormatOrderId(orderId)}");
-                return false;
+                logger?.Warning($"System audio could not be fully prepared. Continuing with best-effort MCI playback. OrderId={FormatOrderId(orderId)}");
             }
 
             if (SendMciCommand($"open \"{source}\" alias {alias}") != 0

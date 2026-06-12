@@ -184,7 +184,10 @@ public sealed class AdminAudioAgentTests
         Assert.Contains("endpointVolume.Mute = false", player);
         Assert.Contains("MasterVolumeLevelScalar", player);
         Assert.Contains("PC master endpoint volume verified", player);
-        Assert.Contains("System audio could not be prepared", player);
+        Assert.Contains("System audio could not be fully prepared", player);
+        Assert.Contains("Continuing with best-effort MCI playback", player);
+        Assert.Contains("AdminAudioAgent audio thread crashed", player);
+        Assert.DoesNotContain("MCI playback skipped", player);
         Assert.DoesNotContain("IAudioEndpointVolume", player);
         Assert.Contains("OrderId=", player);
         Assert.DoesNotContain("Console.Beep", player);
