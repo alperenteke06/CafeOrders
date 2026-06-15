@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$ConfigPath,
+    [ValidateSet("Install", "Uninstall")]
+    [string]$Mode = "Install",
     [string]$PackageUrl = "https://github.com/alperenteke06/CafeOrders/archive/refs/heads/Production.zip",
     [string]$PackagePath,
     [string]$ServerIp,
@@ -616,8 +618,94 @@ function Test-Health {
     Write-SetupWarning "$Name health check did not respond successfully: $Url"
 }
 
+function Remove-CafeOrdersTask {
+    try {
+        $task = Get-ScheduledTask -TaskName "CafeOrders WatchDog" -ErrorAction SilentlyContinue
+        if ($task) {
+            Write-Step "Unregistering WatchDog scheduled task"
+            Unregister-ScheduledTask -TaskName "CafeOrders WatchDog" -Confirm:$false
+        }
+    }
+    catch {
+        Write-SetupWarning "WatchDog task could not be removed. $($_.Exception.Message)"
+    }
+}
+
+function Remove-CafeOrdersWebsite {
+    param([string]$Name)
+
+    if (Test-Path "IIS:\Sites\$Name") {
+        Write-Step "Removing IIS site $Name"
+        Stop-Website -Name $Name -ErrorAction SilentlyContinue
+        Remove-Website -Name $Name
+    }
+}
+
+function Remove-CafeOrdersAppPool {
+    param([string]$Name)
+
+    if (Test-Path "IIS:\AppPools\$Name") {
+        Write-Step "Removing AppPool $Name"
+        Stop-WebAppPool -Name $Name -ErrorAction SilentlyContinue
+        Remove-WebAppPool -Name $Name
+    }
+}
+
+function Remove-CafeOrdersFirewallRule {
+    param([string]$Name)
+
+    $rules = Get-NetFirewallRule -DisplayName $Name -ErrorAction SilentlyContinue
+    if ($rules) {
+        Write-Step "Removing firewall rule $Name"
+        $rules | Remove-NetFirewallRule
+    }
+}
+
+function Remove-CafeOrdersDirectory {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+
+    Write-Step "Removing directory $Path"
+    Remove-Item -LiteralPath $Path -Recurse -Force
+}
+
+function Invoke-Uninstall {
+    Write-Step "Starting uninstall."
+
+    if (-not (Test-IsAdmin)) {
+        throw "Setup must be run as Administrator. IIS, firewall and Task Scheduler operations require elevated permissions."
+    }
+
+    try {
+        Import-Module WebAdministration -ErrorAction Stop
+    }
+    catch {
+        Write-SetupWarning "WebAdministration module could not be loaded. IIS resources may already be absent. $($_.Exception.Message)"
+    }
+
+    Remove-CafeOrdersTask
+    Remove-CafeOrdersWebsite -Name $ApiSiteName
+    Remove-CafeOrdersWebsite -Name $WebUiSiteName
+    Remove-CafeOrdersAppPool -Name $ApiAppPoolName
+    Remove-CafeOrdersAppPool -Name $WebUiAppPoolName
+    Remove-CafeOrdersFirewallRule -Name "CafeOrders API $ApiPort"
+    Remove-CafeOrdersFirewallRule -Name "CafeOrders WebUI $WebUiPort"
+
+    Remove-CafeOrdersDirectory -Path (Join-Path $IisRootPath "API")
+    Remove-CafeOrdersDirectory -Path (Join-Path $IisRootPath "WebUI")
+    Remove-CafeOrdersDirectory -Path $AdminAudioAgentPath
+    Remove-CafeOrdersDirectory -Path $ServerNotifierPath
+    Remove-CafeOrdersDirectory -Path $ScriptsPath
+
+    Write-Step "Uninstall completed."
+}
+
 Import-Config
 
+$Mode = [string](Get-Option "Mode" $Mode $Mode)
 $PackageUrl = [string](Get-Option "PackageUrl" $PackageUrl $PackageUrl)
 $PackagePath = [string](Get-Option "PackagePath" $PackagePath $PackagePath)
 $ServerIp = [string](Get-Option "ServerIp" $ServerIp $ServerIp)
@@ -642,6 +730,12 @@ $InstallHostingBundle = [bool](Get-Option "InstallHostingBundle" $InstallHosting
 $HostingBundleUrl = [string](Get-Option "HostingBundleUrl" $HostingBundleUrl $HostingBundleUrl)
 
 Require-Value "ServerIp" $ServerIp
+
+if ($Mode -eq "Uninstall") {
+    Invoke-Uninstall
+    exit 0
+}
+
 Require-Value "SqlInstanceName" $SqlInstanceName
 Require-Value "SqlUser" $SqlUser
 Require-Value "SqlPassword" $SqlPassword
