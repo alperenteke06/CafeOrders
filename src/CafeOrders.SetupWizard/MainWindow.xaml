@@ -365,6 +365,50 @@
             <Setter Property="BorderBrush" Value="#31405e" />
         </Style>
 
+        <Style x:Key="DangerButton" TargetType="Button">
+            <Setter Property="Height" Value="48" />
+            <Setter Property="Padding" Value="22,0" />
+            <Setter Property="Background" Value="#351822" />
+            <Setter Property="Foreground" Value="#ffd0d8" />
+            <Setter Property="BorderBrush" Value="#df4b60" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="17">
+                            <Grid>
+                                <Border CornerRadius="16" Opacity="0.18">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#df4b60" Offset="0" />
+                                            <GradientStop Color="#121b2f" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#df4b60" />
+                                <Setter Property="Foreground" Value="#fff8e8" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#ff8998" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="ValidationButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
             <Setter Property="Height" Value="44" />
             <Setter Property="Background" Value="#161f33" />
@@ -497,6 +541,41 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="LogCopyButton" TargetType="Button">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="MinWidth" Value="108" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Background" Value="#0f192c" />
+            <Setter Property="Foreground" Value="#ffd37a" />
+            <Setter Property="BorderBrush" Value="#34435f" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="13">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#202c46" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#ffb800" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border BorderBrush="#3f3213" BorderThickness="1" Background="{StaticResource Surface}">
@@ -504,7 +583,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="64" />
                 <RowDefinition Height="*" />
-                <RowDefinition Height="82" />
+                <RowDefinition Height="104" />
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
@@ -552,12 +631,14 @@
                             <Border Width="74" Height="74" CornerRadius="24" Background="#ffb800" HorizontalAlignment="Left">
                                 <TextBlock Text="⚡" FontSize="38" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#1e1603" />
                             </Border>
-                            <TextBlock Text="Adım adım kurulum"
+                            <TextBlock x:Name="LeftPanelTitleText"
+                                       Text="Adım adım kurulum"
                                        Margin="0,22,0,10"
                                        FontSize="29"
                                        FontWeight="Black"
                                        TextWrapping="Wrap" />
-                            <TextBlock Style="{StaticResource CaptionText}"
+                            <TextBlock x:Name="LeftPanelDescriptionText"
+                                       Style="{StaticResource CaptionText}"
                                        FontSize="13"
                                        LineHeight="20"
                                        Text="SQL, IIS ve servis seçeneklerini ayrı adımlarda toplayıp Production branch paketini güvenli şekilde kurar." />
@@ -573,11 +654,11 @@
                         <StackPanel Grid.Row="2">
                             <Border Padding="16" CornerRadius="16" Background="#121d31" BorderBrush="#2d3a55" BorderThickness="1">
                                 <StackPanel>
-                                    <TextBlock Text="Kurulum güvenlikleri" FontWeight="Bold" Foreground="{StaticResource Accent}" />
-                                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,10,0,0" Text="IIS/WebSocket/Hosting Bundle ön kontrolü" />
-                                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" Text="uploads klasörü korunur" />
-                                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" Text="Firewall ve Task Scheduler hazırlanır" />
-                                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" Text="appsettings ACL sıkılaştırılır" />
+                                    <TextBlock x:Name="LeftPanelInfoTitleText" Text="Kurulum güvenlikleri" FontWeight="Bold" Foreground="{StaticResource Accent}" />
+                                    <TextBlock x:Name="LeftPanelInfoLine1Text" Style="{StaticResource CaptionText}" Margin="0,10,0,0" Text="IIS/WebSocket/Hosting Bundle ön kontrolü" />
+                                    <TextBlock x:Name="LeftPanelInfoLine2Text" Style="{StaticResource CaptionText}" Margin="0,6,0,0" Text="uploads klasörü korunur" />
+                                    <TextBlock x:Name="LeftPanelInfoLine3Text" Style="{StaticResource CaptionText}" Margin="0,6,0,0" Text="Firewall ve Task Scheduler hazırlanır" />
+                                    <TextBlock x:Name="LeftPanelInfoLine4Text" Style="{StaticResource CaptionText}" Margin="0,6,0,0" Text="appsettings ACL sıkılaştırılır" />
                                 </StackPanel>
                             </Border>
 
@@ -753,10 +834,11 @@
                                             </Grid.RowDefinitions>
 
                                             <Grid Background="#162038" MinHeight="54" Margin="0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
+                                             <Grid.ColumnDefinitions>
+                                                 <ColumnDefinition Width="Auto" />
+                                                 <ColumnDefinition Width="*" />
+                                                 <ColumnDefinition Width="Auto" />
+                                             </Grid.ColumnDefinitions>
                                                 <StackPanel Orientation="Horizontal" Margin="22,0,0,0" VerticalAlignment="Center">
                                                     <Ellipse Width="11" Height="11" Fill="#ff5f57" Margin="0,0,8,0" />
                                                     <Ellipse Width="11" Height="11" Fill="#ffbd2e" Margin="0,0,8,0" />
@@ -769,8 +851,14 @@
                                                            TextAlignment="Right"
                                                            FontSize="13"
                                                            FontWeight="Bold"
-                                                           Foreground="#ffd37a"
-                                                           Text="İndirme bekliyor." />
+                                                 Foreground="#ffd37a"
+                                                 Text="İndirme bekliyor." />
+                                                <Button Grid.Column="2"
+                                                        Margin="0,0,18,0"
+                                                        Style="{StaticResource LogCopyButton}"
+                                                        Content="⧉  Kopyala"
+                                                        Click="CopyLogButton_Click"
+                                                        ToolTip="Kurulum logunu kopyala" />
                                             </Grid>
 
                                             <ScrollViewer x:Name="LogScrollViewer"
@@ -855,7 +943,7 @@
                                FontSize="13"
                                FontWeight="SemiBold"
                                Foreground="{StaticResource TextMuted}" />
-                    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <StackPanel Width="190" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <TextBlock Text="YAZILIM GELİŞTİRİCİ"
                                    HorizontalAlignment="Right"
                                    FontSize="10"
@@ -921,11 +1009,11 @@
                                     Style="{StaticResource PrimaryButton}"
                                     Content="Kurulum Yap"
                                     Click="StartInstallModeButton_Click" />
-                            <Button Grid.Column="2"
-                                    Height="68"
-                                    Style="{StaticResource GhostButton}"
-                                    Content="Kaldır"
-                                    Click="StartUninstallModeButton_Click" />
+                             <Button Grid.Column="2"
+                                     Height="68"
+                                     Style="{StaticResource DangerButton}"
+                                     Content="Kaldır"
+                                     Click="StartUninstallModeButton_Click" />
                         </Grid>
                     </StackPanel>
                 </Border>

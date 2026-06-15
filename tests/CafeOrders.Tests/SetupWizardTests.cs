@@ -22,6 +22,7 @@ public sealed class SetupWizardTests
         Assert.Contains("ModeSelectionOverlay", xaml);
         Assert.Contains("Kurulum Yap", xaml);
         Assert.Contains("Kaldır", xaml);
+        Assert.Contains("DangerButton", xaml);
         Assert.Contains("AppDialogOverlay", xaml);
         Assert.Contains("OptionCheckBox", xaml);
         Assert.Contains("ComboInput", xaml);
@@ -40,10 +41,15 @@ public sealed class SetupWizardTests
         Assert.Contains("DownloadProgressText", xaml);
         Assert.Contains("LogScrollViewer", xaml);
         Assert.Contains("LogTextBlock", xaml);
+        Assert.Contains("CopyLogButton_Click", xaml);
+        Assert.Contains("⧉  Kopyala", xaml);
         Assert.Contains("InstallHostingBundleBox", xaml);
         Assert.Contains("Height=\"330\"", xaml);
         Assert.Contains("Padding=\"28,22\"", xaml);
         Assert.Contains("Alperen TEKE", xaml);
+        Assert.Contains("0 (541) 688 88 06", xaml);
+        Assert.Contains("LeftPanelTitleText", xaml);
+        Assert.Contains("LeftPanelInfoTitleText", xaml);
         Assert.Contains("ValidationButton", xaml);
         Assert.Contains("https://github.com/alperenteke06/CafeOrders/tree/Production", codeBehind);
         Assert.Contains("ConfigPath", codeBehind);
@@ -80,6 +86,10 @@ public sealed class SetupWizardTests
         Assert.Contains("ShowAppDialogAsync", codeBehind);
         Assert.Contains("ValidateCurrentStep", codeBehind);
         Assert.Contains("UpdateStepState", codeBehind);
+        Assert.Contains("UpdateLeftPanelModeText", codeBehind);
+        Assert.Contains("Kurulumu kaldır", codeBehind);
+        Assert.Contains("CopyLogButton_Click", codeBehind);
+        Assert.Contains("Clipboard.SetText", codeBehind);
         Assert.Contains("RefreshReviewSummary", codeBehind);
         Assert.Contains("LogTextBlock.Text +=", codeBehind);
         Assert.Contains("LogScrollViewer.ScrollToEnd", codeBehind);
@@ -138,6 +148,10 @@ public sealed class SetupWizardTests
         Assert.Contains("Invoke-Uninstall", script);
         Assert.Contains("Remove-CafeOrdersWebsite", script);
         Assert.Contains("Unregister-ScheduledTask", script);
+        Assert.Contains("Stop-CafeOrdersProcess", script);
+        Assert.Contains("Reset-DirectoryAttributes", script);
+        Assert.Contains("Directory removal failed", script);
+        Assert.Contains("Directory could not be fully removed", script);
     }
 
     [Fact]

@@ -101,6 +101,7 @@ public partial class MainWindow : Window
     private async void StartInstallModeButton_Click(object sender, RoutedEventArgs e)
     {
         _isUninstallMode = false;
+        _currentStep = 0;
         if (IsCafeOrdersInstalled())
         {
             var updateConfirmed = await ShowAppDialogAsync(
@@ -148,6 +149,8 @@ public partial class MainWindow : Window
         else
         {
             _isUninstallMode = false;
+            _currentStep = 0;
+            UpdateStepState();
             ModeSelectionOverlay.Visibility = Visibility.Visible;
             AppendLog("Kaldırma işlemi iptal edildi.");
         }
@@ -527,6 +530,7 @@ public partial class MainWindow : Window
 
     private void UpdateStepState()
     {
+        UpdateLeftPanelModeText();
         StepTitleText.Text = _stepTitles[_currentStep];
         StepSubtitleText.Text = _stepSubtitles[_currentStep];
 
@@ -555,6 +559,37 @@ public partial class MainWindow : Window
         {
             RefreshReviewSummary();
         }
+    }
+
+    private void UpdateLeftPanelModeText()
+    {
+        if (_isUninstallMode)
+        {
+            LeftPanelTitleText.Text = "Kurulumu kaldır";
+            LeftPanelDescriptionText.Text = "CafeOrders bileşenlerini güvenli şekilde durdurup sistemden temizler.";
+            StepSqlIndicator.Text = "01  Kaldırma hazırlığı";
+            StepIisIndicator.Text = "02  IIS kayıtları";
+            StepOptionsIndicator.Text = "03  Servis ve görevler";
+            StepReviewIndicator.Text = "04  Temizlik özeti";
+            LeftPanelInfoTitleText.Text = "Kaldırılacak bileşenler";
+            LeftPanelInfoLine1Text.Text = "IIS site ve AppPool kayıtları";
+            LeftPanelInfoLine2Text.Text = "WatchDog task ve firewall kuralları";
+            LeftPanelInfoLine3Text.Text = "AdminAudioAgent ve ServerNotifier";
+            LeftPanelInfoLine4Text.Text = "API, WebUI ve Scripts klasörleri";
+            return;
+        }
+
+        LeftPanelTitleText.Text = "Adım adım kurulum";
+        LeftPanelDescriptionText.Text = "SQL, IIS ve servis seçeneklerini ayrı adımlarda toplayıp Production branch paketini güvenli şekilde kurar.";
+        StepSqlIndicator.Text = "01  SQL bağlantısı";
+        StepIisIndicator.Text = "02  IIS ve paket";
+        StepOptionsIndicator.Text = "03  Kurulum seçenekleri";
+        StepReviewIndicator.Text = "04  Özet ve kurulum";
+        LeftPanelInfoTitleText.Text = "Kurulum güvenlikleri";
+        LeftPanelInfoLine1Text.Text = "IIS/WebSocket/Hosting Bundle ön kontrolü";
+        LeftPanelInfoLine2Text.Text = "uploads klasörü korunur";
+        LeftPanelInfoLine3Text.Text = "Firewall ve Task Scheduler hazırlanır";
+        LeftPanelInfoLine4Text.Text = "appsettings ACL sıkılaştırılır";
     }
 
     private void RefreshReviewSummary()
@@ -1179,6 +1214,18 @@ public partial class MainWindow : Window
     {
         LogTextBlock.Text += $"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}";
         LogScrollViewer.ScrollToEnd();
+    }
+
+    private async void CopyLogButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(LogTextBlock.Text))
+        {
+            await ShowAppDialogAsync("Log boş", "Kopyalanacak kurulum logu bulunmuyor.", "Tamam", showCancel: false, icon: "!");
+            return;
+        }
+
+        System.Windows.Clipboard.SetText(LogTextBlock.Text);
+        AppendLog("Kurulum logu panoya kopyalandı.");
     }
 
     private Task<bool> ShowAppDialogAsync(string title, string message, string okText, bool showCancel, string icon)
