@@ -21,10 +21,15 @@ public sealed class SetupWizardTests
         Assert.Contains("SplashExitStoryboard", xaml);
         Assert.Contains("OptionCheckBox", xaml);
         Assert.Contains("ComboInput", xaml);
+        Assert.Contains("PackageSourceRadio", xaml);
         Assert.Contains("StepSqlPage", xaml);
         Assert.Contains("StepIisPage", xaml);
         Assert.Contains("StepOptionsPage", xaml);
         Assert.Contains("StepReviewPage", xaml);
+        Assert.Contains("RemotePackageRadio", xaml);
+        Assert.Contains("LocalPackageRadio", xaml);
+        Assert.Contains("RemotePackagePanel", xaml);
+        Assert.Contains("LocalPackagePanel", xaml);
         Assert.Contains("TestSqlButton", xaml);
         Assert.Contains("SqlTestStatusText", xaml);
         Assert.Contains("DownloadDesktopButton", xaml);
@@ -35,6 +40,9 @@ public sealed class SetupWizardTests
         Assert.Contains("SqlPasswordBox.Password", codeBehind);
         Assert.Contains("TestSqlButton_Click", codeBehind);
         Assert.Contains("TestSqlConnectionAsync", codeBehind);
+        Assert.Contains("ValidateSqlConnectionAsync", codeBehind);
+        Assert.Contains("PackageSourceRadio_Checked", codeBehind);
+        Assert.Contains("UpdatePackageSourceVisibility", codeBehind);
         Assert.Contains("DownloadDesktopButton_Click", codeBehind);
         Assert.Contains("ResolvePackageRootAsync", codeBehind);
         Assert.Contains("DownloadGitHubPackageAsync", codeBehind);

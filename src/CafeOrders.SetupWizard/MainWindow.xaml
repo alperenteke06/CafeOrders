@@ -134,7 +134,6 @@
 
         <Style x:Key="ComboInput" TargetType="ComboBox">
             <Setter Property="Height" Value="46" />
-            <Setter Property="Padding" Value="14,0" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
             <Setter Property="Background" Value="{StaticResource SurfaceSoft}" />
@@ -142,13 +141,181 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="IsTextSearchEnabled" Value="True" />
+            <Setter Property="MaxDropDownHeight" Value="260" />
             <Setter Property="ItemContainerStyle">
                 <Setter.Value>
                     <Style TargetType="ComboBoxItem">
-                        <Setter Property="Background" Value="#121b2e" />
                         <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-                        <Setter Property="Padding" Value="12,9" />
+                        <Setter Property="Padding" Value="14,11" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBoxItem">
+                                    <Border x:Name="ItemRoot"
+                                            Margin="4"
+                                            Padding="{TemplateBinding Padding}"
+                                            Background="#141d31"
+                                            BorderBrush="#283650"
+                                            BorderThickness="1"
+                                            CornerRadius="13">
+                                        <ContentPresenter />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsHighlighted" Value="True">
+                                            <Setter TargetName="ItemRoot" Property="Background" Value="#202d47" />
+                                            <Setter TargetName="ItemRoot" Property="BorderBrush" Value="#ffb800" />
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="ItemRoot" Property="Background" Value="#ffb800" />
+                                            <Setter Property="Foreground" Value="#241800" />
+                                            <Setter TargetName="ItemRoot" Property="BorderBrush" Value="#ffd36b" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
                     </Style>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton"
+                                          Focusable="False"
+                                          ClickMode="Press"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Root"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="16">
+                                            <Grid>
+                                                <ContentPresenter x:Name="ContentSite"
+                                                                  Margin="16,0,48,0"
+                                                                  HorizontalAlignment="Left"
+                                                                  VerticalAlignment="Center"
+                                                                  IsHitTestVisible="False"
+                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  ContentStringFormat="{Binding SelectionBoxItemStringFormat, RelativeSource={RelativeSource AncestorType=ComboBox}}" />
+                                                <TextBlock Text="⌄"
+                                                           Margin="0,0,18,2"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#ffd37a"
+                                                           FontSize="20"
+                                                           FontWeight="Bold" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Root" Property="Background" Value="#25314b" />
+                                                <Setter TargetName="Root" Property="BorderBrush" Value="#ffb800" />
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Root" Property="BorderBrush" Value="#ffb800" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
+                            <TextBox x:Name="PART_EditableTextBox"
+                                     Margin="16,0,48,0"
+                                     HorizontalContentAlignment="Left"
+                                     VerticalContentAlignment="Center"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Foreground="{StaticResource TextPrimary}"
+                                     CaretBrush="{StaticResource Accent}"
+                                     FontWeight="SemiBold"
+                                     Visibility="Hidden"
+                                     IsReadOnly="{TemplateBinding IsReadOnly}" />
+
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   PopupAnimation="Slide">
+                                <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                        Margin="0,8,0,0"
+                                        Padding="6"
+                                        Background="#0d1628"
+                                        BorderBrush="#384967"
+                                        BorderThickness="1"
+                                        CornerRadius="16">
+                                    <ScrollViewer CanContentScroll="True"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEditable" Value="True">
+                                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PackageSourceRadio" TargetType="RadioButton">
+            <Setter Property="Height" Value="42" />
+            <Setter Property="MinWidth" Value="118" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Root"
+                                Background="#121d31"
+                                BorderBrush="#30405f"
+                                BorderThickness="1"
+                                CornerRadius="16"
+                                Padding="16,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Ellipse x:Name="Dot" Width="9" Height="9" Fill="#59667e" VerticalAlignment="Center" />
+                                <ContentPresenter Grid.Column="2"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#1a2740" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#ffb800" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#ffb800" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#ffd36b" />
+                                <Setter TargetName="Dot" Property="Fill" Value="#241800" />
+                                <Setter Property="Foreground" Value="#241800" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
@@ -482,18 +649,41 @@
 
                                 <StackPanel x:Name="StepIisPage" Visibility="Collapsed">
                                     <TextBlock Style="{StaticResource FieldLabel}" Text="Paket Kaynağı" />
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="14" />
-                                            <ColumnDefinition Width="180" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="PackageUrlBox" Style="{StaticResource InputBox}" />
-                                        <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Local Paket Seç" Click="BrowsePackageButton_Click" />
-                                    </Grid>
+                                    <Border Padding="14" CornerRadius="18" Background="#121d31" BorderBrush="#2c3a58" BorderThickness="1">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="12" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <StackPanel Orientation="Horizontal">
+                                                <RadioButton x:Name="RemotePackageRadio"
+                                                             Style="{StaticResource PackageSourceRadio}"
+                                                             Content="Remote"
+                                                             IsChecked="True"
+                                                             Checked="PackageSourceRadio_Checked"
+                                                             Margin="0,0,10,0" />
+                                                <RadioButton x:Name="LocalPackageRadio"
+                                                             Style="{StaticResource PackageSourceRadio}"
+                                                             Content="Local"
+                                                             Checked="PackageSourceRadio_Checked" />
+                                            </StackPanel>
 
-                                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,7" Text="Seçilen Local Paket" />
-                                    <TextBox x:Name="PackagePathBox" Style="{StaticResource InputBox}" IsReadOnly="True" />
+                                            <Grid x:Name="RemotePackagePanel" Grid.Row="2">
+                                                <TextBox x:Name="PackageUrlBox" Style="{StaticResource InputBox}" />
+                                            </Grid>
+
+                                            <Grid x:Name="LocalPackagePanel" Grid.Row="2" Visibility="Collapsed">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="12" />
+                                                    <ColumnDefinition Width="158" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="PackagePathBox" Style="{StaticResource InputBox}" IsReadOnly="True" />
+                                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Paket Seç" Click="BrowsePackageButton_Click" />
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
 
                                     <Grid Margin="0,22,0,0">
                                         <Grid.ColumnDefinitions>
@@ -589,19 +779,40 @@
                         </Border>
 
                         <Grid Grid.Row="2" Margin="0,22,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="150" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="190" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="190" />
-                            </Grid.ColumnDefinitions>
-                            <ProgressBar x:Name="InstallProgress" Height="8" VerticalAlignment="Center" IsIndeterminate="False" Foreground="{StaticResource Accent}" Background="#26314a" />
-                            <Button x:Name="BackButton" Grid.Column="1" Style="{StaticResource GhostButton}" Content="Geri" Click="BackButton_Click" />
-                            <Button x:Name="PrecheckButton" Grid.Column="3" Style="{StaticResource ValidationButton}" Content="Ön Kontrolü Çalıştır" Click="PrecheckButton_Click" Visibility="Collapsed" />
-                            <Button x:Name="NextButton" Grid.Column="5" Style="{StaticResource PrimaryButton}" Content="Devam Et" Click="NextButton_Click" />
-                            <Button x:Name="InstallButton" Grid.Column="5" Style="{StaticResource PrimaryButton}" Content="Kurulumu Başlat" Click="InstallButton_Click" Visibility="Collapsed" />
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="14" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Border Height="10"
+                                    CornerRadius="5"
+                                    Background="#202b43"
+                                    BorderBrush="#33425e"
+                                    BorderThickness="1"
+                                    ClipToBounds="True">
+                                <ProgressBar x:Name="InstallProgress"
+                                             Height="10"
+                                             IsIndeterminate="False"
+                                             Foreground="{StaticResource Accent}"
+                                             Background="Transparent"
+                                             BorderThickness="0" />
+                            </Border>
+
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="190" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="190" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="BackButton" Grid.Column="1" Style="{StaticResource GhostButton}" Content="Geri" Click="BackButton_Click" />
+                                <Button x:Name="PrecheckButton" Grid.Column="3" Style="{StaticResource ValidationButton}" Content="Ön Kontrolü Çalıştır" Click="PrecheckButton_Click" Visibility="Collapsed" />
+                                <Button x:Name="NextButton" Grid.Column="5" Style="{StaticResource PrimaryButton}" Content="Devam Et" Click="NextButton_Click" />
+                                <Button x:Name="InstallButton" Grid.Column="5" Style="{StaticResource PrimaryButton}" Content="Kurulumu Başlat" Click="InstallButton_Click" Visibility="Collapsed" />
+                            </Grid>
                         </Grid>
                     </Grid>
                 </Border>

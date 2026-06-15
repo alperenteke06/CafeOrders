@@ -84,6 +84,8 @@ public partial class MainWindow : Window
     {
         PackageUrlBox.Text = DefaultPackageUrl;
         PackagePathBox.Text = string.Empty;
+        RemotePackageRadio.IsChecked = true;
+        UpdatePackageSourceVisibility();
         PopulateServerIpChoices();
         ApiPortBox.Text = "5001";
         WebUiPortBox.Text = "5002";
@@ -151,9 +153,26 @@ public partial class MainWindow : Window
 
         if (dialog.ShowDialog(this) == true)
         {
+            LocalPackageRadio.IsChecked = true;
+            UpdatePackageSourceVisibility();
             PackagePathBox.Text = dialog.FileName;
             AppendLog($"Local paket seçildi: {dialog.FileName}");
         }
+    }
+
+    private void PackageSourceRadio_Checked(object sender, RoutedEventArgs e)
+        => UpdatePackageSourceVisibility();
+
+    private void UpdatePackageSourceVisibility()
+    {
+        if (RemotePackagePanel is null || LocalPackagePanel is null)
+        {
+            return;
+        }
+
+        var useLocal = LocalPackageRadio.IsChecked == true;
+        RemotePackagePanel.Visibility = useLocal ? Visibility.Collapsed : Visibility.Visible;
+        LocalPackagePanel.Visibility = useLocal ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void BrowseIisRootButton_Click(object sender, RoutedEventArgs e)
@@ -172,34 +191,7 @@ public partial class MainWindow : Window
     }
 
     private async void TestSqlButton_Click(object sender, RoutedEventArgs e)
-    {
-        TestSqlButton.IsEnabled = false;
-        SqlTestStatusText.Foreground = (System.Windows.Media.Brush)FindResource("TextMuted");
-        SqlTestStatusText.Text = "SQL bağlantısı test ediliyor...";
-
-        try
-        {
-            _ = Required(SqlInstanceBox.Text, "SQL Instance");
-            _ = Required(SqlUserBox.Text, "SQL kullanıcı");
-            _ = Required(SqlPasswordBox.Password, "SQL şifre");
-
-            await TestSqlConnectionAsync();
-            SqlTestStatusText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(19, 209, 142));
-            SqlTestStatusText.Text = "SQL bağlantısı başarılı. Kimlik bilgileri doğrulandı.";
-            AppendLog("SQL bağlantı testi başarılı.");
-        }
-        catch (Exception ex)
-        {
-            SqlTestStatusText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 122, 143));
-            SqlTestStatusText.Text = $"SQL bağlantısı başarısız: {ex.Message}";
-            AppendLog($"SQL bağlantı testi başarısız: {ex.Message}");
-            System.Windows.MessageBox.Show(this, ex.Message, "SQL Bağlantı Testi", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        finally
-        {
-            TestSqlButton.IsEnabled = true;
-        }
-    }
+        => await ValidateSqlConnectionAsync(showMessageOnError: true);
 
     private void BackButton_Click(object sender, RoutedEventArgs e)
     {
@@ -212,9 +204,21 @@ public partial class MainWindow : Window
         UpdateStepState();
     }
 
-    private void NextButton_Click(object sender, RoutedEventArgs e)
+    private async void NextButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_isInstalling || !ValidateCurrentStep())
+        if (_isInstalling)
+        {
+            return;
+        }
+
+        if (_currentStep == 0)
+        {
+            if (!ValidateCurrentStep() || !await ValidateSqlConnectionAsync(showMessageOnError: true))
+            {
+                return;
+            }
+        }
+        else if (!ValidateCurrentStep())
         {
             return;
         }
@@ -242,13 +246,21 @@ public partial class MainWindow : Window
                     _ = ParsePort(ApiPortBox.Text, "API port");
                     _ = ParsePort(WebUiPortBox.Text, "WebUI port");
                     _ = Required(IisRootPathBox.Text, "IIS root path");
-                    if (string.IsNullOrWhiteSpace(PackagePathBox.Text))
+                    if (LocalPackageRadio.IsChecked == true)
+                    {
+                        if (string.IsNullOrWhiteSpace(PackagePathBox.Text))
+                        {
+                            throw new InvalidOperationException("Local paket seçeneği için paket dosyası veya klasörü seçilmelidir.");
+                        }
+
+                        if (!File.Exists(PackagePathBox.Text) && !Directory.Exists(PackagePathBox.Text))
+                        {
+                            throw new InvalidOperationException("Seçilen local paket bulunamadı.");
+                        }
+                    }
+                    else if (string.IsNullOrWhiteSpace(PackageUrlBox.Text))
                     {
                         _ = Required(PackageUrlBox.Text, "Paket kaynak URL");
-                    }
-                    else if (!File.Exists(PackagePathBox.Text) && !Directory.Exists(PackagePathBox.Text))
-                    {
-                        throw new InvalidOperationException("Seçilen local paket bulunamadı.");
                     }
                     break;
                 case 3:
@@ -423,12 +435,16 @@ public partial class MainWindow : Window
 
     private void RefreshReviewSummary()
     {
+        var packageSource = LocalPackageRadio.IsChecked == true
+            ? PackagePathBox.Text.Trim()
+            : PackageUrlBox.Text.Trim();
+
         ReviewSummaryText.Text =
             $"SQL: {SqlInstanceBox.Text.Trim()} / {SqlUserBox.Text.Trim()}{Environment.NewLine}" +
             $"API: http://{ServerIpBox.Text.Trim()}:{ApiPortBox.Text.Trim()}{Environment.NewLine}" +
             $"WebUI: http://{ServerIpBox.Text.Trim()}:{WebUiPortBox.Text.Trim()}{Environment.NewLine}" +
             $"IIS Root: {IisRootPathBox.Text.Trim()}{Environment.NewLine}" +
-            $"Paket: {(string.IsNullOrWhiteSpace(PackagePathBox.Text) ? PackageUrlBox.Text.Trim() : PackagePathBox.Text.Trim())}{Environment.NewLine}" +
+            $"Paket: {packageSource}{Environment.NewLine}" +
             $"Firewall: {FormatBool(OpenFirewallBox.IsChecked == true)}, WatchDog: {FormatBool(RegisterTaskBox.IsChecked == true)}, İlk tetik: {FormatBool(TriggerTaskBox.IsChecked == true)}, Uploads koruma: {FormatBool(PreserveUploadsBox.IsChecked == true)}";
     }
 
@@ -450,9 +466,49 @@ public partial class MainWindow : Window
         await connection.OpenAsync();
     }
 
+    private async Task<bool> ValidateSqlConnectionAsync(bool showMessageOnError)
+    {
+        TestSqlButton.IsEnabled = false;
+        NextButton.IsEnabled = false;
+        SqlTestStatusText.Foreground = (System.Windows.Media.Brush)FindResource("TextMuted");
+        SqlTestStatusText.Text = "SQL bağlantısı test ediliyor...";
+
+        try
+        {
+            _ = Required(SqlInstanceBox.Text, "SQL Instance");
+            _ = Required(SqlUserBox.Text, "SQL kullanıcı");
+            _ = Required(SqlPasswordBox.Password, "SQL şifre");
+
+            await TestSqlConnectionAsync();
+            SqlTestStatusText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(19, 209, 142));
+            SqlTestStatusText.Text = "SQL bağlantısı başarılı. Kimlik bilgileri doğrulandı.";
+            AppendLog("SQL bağlantı testi başarılı.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            SqlTestStatusText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 122, 143));
+            SqlTestStatusText.Text = $"SQL bağlantısı başarısız: {ex.Message}";
+            AppendLog($"SQL bağlantı testi başarısız: {ex.Message}");
+            if (showMessageOnError)
+            {
+                System.Windows.MessageBox.Show(this, ex.Message, "SQL Bağlantı Testi", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+
+            return false;
+        }
+        finally
+        {
+            TestSqlButton.IsEnabled = true;
+            NextButton.IsEnabled = !_isInstalling && _currentStep < _stepPages.Length - 1;
+        }
+    }
+
     private async Task<PackageRootHandle> ResolvePackageRootAsync()
     {
-        var packagePath = string.IsNullOrWhiteSpace(PackagePathBox.Text) ? null : PackagePathBox.Text.Trim();
+        var packagePath = LocalPackageRadio.IsChecked == true && !string.IsNullOrWhiteSpace(PackagePathBox.Text)
+            ? PackagePathBox.Text.Trim()
+            : null;
         if (!string.IsNullOrWhiteSpace(packagePath))
         {
             if (!File.Exists(packagePath) && !Directory.Exists(packagePath))
@@ -698,7 +754,9 @@ public partial class MainWindow : Window
         var iisRootPath = Required(IisRootPathBox.Text, "IIS root path");
         var apiPort = ParsePort(ApiPortBox.Text, "API port");
         var webUiPort = ParsePort(WebUiPortBox.Text, "WebUI port");
-        var packagePath = string.IsNullOrWhiteSpace(PackagePathBox.Text) ? null : PackagePathBox.Text.Trim();
+        var packagePath = LocalPackageRadio.IsChecked == true && !string.IsNullOrWhiteSpace(PackagePathBox.Text)
+            ? PackagePathBox.Text.Trim()
+            : null;
 
         if (!string.IsNullOrWhiteSpace(packagePath) && !File.Exists(packagePath) && !Directory.Exists(packagePath))
         {
