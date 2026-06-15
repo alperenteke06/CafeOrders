@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="CafeOrders Setup Wizard"
         Width="1180"
-        Height="860"
+        Height="930"
         MinWidth="1040"
-        MinHeight="760"
+        MinHeight="840"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="CanResize"
@@ -544,8 +544,8 @@
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
                         <StackPanel Grid.Row="0">
@@ -553,17 +553,17 @@
                                 <TextBlock Text="⚡" FontSize="38" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#1e1603" />
                             </Border>
                             <TextBlock Text="Adım adım kurulum"
-                                       Margin="0,28,0,12"
-                                       FontSize="32"
+                                       Margin="0,22,0,10"
+                                       FontSize="29"
                                        FontWeight="Black"
                                        TextWrapping="Wrap" />
                             <TextBlock Style="{StaticResource CaptionText}"
-                                       FontSize="14"
-                                       LineHeight="21"
+                                       FontSize="13"
+                                       LineHeight="20"
                                        Text="SQL, IIS ve servis seçeneklerini ayrı adımlarda toplayıp Production branch paketini güvenli şekilde kurar." />
                         </StackPanel>
 
-                        <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                        <StackPanel Grid.Row="1" VerticalAlignment="Top" Margin="0,22,0,0">
                             <TextBlock x:Name="StepSqlIndicator" Style="{StaticResource StepIndicatorText}" Text="01  SQL bağlantısı" />
                             <TextBlock x:Name="StepIisIndicator" Style="{StaticResource StepIndicatorText}" Text="02  IIS ve paket" />
                             <TextBlock x:Name="StepOptionsIndicator" Style="{StaticResource StepIndicatorText}" Text="03  Kurulum seçenekleri" />

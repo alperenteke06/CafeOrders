@@ -98,11 +98,32 @@ public partial class MainWindow : Window
         AppendLog("Wizard hazır. Kurulum için yönetici yetkisi önerilir.");
     }
 
-    private void StartInstallModeButton_Click(object sender, RoutedEventArgs e)
+    private async void StartInstallModeButton_Click(object sender, RoutedEventArgs e)
     {
         _isUninstallMode = false;
+        if (IsCafeOrdersInstalled())
+        {
+            var updateConfirmed = await ShowAppDialogAsync(
+                "Mevcut kurulum bulundu",
+                "Bu makinede CafeOrders kurulum izleri bulundu. Mevcut kurulumu güncellemek ister misiniz?",
+                "Güncelle",
+                showCancel: true,
+                icon: "!");
+
+            if (!updateConfirmed)
+            {
+                AppendLog("Güncelleme işlemi iptal edildi.");
+                return;
+            }
+
+            AppendLog("Mevcut kurulum bulundu. Güncelleme modu ile devam ediliyor.");
+        }
+        else
+        {
+            AppendLog("Yeni kurulum modu seçildi.");
+        }
+
         ModeSelectionOverlay.Visibility = Visibility.Collapsed;
-        AppendLog("Kurulum modu seçildi.");
         UpdateStepState();
     }
 
@@ -368,6 +389,16 @@ public partial class MainWindow : Window
                 DownloadDesktopButton.Visibility = Visibility.Visible;
                 DownloadDesktopButton.IsEnabled = true;
                 await ShowAppDialogAsync("Kurulum tamamlandı", "CafeOrders kurulumu başarıyla tamamlandı.", "Tamam", showCancel: false, icon: "✓");
+                var downloadDesktop = await ShowAppDialogAsync(
+                    "DesktopApp indirilsin mi?",
+                    "Client bilgisayarlara kurulacak DesktopApp paketini şimdi bir klasöre hazırlamak ister misiniz?",
+                    "İndir",
+                    showCancel: true,
+                    icon: "↓");
+                if (downloadDesktop)
+                {
+                    await DownloadDesktopAppToSelectedFolderAsync();
+                }
             }
             else
             {
@@ -393,6 +424,9 @@ public partial class MainWindow : Window
     }
 
     private async void DownloadDesktopButton_Click(object sender, RoutedEventArgs e)
+        => await DownloadDesktopAppToSelectedFolderAsync();
+
+    private async Task DownloadDesktopAppToSelectedFolderAsync()
     {
         if (!ValidateCurrentStep())
         {
@@ -1088,6 +1122,46 @@ public partial class MainWindow : Window
         };
 
         return modulePaths.Any(File.Exists);
+    }
+
+    private bool IsCafeOrdersInstalled()
+    {
+        var iisRoot = string.IsNullOrWhiteSpace(IisRootPathBox.Text)
+            ? @"C:\inetpub\wwwroot"
+            : IisRootPathBox.Text.Trim();
+
+        var installMarkers = new[]
+        {
+            Path.Combine(iisRoot, "API", "CafeOrders.API.exe"),
+            Path.Combine(iisRoot, "WebUI", "CafeOrders.WebUI.exe"),
+            @"C:\AdminAudioAgent\CafeOrders.AdminAudioAgent.exe",
+            @"C:\ServerNotifier\CafeOrders.ServerNotifier.exe",
+            @"C:\Scripts\CafeOrders.WatchDog.ps1"
+        };
+
+        if (installMarkers.Any(File.Exists))
+        {
+            return true;
+        }
+
+        try
+        {
+            using var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = "schtasks.exe",
+                Arguments = "/Query /TN \"CafeOrders WatchDog\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            });
+            process?.WaitForExit(1500);
+            return process?.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static void TryDelete(string path)

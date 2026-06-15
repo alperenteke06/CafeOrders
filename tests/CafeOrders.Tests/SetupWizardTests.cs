@@ -21,6 +21,7 @@ public sealed class SetupWizardTests
         Assert.Contains("SplashExitStoryboard", xaml);
         Assert.Contains("ModeSelectionOverlay", xaml);
         Assert.Contains("Kurulum Yap", xaml);
+        Assert.Contains("Kaldır", xaml);
         Assert.Contains("AppDialogOverlay", xaml);
         Assert.Contains("OptionCheckBox", xaml);
         Assert.Contains("ComboInput", xaml);
@@ -53,6 +54,8 @@ public sealed class SetupWizardTests
         Assert.Contains("PackageSourceRadio_Checked", codeBehind);
         Assert.Contains("UpdatePackageSourceVisibility", codeBehind);
         Assert.Contains("DownloadDesktopButton_Click", codeBehind);
+        Assert.Contains("DownloadDesktopAppToSelectedFolderAsync", codeBehind);
+        Assert.Contains("DesktopApp indirilsin mi?", codeBehind);
         Assert.Contains("ResolvePackageRootAsync", codeBehind);
         Assert.Contains("DownloadGitHubPackageAsync", codeBehind);
         Assert.Contains("raw.githubusercontent.com", codeBehind);
@@ -70,6 +73,8 @@ public sealed class SetupWizardTests
         Assert.Contains("NextButton_Click", codeBehind);
         Assert.Contains("BackButton_Click", codeBehind);
         Assert.Contains("StartInstallModeButton_Click", codeBehind);
+        Assert.Contains("IsCafeOrdersInstalled", codeBehind);
+        Assert.Contains("Güncelleme modu", codeBehind);
         Assert.Contains("StartUninstallModeButton_Click", codeBehind);
         Assert.Contains("ExecuteUninstallAsync", codeBehind);
         Assert.Contains("ShowAppDialogAsync", codeBehind);
