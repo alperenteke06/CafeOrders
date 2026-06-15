@@ -19,7 +19,20 @@ namespace CafeOrders.SetupWizard;
 
 public partial class MainWindow : Window
 {
-    private const string DefaultPackageUrl = "https://github.com/alperenteke06/CafeOrders/archive/refs/heads/Production.zip";
+    private const string DefaultPackageUrl = "https://github.com/alperenteke06/CafeOrders/tree/Production";
+    private const string DefaultGitHubOwner = "alperenteke06";
+    private const string DefaultGitHubRepository = "CafeOrders";
+    private const string DefaultGitHubBranch = "Production";
+
+    private static readonly string[] GitHubPackagePrefixes =
+    [
+        "publishes/API/",
+        "publishes/WebUI/",
+        "publishes/DesktopApp/",
+        "publishes/AdminAudioAgent/",
+        "publishes/ServerNotifier/",
+        "scripts/"
+    ];
 
     private readonly string[] _stepTitles =
     [
@@ -282,14 +295,23 @@ public partial class MainWindow : Window
         SetBusy(true);
 
         string? configPath = null;
+        PackageRootHandle? downloadedPackage = null;
         try
         {
             var config = BuildConfig();
             var script = ResolveInstallerScript();
+            if (string.IsNullOrWhiteSpace(config.PackagePath))
+            {
+                downloadedPackage = await ResolvePackageRootAsync();
+                config.PackagePath = downloadedPackage.RootPath;
+            }
+
             configPath = Path.Combine(Path.GetTempPath(), $"CafeOrdersSetup_{Guid.NewGuid():N}.json");
             await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true }));
 
             AppendLog("Kurulum başlatılıyor...");
+            UpdateDownloadProgressText("Kurulum scripti çalışıyor.");
+            InstallProgress.IsIndeterminate = true;
             var exitCode = await RunInstallerAsync(script, configPath);
             if (exitCode == 0)
             {
@@ -317,6 +339,7 @@ public partial class MainWindow : Window
             }
 
             SetBusy(false);
+            downloadedPackage?.Dispose();
         }
     }
 
@@ -430,9 +453,6 @@ public partial class MainWindow : Window
     private async Task<PackageRootHandle> ResolvePackageRootAsync()
     {
         var packagePath = string.IsNullOrWhiteSpace(PackagePathBox.Text) ? null : PackagePathBox.Text.Trim();
-        var tempRoot = Path.Combine(Path.GetTempPath(), $"CafeOrdersSetupPackage_{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempRoot);
-
         if (!string.IsNullOrWhiteSpace(packagePath))
         {
             if (!File.Exists(packagePath) && !Directory.Exists(packagePath))
@@ -442,24 +462,164 @@ public partial class MainWindow : Window
 
             if (Directory.Exists(packagePath))
             {
+                UpdateDownloadProgressText("Local paket klasörü kullanılacak.");
                 return new PackageRootHandle(packagePath, null);
             }
 
+            var tempRoot = Path.Combine(Path.GetTempPath(), $"CafeOrdersSetupPackage_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempRoot);
+            UpdateDownloadProgressText("Local ZIP paketi açılıyor.");
             ZipFile.ExtractToDirectory(packagePath, tempRoot, overwriteFiles: true);
-        }
-        else
-        {
-            var zipPath = Path.Combine(tempRoot, "CafeOrders-Production.zip");
-            using var client = new HttpClient();
-            await using var stream = await client.GetStreamAsync(string.IsNullOrWhiteSpace(PackageUrlBox.Text) ? DefaultPackageUrl : PackageUrlBox.Text.Trim());
-            await using var file = File.Create(zipPath);
-            await stream.CopyToAsync(file);
-            file.Close();
-            ZipFile.ExtractToDirectory(zipPath, Path.Combine(tempRoot, "package"), overwriteFiles: true);
+            var zipRoot = FindPackageRoot(tempRoot);
+            UpdateDownloadProgressText("Local ZIP paketi hazır.");
+            return new PackageRootHandle(zipRoot, tempRoot);
         }
 
-        var root = FindPackageRoot(tempRoot);
-        return new PackageRootHandle(root, tempRoot);
+        return await DownloadGitHubPackageAsync();
+    }
+
+    private async Task<PackageRootHandle> DownloadGitHubPackageAsync()
+    {
+        var source = ResolveGitHubSource(PackageUrlBox.Text);
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"CafeOrdersSetupPackage_{Guid.NewGuid():N}");
+        var packageRoot = Path.Combine(tempRoot, "CafeOrders");
+        Directory.CreateDirectory(packageRoot);
+
+        using var client = CreateGitHubClient();
+        var treeUrl = $"https://api.github.com/repos/{source.Owner}/{source.Repository}/git/trees/{Uri.EscapeDataString(source.Branch)}?recursive=1";
+
+        AppendLog($"GitHub paket listesi okunuyor: {source.Owner}/{source.Repository}@{source.Branch}");
+        UpdateDownloadProgressText("Dosya listesi alınıyor...");
+        using var treeResponse = await client.GetAsync(treeUrl, HttpCompletionOption.ResponseHeadersRead);
+        treeResponse.EnsureSuccessStatusCode();
+
+        var treeJson = await treeResponse.Content.ReadAsStringAsync();
+        var files = ParsePackageFiles(treeJson).ToArray();
+        if (files.Length == 0)
+        {
+            throw new InvalidOperationException("GitHub kaynağında publishes ve scripts dosyaları bulunamadı.");
+        }
+
+        var totalBytes = files.Sum(file => file.Size);
+        var downloadedBytes = 0L;
+        UpdateDownloadProgress(downloadedBytes, totalBytes);
+        AppendLog($"{files.Length} dosya indirilecek. Toplam: {FormatBytes(totalBytes)}");
+
+        foreach (var file in files)
+        {
+            downloadedBytes = await DownloadGitHubPackageFileAsync(client, source, file, packageRoot, downloadedBytes, totalBytes);
+        }
+
+        UpdateDownloadProgress(totalBytes, totalBytes);
+        AppendLog($"GitHub paket indirmesi tamamlandı: {FormatBytes(totalBytes)}");
+        return new PackageRootHandle(packageRoot, tempRoot);
+    }
+
+    private static HttpClient CreateGitHubClient()
+    {
+        var client = new HttpClient();
+        client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "CafeOrders-SetupWizard/1.0");
+        client.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "application/vnd.github+json");
+        return client;
+    }
+
+    private static GitHubSource ResolveGitHubSource(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) ||
+            !Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri) ||
+            !uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
+        {
+            return new GitHubSource(DefaultGitHubOwner, DefaultGitHubRepository, DefaultGitHubBranch);
+        }
+
+        var segments = uri.AbsolutePath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(Uri.UnescapeDataString)
+            .ToArray();
+
+        if (segments.Length >= 4 && segments[2].Equals("tree", StringComparison.OrdinalIgnoreCase))
+        {
+            return new GitHubSource(segments[0], segments[1], segments[3]);
+        }
+
+        if (segments.Length >= 2)
+        {
+            return new GitHubSource(segments[0], segments[1], DefaultGitHubBranch);
+        }
+
+        return new GitHubSource(DefaultGitHubOwner, DefaultGitHubRepository, DefaultGitHubBranch);
+    }
+
+    private static IEnumerable<GitHubPackageFile> ParsePackageFiles(string treeJson)
+    {
+        using var document = JsonDocument.Parse(treeJson);
+        if (document.RootElement.TryGetProperty("truncated", out var truncated) && truncated.ValueKind == JsonValueKind.True)
+        {
+            throw new InvalidOperationException("GitHub dosya listesi çok büyük olduğu için kırpılmış döndü. Local paket seçeneğini kullanın.");
+        }
+
+        if (!document.RootElement.TryGetProperty("tree", out var tree) || tree.ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+
+        foreach (var item in tree.EnumerateArray())
+        {
+            var itemType = item.TryGetProperty("type", out var type) ? type.GetString() : null;
+            if (!string.Equals(itemType, "blob", StringComparison.OrdinalIgnoreCase) ||
+                !item.TryGetProperty("path", out var pathProperty))
+            {
+                continue;
+            }
+
+            var path = pathProperty.GetString();
+            if (string.IsNullOrWhiteSpace(path) ||
+                !GitHubPackagePrefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            var size = item.TryGetProperty("size", out var sizeProperty) && sizeProperty.TryGetInt64(out var parsedSize)
+                ? parsedSize
+                : 0L;
+
+            yield return new GitHubPackageFile(path, Math.Max(size, 0L));
+        }
+    }
+
+    private async Task<long> DownloadGitHubPackageFileAsync(
+        HttpClient client,
+        GitHubSource source,
+        GitHubPackageFile file,
+        string packageRoot,
+        long downloadedBytes,
+        long totalBytes)
+    {
+        var rawUrl = BuildRawGitHubUrl(source, file.Path);
+        var target = Path.Combine(packageRoot, file.Path.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+
+        using var response = await client.GetAsync(rawUrl, HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+
+        await using var sourceStream = await response.Content.ReadAsStreamAsync();
+        await using var targetStream = File.Create(target);
+        var buffer = new byte[81920];
+        int read;
+        while ((read = await sourceStream.ReadAsync(buffer)) > 0)
+        {
+            await targetStream.WriteAsync(buffer.AsMemory(0, read));
+            downloadedBytes += read;
+            UpdateDownloadProgress(downloadedBytes, totalBytes);
+        }
+
+        return downloadedBytes;
+    }
+
+    private static string BuildRawGitHubUrl(GitHubSource source, string path)
+    {
+        var escapedPath = string.Join("/", path.Split('/').Select(Uri.EscapeDataString));
+        return $"https://raw.githubusercontent.com/{source.Owner}/{source.Repository}/{Uri.EscapeDataString(source.Branch)}/{escapedPath}";
     }
 
     private static string FindPackageRoot(string root)
@@ -646,6 +806,31 @@ public partial class MainWindow : Window
     private static string FormatBool(bool value)
         => value ? "Açık" : "Kapalı";
 
+    private void UpdateDownloadProgress(long downloadedBytes, long totalBytes)
+    {
+        var safeTotal = Math.Max(totalBytes, 1L);
+        var safeDownloaded = Math.Min(Math.Max(downloadedBytes, 0L), safeTotal);
+        InstallProgress.IsIndeterminate = false;
+        InstallProgress.Minimum = 0;
+        InstallProgress.Maximum = safeTotal;
+        InstallProgress.Value = safeDownloaded;
+        UpdateDownloadProgressText($"{FormatBytes(safeDownloaded)} / {FormatBytes(totalBytes)} indirildi");
+    }
+
+    private void UpdateDownloadProgressText(string text)
+    {
+        if (DownloadProgressText is not null)
+        {
+            DownloadProgressText.Text = text;
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        var megabytes = bytes / 1024d / 1024d;
+        return $"{megabytes:0.00} MB";
+    }
+
     private static IReadOnlyList<string> DiscoverSqlInstances()
     {
         var machineName = Environment.MachineName;
@@ -773,6 +958,10 @@ public partial class MainWindow : Window
         public bool TriggerTask { get; set; }
         public bool PreserveUploads { get; set; }
     }
+
+    private sealed record GitHubSource(string Owner, string Repository, string Branch);
+
+    private sealed record GitHubPackageFile(string Path, long Size);
 
     private sealed class PackageRootHandle(string rootPath, string? tempPath) : IDisposable
     {

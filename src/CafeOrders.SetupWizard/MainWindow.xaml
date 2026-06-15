@@ -553,8 +553,23 @@
                                     </Border>
 
                                     <TextBlock Style="{StaticResource FieldLabel}" Margin="0,20,0,7" Text="Kurulum Logu" />
+                                    <Border Margin="0,0,0,10" Padding="14,10" CornerRadius="14" Background="#111b2d" BorderBrush="#2f3d59" BorderThickness="1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="↓" FontSize="18" FontWeight="Black" Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
+                                            <TextBlock x:Name="DownloadProgressText"
+                                                       Grid.Column="2"
+                                                       Style="{StaticResource CaptionText}"
+                                                       VerticalAlignment="Center"
+                                                       Text="İndirme bekliyor." />
+                                        </Grid>
+                                    </Border>
                                     <TextBox x:Name="LogBox"
-                                             Height="230"
+                                             Height="174"
                                              Style="{StaticResource InputBox}"
                                              FontFamily="Consolas"
                                              FontSize="12"
