@@ -726,6 +726,7 @@
                                         <CheckBox x:Name="RegisterTaskBox" Style="{StaticResource OptionCheckBox}" Content="WatchDog task oluştur" IsChecked="True" />
                                         <CheckBox x:Name="TriggerTaskBox" Style="{StaticResource OptionCheckBox}" Content="Kurulum sonunda task tetikle" IsChecked="True" />
                                         <CheckBox x:Name="PreserveUploadsBox" Style="{StaticResource OptionCheckBox}" Content="WebUI uploads klasörünü koru" IsChecked="True" />
+                                        <CheckBox x:Name="InstallHostingBundleBox" Style="{StaticResource OptionCheckBox}" Content="Hosting Bundle yoksa kur" IsChecked="True" />
                                     </UniformGrid>
 
                                     <Border Margin="0,22,0,0" Padding="18" CornerRadius="18" Background="#17233a" BorderBrush="#2b3b59" BorderThickness="1">
@@ -743,29 +744,29 @@
                                     </Border>
 
                                     <TextBlock Style="{StaticResource FieldLabel}" Margin="0,20,0,7" Text="Kurulum Logu" />
-                                    <Border CornerRadius="20" Background="#0b1322" BorderBrush="#34435f" BorderThickness="1" ClipToBounds="True">
+                                    <Border CornerRadius="22" Background="#0b1322" BorderBrush="#34435f" BorderThickness="1" ClipToBounds="True">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="*" />
                                             </Grid.RowDefinitions>
 
-                                            <Grid Background="#162038" MinHeight="44" Margin="0">
+                                            <Grid Background="#162038" MinHeight="54" Margin="0">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                                                    <Ellipse Width="10" Height="10" Fill="#ff5f57" Margin="0,0,7,0" />
-                                                    <Ellipse Width="10" Height="10" Fill="#ffbd2e" Margin="0,0,7,0" />
-                                                    <Ellipse Width="10" Height="10" Fill="#28c840" />
+                                                <StackPanel Orientation="Horizontal" Margin="22,0,0,0" VerticalAlignment="Center">
+                                                    <Ellipse Width="11" Height="11" Fill="#ff5f57" Margin="0,0,8,0" />
+                                                    <Ellipse Width="11" Height="11" Fill="#ffbd2e" Margin="0,0,8,0" />
+                                                    <Ellipse Width="11" Height="11" Fill="#28c840" />
                                                 </StackPanel>
                                                 <TextBlock x:Name="DownloadProgressText"
                                                            Grid.Column="1"
-                                                           Margin="16,0,18,0"
+                                                           Margin="18,0,24,0"
                                                            VerticalAlignment="Center"
                                                            TextAlignment="Right"
-                                                           FontSize="12"
+                                                           FontSize="13"
                                                            FontWeight="Bold"
                                                            Foreground="#ffd37a"
                                                            Text="İndirme bekliyor." />
@@ -773,16 +774,16 @@
 
                                             <ScrollViewer x:Name="LogScrollViewer"
                                                           Grid.Row="1"
-                                                          Height="184"
-                                                          Padding="18,14"
+                                                          Height="260"
+                                                          Padding="24,18"
                                                           Background="#07101f"
                                                           HorizontalScrollBarVisibility="Disabled"
                                                           VerticalScrollBarVisibility="Auto">
                                                 <TextBlock x:Name="LogTextBlock"
                                                            FontFamily="Cascadia Mono, Consolas"
-                                                           FontSize="12.5"
+                                                           FontSize="13"
                                                            FontWeight="SemiBold"
-                                                           LineHeight="18"
+                                                           LineHeight="21"
                                                            TextWrapping="Wrap"
                                                            Foreground="#edf4ff" />
                                             </ScrollViewer>

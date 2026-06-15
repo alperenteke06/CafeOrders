@@ -288,6 +288,7 @@ public partial class MainWindow : Window
             AppendLog(IsAdministrator()
                 ? "Yönetici yetkisi doğrulandı."
                 : "Uyarı: Wizard yönetici olarak çalışmıyor. Kurulum adımı IIS/firewall/task işlemlerinde hata verebilir.");
+            AppendLog(BuildHostingBundleStatusMessage());
             AppendLog("Ön kontrol tamamlandı.");
         }
         catch (Exception ex)
@@ -445,7 +446,7 @@ public partial class MainWindow : Window
             $"WebUI: http://{ServerIpBox.Text.Trim()}:{WebUiPortBox.Text.Trim()}{Environment.NewLine}" +
             $"IIS Root: {IisRootPathBox.Text.Trim()}{Environment.NewLine}" +
             $"Paket: {packageSource}{Environment.NewLine}" +
-            $"Firewall: {FormatBool(OpenFirewallBox.IsChecked == true)}, WatchDog: {FormatBool(RegisterTaskBox.IsChecked == true)}, İlk tetik: {FormatBool(TriggerTaskBox.IsChecked == true)}, Uploads koruma: {FormatBool(PreserveUploadsBox.IsChecked == true)}";
+            $"Firewall: {FormatBool(OpenFirewallBox.IsChecked == true)}, WatchDog: {FormatBool(RegisterTaskBox.IsChecked == true)}, İlk tetik: {FormatBool(TriggerTaskBox.IsChecked == true)}, Uploads koruma: {FormatBool(PreserveUploadsBox.IsChecked == true)}, Hosting Bundle kurulumu: {FormatBool(InstallHostingBundleBox.IsChecked == true)}";
     }
 
     private void SetBusy(bool isBusy)
@@ -777,7 +778,8 @@ public partial class MainWindow : Window
             OpenFirewall = OpenFirewallBox.IsChecked == true,
             RegisterTask = RegisterTaskBox.IsChecked == true,
             TriggerTask = TriggerTaskBox.IsChecked == true,
-            PreserveUploads = PreserveUploadsBox.IsChecked == true
+            PreserveUploads = PreserveUploadsBox.IsChecked == true,
+            InstallHostingBundle = InstallHostingBundleBox.IsChecked == true
         };
     }
 
@@ -969,6 +971,29 @@ public partial class MainWindow : Window
         return principal.IsInRole(WindowsBuiltInRole.Administrator);
     }
 
+    private string BuildHostingBundleStatusMessage()
+    {
+        if (IsHostingBundleInstalled())
+        {
+            return ".NET Hosting Bundle / ASP.NET Core Module V2 kurulu görünüyor.";
+        }
+
+        return InstallHostingBundleBox.IsChecked == true
+            ? ".NET Hosting Bundle bulunamadı. Kurulum sırasında indirilecek ve sessiz modda kurulacak."
+            : "Uyarı: .NET Hosting Bundle bulunamadı ve otomatik kurulum seçili değil.";
+    }
+
+    private static bool IsHostingBundleInstalled()
+    {
+        var modulePaths = new[]
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "IIS", "Asp.Net Core Module", "V2", "aspnetcorev2.dll"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "IIS", "Asp.Net Core Module", "V2", "aspnetcorev2.dll")
+        };
+
+        return modulePaths.Any(File.Exists);
+    }
+
     private static void TryDelete(string path)
     {
         try
@@ -1015,6 +1040,7 @@ public partial class MainWindow : Window
         public bool RegisterTask { get; set; }
         public bool TriggerTask { get; set; }
         public bool PreserveUploads { get; set; }
+        public bool InstallHostingBundle { get; set; }
     }
 
     private sealed record GitHubSource(string Owner, string Repository, string Branch);

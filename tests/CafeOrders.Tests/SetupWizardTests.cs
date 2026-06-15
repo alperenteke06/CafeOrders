@@ -36,6 +36,9 @@ public sealed class SetupWizardTests
         Assert.Contains("DownloadProgressText", xaml);
         Assert.Contains("LogScrollViewer", xaml);
         Assert.Contains("LogTextBlock", xaml);
+        Assert.Contains("InstallHostingBundleBox", xaml);
+        Assert.Contains("Height=\"260\"", xaml);
+        Assert.Contains("Padding=\"24,18\"", xaml);
         Assert.Contains("ValidationButton", xaml);
         Assert.Contains("https://github.com/alperenteke06/CafeOrders/tree/Production", codeBehind);
         Assert.Contains("ConfigPath", codeBehind);
@@ -55,6 +58,9 @@ public sealed class SetupWizardTests
         Assert.Contains("WriteDesktopAppSettingsAsync", codeBehind);
         Assert.Contains("PopulateSqlInstanceChoices", codeBehind);
         Assert.Contains("PopulateServerIpChoices", codeBehind);
+        Assert.Contains("BuildHostingBundleStatusMessage", codeBehind);
+        Assert.Contains("IsHostingBundleInstalled", codeBehind);
+        Assert.Contains("InstallHostingBundle = InstallHostingBundleBox.IsChecked == true", codeBehind);
         Assert.Contains("DiscoverSqlInstances", codeBehind);
         Assert.Contains("DiscoverServerIps", codeBehind);
         Assert.Contains("NextButton_Click", codeBehind);
@@ -104,6 +110,9 @@ public sealed class SetupWizardTests
         Assert.Contains("IIS-ManagementScriptingTools", script);
         Assert.Contains("WebAdministration", script);
         Assert.Contains("Test-HostingBundle", script);
+        Assert.Contains("Install-HostingBundleIfNeeded", script);
+        Assert.Contains("https://aka.ms/dotnet/8.0/dotnet-hosting-win.exe", script);
+        Assert.Contains("/quiet", script);
         Assert.Contains("New-WebAppPool", script);
         Assert.Contains("New-Website", script);
         Assert.Contains("New-NetFirewallRule", script);

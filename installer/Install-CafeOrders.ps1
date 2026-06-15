@@ -20,7 +20,9 @@ param(
     [bool]$OpenFirewall = $true,
     [bool]$RegisterTask = $true,
     [bool]$TriggerTask = $true,
-    [bool]$PreserveUploads = $true
+    [bool]$PreserveUploads = $true,
+    [bool]$InstallHostingBundle = $true,
+    [string]$HostingBundleUrl = "https://aka.ms/dotnet/8.0/dotnet-hosting-win.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -182,6 +184,45 @@ function Test-HostingBundle {
     return $paths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 }
 
+function Install-HostingBundleIfNeeded {
+    if (Test-HostingBundle) {
+        Write-Step ".NET Hosting Bundle / ASP.NET Core Module V2 already installed."
+        return
+    }
+
+    if (-not $InstallHostingBundle) {
+        Write-SetupWarning ".NET Hosting Bundle / ASP.NET Core Module V2 was not detected. Automatic installation is disabled."
+        return
+    }
+
+    $downloadRoot = Join-Path $env:TEMP ("CafeOrdersHostingBundle_" + [Guid]::NewGuid().ToString("N"))
+    $installerPath = Join-Path $downloadRoot "dotnet-hosting-win.exe"
+
+    try {
+        New-Item -ItemType Directory -Path $downloadRoot -Force | Out-Null
+        Write-Step "Downloading .NET Hosting Bundle from $HostingBundleUrl"
+        Invoke-WebRequest -Uri $HostingBundleUrl -OutFile $installerPath -UseBasicParsing
+
+        Write-Step "Installing .NET Hosting Bundle silently"
+        $process = Start-Process -FilePath $installerPath -ArgumentList "/install", "/quiet", "/norestart" -Wait -PassThru
+        if ($process.ExitCode -notin @(0, 3010)) {
+            throw ".NET Hosting Bundle installer exited with code $($process.ExitCode)."
+        }
+
+        if (Test-HostingBundle) {
+            Write-Step ".NET Hosting Bundle installed."
+            return
+        }
+
+        Write-SetupWarning ".NET Hosting Bundle installer completed but ASP.NET Core Module V2 could not be verified. A server restart may be required."
+    }
+    finally {
+        if (Test-Path -LiteralPath $downloadRoot) {
+            Remove-Item -LiteralPath $downloadRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 function Assert-Prerequisites {
     if (-not (Test-IsAdmin)) {
         throw "Setup must be run as Administrator. IIS, firewall and Task Scheduler operations require elevated permissions."
@@ -191,9 +232,7 @@ function Assert-Prerequisites {
     Enable-WindowsFeatureIfNeeded -ServerFeatureName "Web-Scripting-Tools" -ClientFeatureName "IIS-ManagementScriptingTools" -DisplayName "IIS Management Scripts and Tools"
     Enable-WindowsFeatureIfNeeded -ServerFeatureName "Web-WebSockets" -ClientFeatureName "IIS-WebSockets" -DisplayName "IIS WebSocket Protocol" -Required $false
 
-    if (-not (Test-HostingBundle)) {
-        Write-SetupWarning ".NET Hosting Bundle / ASP.NET Core Module V2 was not detected. IIS hosting may fail until Hosting Bundle is installed."
-    }
+    Install-HostingBundleIfNeeded
 
     try {
         Import-Module WebAdministration -ErrorAction Stop
@@ -599,6 +638,8 @@ $OpenFirewall = [bool](Get-Option "OpenFirewall" $OpenFirewall $OpenFirewall)
 $RegisterTask = [bool](Get-Option "RegisterTask" $RegisterTask $RegisterTask)
 $TriggerTask = [bool](Get-Option "TriggerTask" $TriggerTask $TriggerTask)
 $PreserveUploads = [bool](Get-Option "PreserveUploads" $PreserveUploads $PreserveUploads)
+$InstallHostingBundle = [bool](Get-Option "InstallHostingBundle" $InstallHostingBundle $InstallHostingBundle)
+$HostingBundleUrl = [string](Get-Option "HostingBundleUrl" $HostingBundleUrl $HostingBundleUrl)
 
 Require-Value "ServerIp" $ServerIp
 Require-Value "SqlInstanceName" $SqlInstanceName
