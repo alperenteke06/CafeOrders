@@ -1,84 +1,75 @@
 # CafeOrders Dokümantasyonu
 
-Bu klasör, proje yapısını hızlı şekilde anlamak, geliştirme süreçlerini standartlaştırmak ve kurulum/deployment adımlarını merkezi olarak yönetmek amacıyla hazırlanmıştır.
+Bu klasör, CafeOrders çözümünün teknik mimarisini, işlevsel akışlarını, API yüzeyini, realtime event sözlüğünü ve deployment adımlarını merkezi olarak açıklar.
 
----
+CafeOrders; internet kafe, e-spor arena ve LAN oyun salonları için geliştirilmiş masa/kiosk sipariş yönetim sistemidir. Sistem; WPF masa istemcileri, ASP.NET Core API, MVC tabanlı WebUI, SignalR realtime altyapısı, SQL Server veritabanı, AdminAudioAgent ve ServerNotifier bileşenlerinden oluşur.
 
-# Doküman İçeriği
+## Dokümanlar
 
-* Teknik Mimari
-  `docs/technical-architecture.md`
+| Dosya | İçerik |
+| --- | --- |
+| `technical-architecture.md` | Katmanlar, servisler, veri akışı, logging, medya ve konfigürasyon mimarisi |
+| `functional-overview.md` | Kullanıcı rolleri, sipariş akışı, cihaz yönetimi, katalog, duyuru ve bildirim davranışları |
+| `api-reference.md` | REST endpointleri, MVC route'ları, upload ve ses playback API'leri |
+| `realtime-events.md` | SignalR hub metodları, eventler, hedef gruplar ve tüketici davranışları |
+| `deployment-guide.md` | DEV/Production ayarları, publish, IIS, SQL, WatchDog, upload koruma ve operasyon kontrol listesi |
 
-* İşlevsel Doküman
-  `docs/functional-overview.md`
+## Çözüm Bileşenleri
 
-* Deployment Rehberi
-  `docs/deployment-guide.md`
+| Proje | Rol |
+| --- | --- |
+| `CafeOrders.API` | REST API, SignalR hub, migration/seed ve istemci entegrasyon katmanı |
+| `CafeOrders.WebUI` | Admin paneli, ürün/kategori/masa/cihaz/sipariş/ayar/log yönetimi |
+| `CafeOrders.DesktopApp` | Client makinelerde çalışan WPF kiosk sipariş ekranı |
+| `CafeOrders.AdminAudioAgent` | Server PC üzerinde yeni sipariş sesini garantiye alan native ses ajanı |
+| `CafeOrders.ServerNotifier` | Server PC sağ alt köşede bekleyen sipariş bildirimi gösteren WPF notifier |
+| `CafeOrders.SetupWizard` | GitHub Production paketinden otomatik server kurulumu yapan WPF setup aracı |
+| `CafeOrders.Application` | DTO, servis arayüzleri ve uygulama kontratları |
+| `CafeOrders.Domain` | Entity ve enum tanımları |
+| `CafeOrders.Infrastructure` | EF Core, servis implementasyonları, SignalR notifier, logging ve hosted servisler |
+| `CafeOrders.Tests` | Birim/regresyon testleri |
 
-* API Referansı
-  `docs/api-reference.md`
+## Branch Rolleri
 
-* Realtime Event Sözlüğü
-  `docs/realtime-events.md`
+| Branch | Amaç |
+| --- | --- |
+| `master` | Kaynak kod, dokümantasyon, testler, geliştirme ayarları ve son stabil geliştirme hali |
+| `Test` | DEV ortamına göre hazırlanmış `publishes/` ve `scripts/` çıktıları |
+| `Production` | Production ortamına göre hazırlanmış `publishes/` ve `scripts/` çıktıları, kaynak kod içermez |
 
----
+## Varsayılan DEV Ortamı
 
-# Çözüm Yapısı
+| Alan | Değer |
+| --- | --- |
+| API | `http://192.168.11.24:5001` |
+| WebUI | `http://192.168.11.24:5002` |
+| SQL | `Server=.\SQLEXPRESS;Database=CafeOrders;User Id=sa;Password=sa@Alperen123!` |
+| Shared Web Root | `\\192.168.11.24\inetpub\wwwroot\WebUI\wwwroot` |
 
-## Ana Klasörler
+## Varsayılan Production Ortamı
 
-| Klasör       | Açıklama                         |
-| ------------ | -------------------------------- |
-| `src/`       | Uygulama kaynak kodları          |
-| `tests/`     | Test projeleri                   |
-| `publishes/` | Publish çıktıları                |
-| `artifacts/` | Build ve doğrulama çıktıları     |
-| `docs/`      | Teknik ve işlevsel dokümantasyon |
+| Alan | Değer |
+| --- | --- |
+| API | `http://192.168.2.11:5001` |
+| WebUI | `http://192.168.2.11:5002` |
+| SQL | `Server=DESKTOP-ET476QO\SQLEXPRESS01;Database=CafeOrders;User Id=sa;Password=JetNet@Admin120526!` |
+| Shared Web Root | `\\192.168.2.11\inetpub\wwwroot\WebUI\wwwroot` |
 
----
+## Operasyon Notları
 
-# Proje Katmanları
+- API ve WebUI ilk açılışta EF Core migration çalıştırır ve seed verilerini uygular.
+- `wwwroot/uploads/products` ve `wwwroot/uploads/sounds` kullanıcı verisidir; deployment sırasında silinmemelidir.
+- WebUI yeni sipariş sesini çalarsa sesi kendisi işaretler; çalamazsa AdminAudioAgent sesin sahibi olur ve order playback bilgisini API'ye bildirir.
+- WatchDog scripti API/WebUI IIS AppPool ve Site durumlarını, WebUI health check sonucunu, AdminAudioAgent ve ServerNotifier process durumunu izler.
+- Setup Wizard, IIS/WebSocket/Hosting Bundle ön kontrolü yapar; API/WebUI kurulumunu, C:\AdminAudioAgent, C:\ServerNotifier, C:\Scripts kurulumunu, firewall rule ve WatchDog task kaydını tek akışta yönetir.
+- DesktopApp ürün görsellerini HTTP veya `Media:SharedWebRootPath` üzerinden okuyabilir.
+- Loglar hem dosyaya hem de `ApplicationLogEntries` tablosuna yazılarak WebUI Sistem Logları ekranından izlenebilir.
 
-`src/` altında yer alan projeler:
+## Hızlı Kontrol Komutları
 
-| Proje                       | Açıklama                                                           |
-| --------------------------- | ------------------------------------------------------------------ |
-| `CafeOrders.API`            | REST API ve SignalR tabanlı realtime iletişim katmanı              |
-| `CafeOrders.WebUI`          | Yönetim paneli ve MVC tabanlı admin arayüzü                        |
-| `CafeOrders.DesktopApp`     | Masa/kiosk kullanım senaryoları için WPF istemci uygulaması        |
-| `CafeOrders.Application`    | Uygulama servis kontratları, DTO yapıları ve abstraction katmanı   |
-| `CafeOrders.Domain`         | Temel entity, enum ve domain modelleri                             |
-| `CafeOrders.Infrastructure` | EF Core, güvenlik, servis implementasyonları ve realtime altyapısı |
+```powershell
+dotnet build CafeOrders.slnx -c Release
+dotnet test tests\CafeOrders.Tests\CafeOrders.Tests.csproj -c Release
+```
 
----
-
-# Doküman Rehberi
-
-## Teknik Mimari
-
-Sistem mimarisi, katmanlar arası veri akışı, konfigürasyon yapısı, deployment mimarisi ve realtime iletişim bileşenlerini içerir.
-
-## İşlevsel Doküman
-
-Sistemin kullanıcı tarafındaki davranışlarını, modül sorumluluklarını ve temel kullanım senaryolarını açıklar.
-
-## Deployment Rehberi
-
-Publish alma, IIS yapılandırması, SQL Server kurulumu ve istemci dağıtım süreçlerini içerir.
-
-## API Referansı
-
-REST endpoint listesi, kullanım amaçları, request/response yapıları ve temel entegrasyon bilgilerini içerir.
-
-## Realtime Event Sözlüğü
-
-SignalR üzerinden yayınlanan event tiplerini, payload yapılarını ve istemci davranışlarını tanımlar.
-
----
-
-# Genel Notlar
-
-* Tüm projeler `.NET` tabanlı çok katmanlı mimari yaklaşımı ile geliştirilmiştir.
-* Realtime iletişim altyapısında `SignalR` kullanılmaktadır.
-* Veri erişim katmanında `Entity Framework Core` tercih edilmiştir.
-* Dokümantasyon içerikleri proje geliştikçe güncellenmelidir.
+Publish ve deployment detayları için `deployment-guide.md` dosyasını takip edin.

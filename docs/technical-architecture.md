@@ -1,48 +1,51 @@
 # Teknik Mimari
 
-## 1. Genel Bakis
+## 1. Genel Bakış
 
-CafeOrders, bir LAN cafe / gaming center siparis yonetim sistemi olarak tasarlanmis cok katmanli bir .NET 8 cozumudur.
+CafeOrders, .NET 8 tabanlı çok bileşenli bir LAN sipariş yönetim çözümüdür. Sistem, client makinelerde çalışan WPF kiosk uygulaması ile server üzerinde çalışan API, WebUI, AdminAudioAgent ve ServerNotifier bileşenlerini SignalR ve SQL Server üzerinden birleştirir.
 
-Ana bilesenler:
+Ana prensipler:
 
-- `CafeOrders.WebUI`: yonetim paneli
-- `CafeOrders.API`: istemci ve yonetim entegrasyon API'si
-- `CafeOrders.DesktopApp`: kiosk / masa istemcisi
-- `CafeOrders.Infrastructure`: veri erisim, guvenlik ve SignalR
-- `CafeOrders.Application`: servis ve contract arabirimleri
-- `CafeOrders.Domain`: entity ve is kurallari
+- API merkezi veri ve realtime iletişim noktasıdır.
+- WebUI admin paneli olarak HTTP API ve SignalR kullanır.
+- DesktopApp kiosk ekranıdır; cihaz onayı, katalog, sepet ve sipariş ekranlarını yönetir.
+- AdminAudioAgent yeni sipariş sesi için native Windows fallback sağlar.
+- ServerNotifier bekleyen siparişleri server ekranında top-most modal ile gösterir.
+- SetupWizard Production branch paketini indirip server kurulumunu kullanıcı dostu WPF ekranı ile yönetir.
+- Loglar hem yerel dosyaya hem de merkezi `ApplicationLogEntries` tablosuna yazılır.
 
-## 2. Klasor Mimarisi
-
-Kok dizin:
+## 2. Çözüm Yapısı
 
 ```text
 CafeOrders/
 |-- docs/
 |-- publishes/
-|-- artifacts/
+|-- scripts/
 |-- src/
 |   |-- CafeOrders.API/
 |   |-- CafeOrders.Application/
-|   |-- CafeOrders.DesktopApp/
 |   |-- CafeOrders.Domain/
 |   |-- CafeOrders.Infrastructure/
 |   |-- CafeOrders.WebUI/
+|   |-- CafeOrders.DesktopApp/
+|   |-- CafeOrders.AdminAudioAgent/
+|   |-- CafeOrders.ServerNotifier/
+|   |-- CafeOrders.SetupWizard/
 |-- tests/
 |   |-- CafeOrders.Tests/
 ```
 
-Kaynak katmanlar:
+## 3. Katmanlar
 
-### `src/CafeOrders.Domain`
+### `CafeOrders.Domain`
 
-Domain entity ve enum tanimlari burada yer alir.
+Entity ve enum katmanıdır.
 
-Temel entity dosyalari:
+Öne çıkan entity'ler:
 
 - `AdminUser`
 - `AppSetting`
+- `ApplicationLogEntry`
 - `CafeTable`
 - `Category`
 - `Device`
@@ -51,282 +54,416 @@ Temel entity dosyalari:
 - `OrderLine`
 - `Product`
 
-### `src/CafeOrders.Application`
+Öne çıkan alanlar:
 
-Uygulama servis contract'lari ve DTO tanimlari burada yer alir.
+- `AppSetting.MinimumOrderAmount`: minimum sepet tutarı.
+- `AppSetting.NewOrderSoundUrl`: yeni sipariş sesi.
+- `Order.IsSoundPlayed`: sipariş sesinin çalınıp çalınmadığı.
+- `Order.SoundPlayedAt`: sesin ne zaman çalındığı.
+- `ApplicationLogEntry`: merkezi log paneli için kayıt modeli.
 
-Temel arabirimler:
+### `CafeOrders.Application`
+
+DTO, servis arayüzleri ve realtime kontratları içerir.
+
+Öne çıkan kontratlar:
 
 - `IAdminAuthService`
+- `IApplicationLogService`
 - `ICatalogService`
+- `IDashboardService`
 - `IDeviceService`
 - `IOrderService`
+- `IRealtimeNotifier`
 - `ISettingsService`
 - `ITableService`
-- `IDashboardService`
-- `IRealtimeNotifier`
 
-Bu katman, UI veya persistence detaylarini bilmez.
+Realtime sabitleri:
 
-### `src/CafeOrders.Infrastructure`
+- `CafeHubEvents`
+- `CafeHubMethods`
 
-Teknik implementasyon katmanidir.
+### `CafeOrders.Infrastructure`
 
-Ana alt klasorler:
+Teknik implementasyon katmanıdır.
 
-- `Persistence/`: `CafeOrdersDbContext`, migration'lar, seed
-- `Services/`: katalog, cihaz, siparis, ayarlar, dashboard ve table servisleri
-- `Realtime/`: `CafeHub`, `SignalRRealtimeNotifier`
-- `Security/`: admin auth ve JWT servisi
-- `Options/`: konfigurasyon modelleri
+Alt sorumluluklar:
 
-`DependencyInjection.cs` icinde:
+- EF Core `CafeOrdersDbContext`.
+- Migration ve seed işlemleri.
+- Servis implementasyonları.
+- SignalR `CafeHub` ve `SignalRRealtimeNotifier`.
+- JWT ve admin auth servisleri.
+- Merkezi/yerel logging.
+- Cihaz presence izleme hosted service.
 
-- SQL Server `DbContext`
-- servis implementasyonlari
-- JWT auth
-- SignalR
-- `DevicePresenceMonitorService`
+### `CafeOrders.API`
 
-kayitlari yapilir.
+REST API ve SignalR hub host uygulamasıdır.
 
-### `src/CafeOrders.API`
+Başlangıçta:
 
-REST API ve realtime hub host katmanidir.
+- Infrastructure servislerini kaydeder.
+- CORS, auth, controller ve SignalR ayarlarını yapar.
+- `Database.MigrateAsync()` çalıştırır.
+- `DbSeeder.SeedAsync(...)` ile temel verileri uygular.
+- `/hubs/cafe` route'u üzerinden realtime hub açar.
 
-Controller seti:
+### `CafeOrders.WebUI`
 
-- `CatalogController`
-- `DashboardController`
-- `DevicesController`
-- `OrdersController`
-- `SettingsController`
-- `TablesController`
+MVC tabanlı admin panelidir.
 
-Baslangicta:
+Sorumluluklar:
 
-- infrastructure baglanir
-- migration otomatik calistirilir
-- seed uygulanir
-- `CafeHub` `/hubs/cafe` altinda acilir
+- Admin login ve uzun süreli cookie oturumu.
+- Dashboard, sipariş, ürün, kategori, cihaz, masa, ayar, bildirim ve log ekranları.
+- Ürün görseli ve sipariş sesi upload işlemleri.
+- API'ye HTTP üzerinden yazma istekleri.
+- SignalR üzerinden realtime admin ekran güncellemeleri.
 
-### `src/CafeOrders.WebUI`
+### `CafeOrders.DesktopApp`
 
-MVC tabanli admin panelidir.
+Client makinelerde çalışan WPF kiosk uygulamasıdır.
 
-Ana alanlar:
+Sorumluluklar:
 
-- cihaz onay / masa esleme
-- siparis yonetimi
-- urun / kategori yonetimi
-- ayarlar / duyuru yonetimi
-- realtime dashboard
+- Fullscreen kiosk deneyimi.
+- Cihaz kayıt/onay bekleme ekranı.
+- Katalog ve kategori gösterimi.
+- Sepet ve minimum tutar kontrolü.
+- Sipariş oluşturma ve durum ekranları.
+- Realtime cihaz/sipariş/katalog/ayar/duyuru güncellemeleri.
+- Oturum süresi sonunda otomatik kapanma.
+- Yerel dosya loglama.
 
-Alt yapida:
+### `CafeOrders.AdminAudioAgent`
 
-- cookie auth
-- MVC view yapisi
-- API ile HTTP uzerinden yazma islemleri
-- SignalR ile admin tarafi canli guncelleme
+Server PC'de çalışan console/native yardımcı uygulamadır.
 
-### `src/CafeOrders.DesktopApp`
+Sorumluluklar:
 
-WPF kiosk istemcisidir.
+- API ve Hub bağlantısını retry ile kurmak.
+- Çalınmamış siparişleri polling ve hub eventleriyle yakalamak.
+- Ses dosyasını WebUI shared root, cache veya fallback path üzerinden çözmek.
+- Sistem ses seviyesini kontrol etmek ve gerekirse yükseltmek.
+- Yeni sipariş sesini queue ile sırayla çalmak.
+- Playback durumunu API'ye bildirmek.
+- Logları kendi klasörüne yazmak.
 
-Ana alt klasorler:
+### `CafeOrders.ServerNotifier`
 
-- `Assets/`: ikon vb.
-- `Models/`: UI modelleri
-- `Services/`: API, cihaz kimligi ve SignalR client
-- `ViewModels/`: ekran davranisi
+Server PC'de çalışan WPF bildirim uygulamasıdır.
 
-`MainViewModel`, kiosk akisinin ana orkestra noktasidir.
+Sorumluluklar:
 
-## 3. Veri ve Islem Akisi
+- Bekleyen sipariş snapshot bilgisini API'den almak.
+- Hub üzerinden realtime güncellenmek.
+- Fallback polling ile kaçan eventleri toparlamak.
+- Sağ alt köşede top-most, kapatma butonu olmayan bilgilendirme modalı göstermek.
+- "Siparişleri Görüntüle" butonuyla WebUI Orders ekranını açmak.
 
-### Siparis akisi
+### `CafeOrders.SetupWizard`
 
-1. Desktop istemci cihaz olarak kayit olur
-2. Admin cihazı onaylar ve masaya baglar
-3. Desktop katalogu ceker
-4. Kullanici sepete urun ekler ve siparis gonderir
-5. API siparisi kaydeder
-6. WebUI yeni siparisi realtime gorur
-7. Admin siparisi onaylar / reddeder / tamamlar
-8. Durum SignalR ile Desktop istemciye iletilir
+Server kurulumunu otomatikleştiren WPF yardımcı uygulamasıdır.
 
-### Katalog akisi
+Sorumluluklar:
 
-1. WebUI uzerinden urun veya kategori guncellenir
-2. Yazma islemi API uzerinden gerceklesir
-3. Infrastructure `NotifyCatalogUpdatedAsync()` yayini yapar
-4. DesktopApp ve WebUI gerekli veriyi yeniden yukler
+- GitHub `Production` branch ZIP paketini indirmek veya local ZIP/klasör paketi kullanmak.
+- Server IP, SQL instance, SQL kullanıcı/şifre, IIS root ve port bilgilerini kullanıcıdan almak.
+- Kurulum bilgilerini geçici JSON config olarak `Install-CafeOrders.ps1` scriptine aktarmak.
+- Kurulum logunu UI üzerinde canlı göstermek.
+- Yönetici yetkisi yoksa kullanıcıyı uyarmak.
 
-### Duyuru / ayar akisi
+## 4. Veri Akışları
 
-1. Admin ayarlari veya aktif bilgi mesajini gunceller
-2. API / infrastructure tarafinda ayarlar kaydedilir
-3. SignalR uzerinden istemcilere yeni sunum bilgisi yayilir
-4. Desktop istemci bilgi kutusunu canli gunceller
+### Cihaz Akışı
 
-## 4. Realtime Mimarisi
+1. DesktopApp cihaz bilgilerini API'ye gönderir.
+2. API cihazı kaydeder veya mevcut cihazı günceller.
+3. Admin onay verirse cihaz masaya bağlanır.
+4. `DeviceApproved`, `DeviceMapped`, `DevicesUpdated` eventleri yayınlanır.
+5. DesktopApp menü ekranına geçer ve heartbeat göndermeye devam eder.
 
-Tek hub:
+### Sipariş Akışı
 
-- `CafeHub`
+1. DesktopApp siparişi API'ye yollar.
+2. API siparişi `Pending` olarak kaydeder.
+3. `OrderCreated` admin grubuna yayınlanır.
+4. WebUI ve ServerNotifier bekleyen sipariş görünümünü günceller.
+5. AdminAudioAgent/WebUI ses playback sahipliği akışına girer.
+6. Admin siparişi kabul, red veya tamamlandı durumuna geçirir.
+7. İlgili kiosk cihazına hedefli event gönderilir.
 
-Temel event gruplari:
+### Katalog Akışı
 
-- cihaz onayi / masa atamasi
-- katalog guncellemesi
-- table / device snapshot guncellemesi
-- siparis kabul / red / tamamlandi
-- ayar ve bilgi mesaji guncellemesi
+1. WebUI ürün/kategori değişikliğini API'ye gönderir.
+2. API servis katmanı veriyi kaydeder.
+3. `CatalogUpdated` event'i tüm clientlara yayınlanır.
+4. WebUI ve DesktopApp katalog verisini yeniden yükler.
 
-Amaç:
+### Ayar ve Duyuru Akışı
 
-- admin paneli ve kiosk istemcinin ayni veri durumunu goruntulemesi
-- polling ihtiyacini azaltmak
-- kritik senaryolarda kullaniciya anlik geri bildirim sunmak
+1. Admin ayarları veya aktif bilgi mesajını günceller.
+2. API değişikliği kaydeder.
+3. `AppSettingsUpdated` veya `InfoMessageUpdated` event'i yayınlanır.
+4. DesktopApp banner, renk, ikon, footer, minimum tutar ve ses ayarlarını günceller.
 
-Not:
+### Log Akışı
 
-- bazi akislarda guvenlik ve dayaniklilik icin fallback polling de bulunur
-- cihaz presence icin hosted service ile offline kontrolu yapilir
+1. API, WebUI, DesktopApp, AdminAudioAgent ve ServerNotifier olayları loglar.
+2. Yerel log dosyası uygulama klasörüne yazılır.
+3. Uygun durumlarda API'ye log kaydı gönderilir.
+4. API logları `ApplicationLogEntries` tablosuna yazar.
+5. WebUI Logs ekranı bu tabloyu realtime ve filtreli şekilde gösterir.
 
-## 5. Konfigurasyon
+## 5. Realtime Mimarisi
+
+Hub route:
+
+```text
+/hubs/cafe
+```
+
+Gruplar:
+
+| Grup | Amaç |
+| --- | --- |
+| `admin` | WebUI, AdminAudioAgent ve ServerNotifier gibi yönetim tüketicileri |
+| `device.{DeviceKey}` | Belirli DesktopApp cihazına hedefli mesaj |
+
+Öne çıkan eventler:
+
+- `DeviceApproved`
+- `DeviceRejected`
+- `DeviceMapped`
+- `DevicesUpdated`
+- `OrderCreated`
+- `OrderAccepted`
+- `OrderRejected`
+- `OrderCompleted`
+- `OrderSoundPlaybackStarted`
+- `OrderSoundPlaybackFailed`
+- `OrderSoundAcknowledged`
+- `CatalogUpdated`
+- `TablesUpdated`
+- `AppSettingsUpdated`
+- `InfoMessageUpdated`
+- `ApplicationLogCreated`
+
+## 6. Konfigürasyon
 
 ### API
 
 Dosya:
 
-- `src/CafeOrders.API/appsettings.json`
+```text
+src/CafeOrders.API/appsettings.json
+```
 
-Temel alanlar:
+Önemli alanlar:
 
 - `Urls`
 - `ConnectionStrings:CafeOrders`
 - `Jwt`
 - `Branding`
-
-Mevcut port:
-
-- API: `5001`
+- `Logging:FilePath`
+- `Logging:Centralized:Enabled`
 
 ### WebUI
 
 Dosya:
 
-- `src/CafeOrders.WebUI/appsettings.json`
+```text
+src/CafeOrders.WebUI/appsettings.json
+```
 
-Temel alanlar:
+Önemli alanlar:
 
 - `Urls`
 - `ConnectionStrings:CafeOrders`
-- `Jwt`
 - `ApiBaseUrl`
+- `SessionSettings:AdminCookieDays`
+- `SessionSettings:DataProtectionKeysPath`
 - `Branding`
-
-Mevcut port:
-
-- WebUI: `5002`
+- `Logging`
 
 ### DesktopApp
 
 Dosya:
 
-- `src/CafeOrders.DesktopApp/appsettings.json`
+```text
+src/CafeOrders.DesktopApp/appsettings.json
+```
 
-Temel alanlar:
+Önemli alanlar:
 
 - `Endpoints:ApiBaseUrl`
 - `Endpoints:HubUrl`
 - `Media:SharedWebRootPath`
+- `Session:AutoCloseAfterSeconds`
+- `Startup:RetryCount`
+- `Startup:RetryDelaySeconds`
 
-`SharedWebRootPath`, istemcinin paylasimli `wwwroot` klasorunden urun gorsellerini okuyabilmesi icin kullanilir.
+### AdminAudioAgent
 
-Ornek:
+Dosya:
 
-```json
-{
-  "Endpoints": {
-    "ApiBaseUrl": "http://192.168.11.24:5001/",
-    "HubUrl": "http://192.168.11.24:5001/hubs/cafe"
-  },
-  "Media": {
-    "SharedWebRootPath": "\\\\192.168.11.24\\inetpub\\wwwroot\\WebUI\\wwwroot"
-  }
-}
+```text
+src/CafeOrders.AdminAudioAgent/appsettings.json
 ```
 
-## 6. Veritabani ve Migration
+Önemli alanlar:
 
-Veritabani:
+- `Agent:ApiBaseUrl`
+- `Agent:HubUrl`
+- `Agent:WebUiBaseUrl`
+- `Agent:SharedWebRootPath`
+- `Agent:FallbackSoundPath`
+- `Agent:CacheDirectory`
+- `Agent:LogPath`
+- `Agent:FallbackDelayMilliseconds`
+- `Agent:PollIntervalMilliseconds`
+- `Agent:ApiStartupRetryCount`
+- `Agent:ApiStartupRetryDelayMilliseconds`
+- `Agent:MaxPlaybackSeconds`
+- `Agent:Volume`
+- `Agent:UseSystemBeepFallback`
+
+### ServerNotifier
+
+Dosya:
+
+```text
+src/CafeOrders.ServerNotifier/appsettings.json
+```
+
+Önemli alanlar:
+
+- `Notifier:ApiBaseUrl`
+- `Notifier:HubUrl`
+- `Notifier:OrdersUrl`
+- `Notifier:PollIntervalSeconds`
+- `Notifier:StartupRetryCount`
+- `Notifier:StartupRetryDelaySeconds`
+- `Notifier:LogPath`
+
+## 7. Veritabanı
+
+Veritabanı:
 
 - SQL Server
 - EF Core SQL Server provider
 
-Migration davranisi:
+Otomatik işlemler:
 
-- API acilisinda `Database.MigrateAsync()`
-- WebUI acilisinda `Database.MigrateAsync()`
-- ardindan `DbSeeder.SeedAsync(...)`
+- API açılışında migration uygulanır.
+- WebUI açılışında migration uygulanır.
+- Seed işlemi temel kategori, ürün, masa, admin, app settings ve bilgi mesajı verilerini oluşturur.
 
-Bu sayede kurulum makinesinde Visual Studio olmadan da DB guncellenebilir.
+Önemli tablolar:
 
-## 7. Dosya ve Medya Depolama
+- `AdminUsers`
+- `AppSettings`
+- `ApplicationLogEntries`
+- `Categories`
+- `Devices`
+- `InfoMessages`
+- `OrderLines`
+- `Orders`
+- `Products`
+- `Tables`
 
-WebUI static upload klasorleri:
+## 8. Medya Yönetimi
 
-- `src/CafeOrders.WebUI/wwwroot/uploads/products`
-- `src/CafeOrders.WebUI/wwwroot/uploads/sounds`
+Upload klasörleri:
 
-Uretimde bunlar publish klasoru altinda ilgili `wwwroot/uploads/...` yollarina tasinir.
+```text
+wwwroot/uploads/products
+wwwroot/uploads/sounds
+```
 
-DesktopApp tarafi:
+Kurallar:
 
-- gorsel URL'leri realtime geldikten sonra paylasimli `wwwroot` yoluna map edebilir
-- dosya adlari encode edilse bile istemci tarafinda decode edilerek fiziksel dosyaya ulasilir
+- Ürün görselleri `JPG`, `PNG`, `WEBP`, `GIF` formatlarını destekler.
+- Ses dosyaları `MP3`, `WAV`, `OGG`, `M4A`, `AAC`, `FLAC`, `WEBM` formatlarını destekler.
+- Dosyalar GUID tabanlı güvenli isimle saklanır.
+- Publish sırasında `wwwroot/uploads` klasörü deploy artifact içine dahil edilmez.
+- Production update yapılırken mevcut `uploads` klasörü korunmalıdır.
 
-## 8. Testler
+DesktopApp görsel çözümleme sırası:
+
+- HTTP URL.
+- SharedWebRootPath üzerinden fiziksel dosya.
+- Placeholder/premium kart fallback.
+
+AdminAudioAgent ses çözümleme sırası:
+
+- Sipariş sesi URL'sinden gelen dosya adı.
+- `SharedWebRootPath/uploads/sounds`.
+- Agent cache klasörü.
+- `FallbackSoundPath`.
+- `UseSystemBeepFallback=true` ise sistem beep fallback.
+
+## 9. Logging
+
+Yerel loglar:
+
+- API: uygulama klasörü içinde `CafeOrders.API.log`
+- WebUI: uygulama klasörü içinde `CafeOrders.WebUI.log`
+- DesktopApp: uygulama klasörü içinde DesktopApp log dosyası
+- AdminAudioAgent: agent klasörü içinde `AdminAudioAgent.log`
+- ServerNotifier: notifier klasörü içinde `ServerNotifier.log`
+
+Merkezi log:
+
+- `ApplicationLogEntries` tablosu.
+- `ApplicationLogCreated` event'i ile WebUI log ekranına realtime düşer.
+
+Log alanları:
+
+- kaynak
+- seviye
+- mesaj
+- exception
+- kategori
+- makine adı
+- device key
+- masa
+- sipariş
+
+## 10. Test ve Kalite
 
 Test projesi:
 
-- `tests/CafeOrders.Tests`
+```text
+tests/CafeOrders.Tests
+```
 
-Mevcut ornek test kapsami:
+Kapsanan ana konular:
 
-- `Order.RecalculateTotal()`
-- `InfoMessage.IsCurrentlyActive(...)`
+- sipariş toplam hesaplama
+- minimum sipariş tutarı
+- sipariş ses playback takibi
+- upload validation
+- realtime regression kontrolleri
+- ServerNotifier konfigürasyonu
+- AdminAudioAgent playback/cache davranışları
+- cihaz servis realtime davranışları
+- merkezi log servisi
 
-Not:
+Temel komutlar:
 
-- test kapsamı su an sinirli
-- servis ve realtime akislari icin ek entegrasyon testleri faydali olur
+```powershell
+dotnet build CafeOrders.slnx -c Release
+dotnet test tests\CafeOrders.Tests\CafeOrders.Tests.csproj -c Release
+```
 
-## 9. Deployment Notlari
+## 11. Branch ve Artifact Modeli
 
-### Sunucu
+| Branch | İçerik |
+| --- | --- |
+| `master` | Kaynak kod, testler, dokümanlar, DEV appsettings ve geliştirme için son stabil kod |
+| `Test` | DEV ortamına göre üretilmiş `publishes/` ve `scripts/` |
+| `Production` | Production ortamına göre üretilmiş `publishes/` ve `scripts/` |
 
-- IIS
-- SQL Server
-- .NET 8 Hosting Bundle
-- WebSocket ozelligi
-
-### Client
-
-- DesktopApp self-contained publish onerilir
-- `appsettings.json` icinde API / Hub / Media ayarlari dagitim ortamina gore guncellenmelidir
-
-### Publish klasorleri
-
-- `publishes/API`
-- `publishes/WebUI`
-- `publishes/DesktopApp`
-
-## 10. Bakim Onerileri
-
-- `bin/`, `obj/` ve `artifacts/` dokumantasyon ve kod incelemelerinde dikkate alinmamali
-- `appsettings.Production.json` kullanimi standartlastirilabilir
-- SignalR event listesi ayri bir referans dokumani olarak genisletilebilir
-- test kapsamı cihaz onayi, siparis akisi ve katalog refresh senaryolari icin buyutulebilir
+Bu ayrım sayesinde production branch'i kaynak kod taşımaz; deploy edilecek artifact ve script seti net kalır.

@@ -1,11 +1,16 @@
 <Solution>
   <Folder Name="/docs/">
+    <File Path="README.md" />
     <File Path="docs/README.md" />
     <File Path="docs/api-reference.md" />
     <File Path="docs/deployment-guide.md" />
     <File Path="docs/functional-overview.md" />
     <File Path="docs/realtime-events.md" />
     <File Path="docs/technical-architecture.md" />
+  </Folder>
+  <Folder Name="/installer/">
+    <File Path="installer/Install-CafeOrders.ps1" />
+    <File Path="installer/README.md" />
   </Folder>
   <Folder Name="/publishes/">
     <File Path="publishes/API/appsettings.json" />
@@ -29,6 +34,11 @@
     <File Path="publishes/ServerNotifier/CafeOrders.ServerNotifier.dll" />
     <File Path="publishes/ServerNotifier/CafeOrders.ServerNotifier.exe" />
     <File Path="publishes/ServerNotifier/CafeOrders.ServerNotifier.runtimeconfig.json" />
+    <File Path="publishes/SetupWizard/CafeOrders.SetupWizard.deps.json" />
+    <File Path="publishes/SetupWizard/CafeOrders.SetupWizard.dll" />
+    <File Path="publishes/SetupWizard/CafeOrders.SetupWizard.exe" />
+    <File Path="publishes/SetupWizard/CafeOrders.SetupWizard.runtimeconfig.json" />
+    <File Path="publishes/SetupWizard/installer/Install-CafeOrders.ps1" />
     <File Path="publishes/WebUI/appsettings.json" />
     <File Path="publishes/WebUI/CafeOrders.WebUI.deps.json" />
     <File Path="publishes/WebUI/CafeOrders.WebUI.dll" />
@@ -51,6 +61,7 @@
     <Project Path="src/CafeOrders.Domain/CafeOrders.Domain.csproj" />
     <Project Path="src/CafeOrders.Infrastructure/CafeOrders.Infrastructure.csproj" />
     <Project Path="src/CafeOrders.ServerNotifier/CafeOrders.ServerNotifier.csproj" />
+    <Project Path="src/CafeOrders.SetupWizard/CafeOrders.SetupWizard.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CafeOrders.Tests/CafeOrders.Tests.csproj" />

@@ -1,0 +1,139 @@
+namespace CafeOrders.Tests;
+
+public sealed class SetupWizardTests
+{
+    [Fact]
+    public void SetupWizardProject_IsIncludedAndCarriesInstallerScript()
+    {
+        var solution = ReadRepoFile("CafeOrders.slnx");
+        var project = ReadRepoFile("src", "CafeOrders.SetupWizard", "CafeOrders.SetupWizard.csproj");
+        var xaml = ReadRepoFile("src", "CafeOrders.SetupWizard", "MainWindow.xaml");
+        var codeBehind = ReadRepoFile("src", "CafeOrders.SetupWizard", "MainWindow.xaml.cs");
+
+        Assert.Contains("src/CafeOrders.SetupWizard/CafeOrders.SetupWizard.csproj", solution);
+        Assert.Contains("<UseWPF>true</UseWPF>", project);
+        Assert.Contains("<UseWindowsForms>true</UseWindowsForms>", project);
+        Assert.Contains("Microsoft.Data.SqlClient", project);
+        Assert.Contains("Install-CafeOrders.ps1", project);
+        Assert.Contains("CafeOrders Setup Wizard", xaml);
+        Assert.Contains("Loaded=\"Window_Loaded\"", xaml);
+        Assert.Contains("SplashOverlay", xaml);
+        Assert.Contains("SplashExitStoryboard", xaml);
+        Assert.Contains("OptionCheckBox", xaml);
+        Assert.Contains("ComboInput", xaml);
+        Assert.Contains("StepSqlPage", xaml);
+        Assert.Contains("StepIisPage", xaml);
+        Assert.Contains("StepOptionsPage", xaml);
+        Assert.Contains("StepReviewPage", xaml);
+        Assert.Contains("TestSqlButton", xaml);
+        Assert.Contains("SqlTestStatusText", xaml);
+        Assert.Contains("DownloadDesktopButton", xaml);
+        Assert.Contains("ValidationButton", xaml);
+        Assert.Contains("https://github.com/alperenteke06/CafeOrders/archive/refs/heads/Production.zip", codeBehind);
+        Assert.Contains("ConfigPath", codeBehind);
+        Assert.Contains("SqlPasswordBox.Password", codeBehind);
+        Assert.Contains("TestSqlButton_Click", codeBehind);
+        Assert.Contains("TestSqlConnectionAsync", codeBehind);
+        Assert.Contains("DownloadDesktopButton_Click", codeBehind);
+        Assert.Contains("ResolvePackageRootAsync", codeBehind);
+        Assert.Contains("WriteDesktopAppSettingsAsync", codeBehind);
+        Assert.Contains("PopulateSqlInstanceChoices", codeBehind);
+        Assert.Contains("PopulateServerIpChoices", codeBehind);
+        Assert.Contains("DiscoverSqlInstances", codeBehind);
+        Assert.Contains("DiscoverServerIps", codeBehind);
+        Assert.Contains("NextButton_Click", codeBehind);
+        Assert.Contains("BackButton_Click", codeBehind);
+        Assert.Contains("ValidateCurrentStep", codeBehind);
+        Assert.Contains("UpdateStepState", codeBehind);
+        Assert.Contains("RefreshReviewSummary", codeBehind);
+    }
+
+    [Fact]
+    public void InstallerScript_UsesProductionPackageAndProtectsMutableData()
+    {
+        var script = ReadRepoFile("installer", "Install-CafeOrders.ps1");
+        var packageScript = ReadRepoFile("installer", "Build-CafeOrders.ProductionPackage.ps1");
+
+        Assert.Contains("https://github.com/alperenteke06/CafeOrders/archive/refs/heads/Production.zip", script);
+        Assert.Contains("Resolve-PackageRoot", script);
+        Assert.Contains("Assert-Package", script);
+        Assert.Contains("publishes\\API", script);
+        Assert.Contains("publishes\\WebUI", script);
+        Assert.Contains("publishes\\DesktopApp", script);
+        Assert.Contains("publishes\\AdminAudioAgent", script);
+        Assert.Contains("publishes\\ServerNotifier", script);
+        Assert.Contains("Clear-WebUiDirectoryPreservingUploads", script);
+        Assert.Contains("wwwroot", script);
+        Assert.Contains("uploads", script);
+        Assert.Contains("PreserveUploads", script);
+        Assert.Contains("CafeOrders-Production.zip", packageScript);
+        Assert.Contains("ZipFile]::CreateFromDirectory", packageScript);
+        Assert.Contains("GitHub's normal 100 MB file limit", packageScript);
+    }
+
+    [Fact]
+    public void InstallerScript_ChecksPrerequisitesIisFirewallTaskAndAcl()
+    {
+        var script = ReadRepoFile("installer", "Install-CafeOrders.ps1");
+        var registerScript = ReadRepoFile("scripts", "Register-CafeOrders.WatchDogTask.ps1");
+
+        Assert.Contains("Assert-Prerequisites", script);
+        Assert.Contains("Enable-WindowsFeatureIfNeeded", script);
+        Assert.Contains("Enable-WindowsOptionalFeature", script);
+        Assert.Contains("Install-WindowsFeature", script);
+        Assert.Contains("IIS-WebServerRole", script);
+        Assert.Contains("IIS-WebSockets", script);
+        Assert.Contains("IIS-ManagementScriptingTools", script);
+        Assert.Contains("WebAdministration", script);
+        Assert.Contains("Test-HostingBundle", script);
+        Assert.Contains("New-WebAppPool", script);
+        Assert.Contains("New-Website", script);
+        Assert.Contains("New-NetFirewallRule", script);
+        Assert.Contains("Protect-ConfigFile", script);
+        Assert.Contains("icacls", script);
+        Assert.Contains("Register-WatchDogTask", script);
+        Assert.Contains("Start-ScheduledTask", script);
+        Assert.Contains("-RunLevel Highest", registerScript);
+    }
+
+    [Fact]
+    public void InstallerScript_WritesEnvironmentSpecificAppSettingsForAllServerComponents()
+    {
+        var script = ReadRepoFile("installer", "Install-CafeOrders.ps1");
+
+        Assert.Contains("Write-AppSettings", script);
+        Assert.Contains("ConnectionStrings", script);
+        Assert.Contains("Server=$SqlInstanceName;Database=CafeOrders;User Id=$SqlUser;Password=$SqlPassword", script);
+        Assert.Contains("ApiBaseUrl", script);
+        Assert.Contains("HubUrl", script);
+        Assert.Contains("SharedWebRootPath", script);
+        Assert.Contains("CacheDirectory", script);
+        Assert.Contains("AdminAudioAgent.log", script);
+        Assert.Contains("ServerNotifier.log", script);
+        Assert.Contains("DataProtectionKeysPath", script);
+        Assert.Contains("CafeOrders.API.log", script);
+        Assert.Contains("CafeOrders.WebUI.log", script);
+    }
+
+    private static string ReadRepoFile(params string[] segments)
+    {
+        var root = FindRepoRoot();
+        return File.ReadAllText(Path.Combine(new[] { root }.Concat(segments).ToArray()));
+    }
+
+    private static string FindRepoRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "CafeOrders.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("CafeOrders repository root could not be resolved.");
+    }
+}

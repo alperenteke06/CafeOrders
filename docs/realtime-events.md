@@ -1,53 +1,55 @@
-# Realtime Event Sozlugu
+# Realtime Event Sözlüğü
 
 ## 1. Genel
 
 SignalR hub route'u:
 
-- `/hubs/cafe`
+```text
+/hubs/cafe
+```
 
 Event sabitleri:
 
-- `DeviceApproved`
-- `DeviceRejected`
-- `DeviceMapped`
-- `OrderCreated`
-- `OrderAccepted`
-- `OrderRejected`
-- `OrderCompleted`
-- `CatalogUpdated`
-- `TablesUpdated`
-- `AppSettingsUpdated`
-- `InfoMessageUpdated`
+```text
+src/CafeOrders.Application/Contracts/Realtime/CafeHubEvents.cs
+```
 
-Kaynak:
+Client-to-hub metod sabitleri:
 
-- `src/CafeOrders.Application/Contracts/Realtime/CafeHubEvents.cs`
+```text
+src/CafeOrders.Application/Contracts/Realtime/CafeHubMethods.cs
+```
 
-## 2. Grup Mantigi
+## 2. Hub Metodları
 
-Ana gruplar:
+| Metod | Çağıran | Amaç |
+| --- | --- | --- |
+| `JoinDeviceChannel` | DesktopApp | Cihazın kendi `device.{DeviceKey}` grubuna katılması |
+| `JoinAdminChannel` | WebUI, AdminAudioAgent, ServerNotifier | Admin grubuna katılma |
+| `ReportOrderSoundPlaybackStarted` | WebUI/AdminAudioAgent | Ses playback'in gerçekten başladığını API'ye bildirme |
+| `ReportOrderSoundPlaybackFailed` | WebUI/AdminAudioAgent | Ses playback başarısızlığını bildirme |
+| `AcknowledgeOrderSound` | WebUI/AdminAudioAgent | Sipariş sesinin çalındığını onaylama |
 
-- `admin`
-- `device.DeviceKey`
+## 3. Grup Mantığı
 
-Amac:
+| Grup | Kullanım |
+| --- | --- |
+| `admin` | Admin paneli, AdminAudioAgent, ServerNotifier ve yönetim tüketicileri |
+| `device.{DeviceKey}` | Belirli DesktopApp cihazına hedefli mesaj |
 
-- admin paneline toplu operasyon bildirimi
-- ilgili kiosk cihaza hedefli bildirim
-
-## 3. Event Listesi
+## 4. Event Listesi
 
 ### `DeviceApproved`
 
-Yayinlayan:
-
-- `SignalRRealtimeNotifier.NotifyDeviceApprovedAsync`
-
 Hedef:
 
-- ilgili cihaz grubu
-- `admin`
+- İlgili cihaz grubu.
+- `admin`.
+
+Amaç:
+
+- DesktopApp bekleme ekranından menüye geçer.
+- WebUI cihaz durumunu yeniler.
 
 Payload:
 
@@ -56,238 +58,300 @@ Payload:
 - `token`
 - `message`
 
-Kullanim:
-
-- kiosk bekleme ekranindan cikis
-- admin paneli cihaz durumunun guncellenmesi
-
 ### `DeviceRejected`
-
-Yayinlayan:
-
-- `SignalRRealtimeNotifier.NotifyDeviceRejectedAsync`
 
 Hedef:
 
-- `admin`
+- İlgili cihaz grubu.
+- `admin`.
 
-Kullanim:
+Amaç:
 
-- admin tarafinda cihaz listesi tazeleme
+- DesktopApp cihaz reddedildi durumuna geçebilir.
+- WebUI cihaz listesini günceller.
 
 ### `DeviceMapped`
 
-Yayinlayan:
+Hedef:
 
-- `SignalRRealtimeNotifier.NotifyDeviceMappedAsync`
+- İlgili cihaz grubu.
+- `admin`.
+
+Amaç:
+
+- DesktopApp masa numarasını yeniler.
+- Admin paneli cihaz/masa ilişkisini yeniler.
+
+### `DevicesUpdated`
 
 Hedef:
 
-- `admin`
-- ilgili cihaz grubu
+- `admin`.
 
-Payload:
+Amaç:
 
-- `deviceId`
-- `tableId`
-- `hostName`
-
-Kullanim:
-
-- kiosk masa bilgisinin yenilenmesi
-- admin tablo / cihaz iliskisinin tazelenmesi
+- Online/offline cihaz durumu.
+- Cihaz onay, red, heartbeat ve timeout sonrası liste güncelleme.
 
 ### `OrderCreated`
 
-Yayinlayan:
-
-- `SignalRRealtimeNotifier.NotifyOrderCreatedAsync`
-
 Hedef:
 
-- `admin`
+- `admin`.
+
+Amaç:
+
+- WebUI yeni siparişi listeler.
+- Header bildirim sayacı güncellenir.
+- AdminAudioAgent ses playback queue kontrolüne girer.
+- ServerNotifier bekleyen sipariş modalını gösterir.
 
 Payload:
 
 - `OrderDto`
-
-Kullanim:
-
-- admin panelinde yeni siparis bildirimi
 
 ### `OrderAccepted`
 
-Yayinlayan:
-
-- `SignalRRealtimeNotifier.NotifyOrderAcceptedAsync`
-
 Hedef:
 
-- ilgili cihaz grubu
-- `admin`
+- İlgili cihaz grubu.
+- `admin`.
+
+Amaç:
+
+- DesktopApp kabul/hazırlanıyor ekranını gösterir.
+- WebUI sipariş listesini ve bildirimleri günceller.
 
 Payload:
 
 - `order`
 - `message`
-
-Kullanim:
-
-- kioskta `Siparisiniz Hazirlaniyor`
-- admin siparis listesinin guncellenmesi
 
 ### `OrderRejected`
 
-Yayinlayan:
-
-- `SignalRRealtimeNotifier.NotifyOrderRejectedAsync`
-
 Hedef:
 
-- ilgili cihaz grubu
-- `admin`
+- İlgili cihaz grubu.
+- `admin`.
+
+Amaç:
+
+- DesktopApp red/iptal ekranını gösterir.
+- WebUI sipariş durumunu günceller.
 
 Payload:
 
 - `order`
 - `message`
 
-Kullanim:
-
-- kioskta red / iptal ekraninin acilmasi
-- admin bildirimlerinin guncellenmesi
-
 ### `OrderCompleted`
-
-Yayinlayan:
-
-- `SignalRRealtimeNotifier.NotifyOrderCompletedAsync`
 
 Hedef:
 
-- ilgili cihaz grubu
-- `admin`
+- İlgili cihaz grubu.
+- `admin`.
+
+Amaç:
+
+- DesktopApp sipariş tamamlandı/hazır bilgisini gösterir.
+- ServerNotifier bekleyen sipariş sayısını düşürür.
 
 Payload:
 
 - `OrderDto`
 
-Kullanim:
+### `OrderSoundPlaybackStarted`
 
-- kioskta hazirlandi / tamamlandi durumunun gosterilmesi
+Hedef:
+
+- `admin`.
+
+Amaç:
+
+- Ses playback sahibinin kim olduğunu görünür kılmak.
+- Aynı sipariş için ikinci ses denemesini azaltmak.
+
+Tipik kaynaklar:
+
+- `WebUI`
+- `AdminAudioAgent`
+
+### `OrderSoundPlaybackFailed`
+
+Hedef:
+
+- `admin`.
+
+Amaç:
+
+- WebUI veya AdminAudioAgent tarafında ses çalma denemesi başarısızsa log ve fallback akışını tetiklemek.
+
+### `OrderSoundAcknowledged`
+
+Hedef:
+
+- `admin`.
+
+Amaç:
+
+- Sipariş sesinin başarıyla çalındığını ve `IsSoundPlayed=true` olduğunu bildirmek.
 
 ### `CatalogUpdated`
 
-Yayinlayan:
-
-- `SignalRRealtimeNotifier.NotifyCatalogUpdatedAsync`
-
 Hedef:
 
-- `All`
+- `All`.
 
 Payload:
 
-- `long` realtime version
+- realtime version (`long`)
 
-Kullanim:
+Amaç:
 
-- WPF katalog ve gorsel yenileme
-- WebUI urun / kategori bolumu tazeleme
+- Ürün/kategori değişimlerinin WebUI ve DesktopApp tarafında canlı yenilenmesi.
+- Ürün görseli değiştiğinde kiosk kartlarının yeniden yüklenmesi.
 
 ### `TablesUpdated`
 
-Yayinlayan:
-
-- `SignalRRealtimeNotifier.NotifyTablesUpdatedAsync`
-
 Hedef:
 
-- `All`
+- `All`.
 
 Payload:
 
-- `long` realtime version
+- realtime version (`long`)
 
-Kullanim:
+Amaç:
 
-- cihaz online/offline
-- masa snapshot
-- admin dashboard sayisal ozet guncellemeleri
+- Masa listesi.
+- Cihaz/masa eşleşmesi.
+- Dashboard sayısal özetleri.
 
 ### `AppSettingsUpdated`
 
-Yayinlayan:
-
-- `SignalRRealtimeNotifier.NotifyAppSettingsUpdatedAsync`
-
 Hedef:
 
-- `All`
+- `All`.
 
 Payload:
 
 - `AppSettingsDto`
 
-Kullanim:
+Amaç:
 
-- footer
-- cafe adi
-- kiosk bilgi kutusu varsayilan sunumu
-- geliştirici bilgileri
+- Cafe adı.
+- Footer/geliştirici bilgisi.
+- Varsayılan kiosk bilgi kutusu.
+- Minimum sepet tutarı.
+- Yeni sipariş sesi.
+- Hızlı onay/canlı duyuru ayarları.
 
 ### `InfoMessageUpdated`
 
-Yayinlayan:
-
-- `SignalRRealtimeNotifier.NotifyInfoMessageUpdatedAsync`
-
 Hedef:
 
-- `All`
+- `All`.
 
 Payload:
 
 - `InfoMessageDto`
 
-Kullanim:
+Amaç:
 
-- kiosk aktif duyuru / onemli mesaj kutusu
-- admin panel sunum durumu
+- Aktif duyuru veya önemli bilgi mesajının canlı yenilenmesi.
+- DesktopApp banner rengi, ikon ve metninin güncellenmesi.
 
-## 4. Tuketici Tarafi
+### `ApplicationLogCreated`
+
+Hedef:
+
+- `admin`.
+
+Payload:
+
+- `ApplicationLogDto`
+
+Amaç:
+
+- Sistem Logları ekranına yeni log kaydının realtime düşmesi.
+
+## 5. Tüketici Bileşenler
 
 ### DesktopApp
 
-`RealtimeClient` tarafinda dinlenen temel eventler:
+Dinlediği ana eventler:
 
 - `DeviceApproved`
+- `DeviceRejected`
+- `DeviceMapped`
 - `OrderAccepted`
 - `OrderRejected`
 - `OrderCompleted`
 - `CatalogUpdated`
 - `TablesUpdated`
-- `DeviceMapped`
 - `AppSettingsUpdated`
 - `InfoMessageUpdated`
+
+Davranış:
+
+- Event kaçırılırsa startup/retry ve bazı ekran refresh davranışlarıyla toparlanır.
+- Cihaz onayı veya sipariş durumu geldiğinde sepet açık/kapalı fark etmeksizin ekran güncellenir.
 
 ### WebUI
 
-Admin dashboard script tarafinda dinlenen temel eventler:
+Dinlediği ana eventler:
 
+- `OrderCreated`
 - `OrderAccepted`
 - `OrderRejected`
 - `OrderCompleted`
 - `DeviceApproved`
 - `DeviceMapped`
+- `DevicesUpdated`
 - `CatalogUpdated`
 - `TablesUpdated`
 - `AppSettingsUpdated`
 - `InfoMessageUpdated`
+- `ApplicationLogCreated`
 
-## 5. Operasyonel Notlar
+Davranış:
 
-- katalog ve table event'leri `version` payload ile gonderilir
-- kiosk istemci event uzerinden tekrar veri ceker
-- event bir noktada kacirilsa bile bazi akislar fallback refresh / polling ile toparlanir
-- hedefli cihaz event'lerinde ana anahtar `DeviceKey` grubudur
+- Sayfa shell'i komple reload etmek yerine aktif section partial verisini günceller.
+- Bildirim ve arama alanı aktif sayfa ile uyumlu çalışır.
+
+### AdminAudioAgent
+
+Dinlediği ana eventler:
+
+- `OrderCreated`
+- `OrderSoundPlaybackStarted`
+- `OrderSoundAcknowledged`
+
+Davranış:
+
+- Yeni siparişi queue'ya alır.
+- API hazır değilse startup retry yapar.
+- Polling ile daha önce çalınmamış siparişleri yakalar.
+- Başarılı playback sonrası API'ye `sound-played` bildirir.
+
+### ServerNotifier
+
+Dinlediği ana eventler:
+
+- `OrderCreated`
+- `OrderAccepted`
+- `OrderRejected`
+- `OrderCompleted`
+
+Davranış:
+
+- Bekleyen sipariş snapshot'ını günceller.
+- Aktif bekleyen sipariş varsa modal gösterir.
+- Bekleyen sipariş kalmazsa modal kapanır.
+
+## 6. Dayanıklılık Notları
+
+- SignalR eventleri hızlı UI güncellemesi içindir; kritik akışlarda API snapshot veya polling fallback bulunmalıdır.
+- AdminAudioAgent ve ServerNotifier API startup gecikmesine karşı retry ile başlar.
+- Cihaz varlığı sadece bağlantı durumuna değil heartbeat zamanına da bakar.
+- Ses playback için tek kaynaklı sahiplik hedeflenir; `IsSoundPlayed` ve `SoundPlayedAt` alanları tekrar çalmayı engeller.

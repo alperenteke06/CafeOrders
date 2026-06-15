@@ -1,231 +1,217 @@
-# Islevsel Dokuman
+# İşlevsel Doküman
 
-## 1. Sistem Amaci
+## 1. Sistem Amacı
 
-CafeOrders, masa/kiosk istemcileri ile yonetim panelini ayni siparis ekosisteminde birlestiren bir siparis ve operasyon yonetim sistemidir.
+CafeOrders, internet kafe ve e-spor salonlarında müşteri masalarından sipariş alınmasını, admin panelinden sipariş/cihaz/katalog/duyuru yönetimini ve server tarafı operasyon bildirimlerini tek ekosistemde toplar.
 
-Ana hedefler:
+Sistemin ana hedefleri:
 
-- kullanicinin masadan urun siparisi verebilmesi
-- adminin siparisleri ve cihazlari tek panelden yonetebilmesi
-- katalog, duyuru ve ayar degisikliklerinin canli yansitilmasi
+- Client makinelerde fullscreen kiosk sipariş ekranı sunmak.
+- Admin kullanıcısına WebUI üzerinden cihaz, masa, ürün, kategori, sipariş, ayar, bildirim ve log yönetimi sağlamak.
+- Sipariş, katalog, cihaz, duyuru, ayar ve log değişikliklerini realtime yansıtmak.
+- Web tarayıcısı sesi çalamadığında AdminAudioAgent ile yeni sipariş sesini garantiye almak.
+- ServerNotifier ile bekleyen siparişleri Windows sağ alt köşesinde görünür tutmak.
 
-## 2. Ana Roller
+## 2. Kullanıcı Rolleri
 
-### Musteri / kiosk kullanicisi
+### Kiosk Kullanıcısı
 
-- urunleri gorur
-- kategoriye gore filtreler
-- sepete ekler
-- siparisi olusturur
-- siparis durumunu ekranda takip eder
+- Ürünleri ve kategorileri görür.
+- Sepete ürün ekler, miktar değiştirir ve sepeti temizler.
+- Minimum sepet tutarı tanımlıysa bu tutarın altında sipariş gönderemez.
+- Sipariş oluşturulduktan sonra durum ekranında ilerlemeyi takip eder.
+- Admin onay, red ve tamamlandı durumlarını realtime ekran geçişi veya popup olarak alır.
 
-### Admin / operator
+### Admin / Operatör
 
-- cihazlari onaylar ve masalara baglar
-- siparisleri kabul eder, reddeder, tamamlar
-- urun, kategori ve fiyat gunceller
-- kiosk bilgi mesaji ve duyurulari yonetir
-- masa ve cihaz durumlarini takip eder
+- Cihaz kayıtlarını onaylar, reddeder ve masalara bağlar.
+- Siparişleri bekleyen, onaylanan, reddedilen ve tamamlanan durumlarıyla yönetir.
+- Ürün ve kategori CRUD işlemlerini yapar.
+- Hızlı fiyat girişi ile filtrelenen ürünlerin fiyatlarını toplu günceller.
+- Kiosk bilgi metni, duyuru tipi, ikon, minimum sepet tutarı, yeni sipariş sesi, marka ve footer bilgilerini yönetir.
+- Sistem loglarını kaynak ve seviye bazında izler.
 
-## 3. Ana Moduller
+### Server Operatörü
 
-## 3.1 Cihaz Kaydi ve Onay
+- API, WebUI, AdminAudioAgent ve ServerNotifier süreçlerini WatchDog ile ayakta tutar.
+- ServerNotifier üzerinden bekleyen sipariş sayısını görür.
+- AdminAudioAgent loglarından sesin kim tarafından çalındığını takip eder.
 
-DesktopApp ilk acildiginda:
+## 3. Cihaz Kayıt ve Onay Akışı
 
-- cihaz kimligini olusturur
-- API'ye kayit istegi yollar
-- cihaz henuz onaylanmadiysa bekleme ekranina gecer
+1. DesktopApp açılır ve cihaz kimliğini üretir.
+2. API'ye `POST /api/v1/devices/register` isteği gönderir.
+3. Cihaz daha önce onaylanmamışsa kilit/bekleme ekranında kalır.
+4. Admin WebUI Devices ekranından cihazı onaylar ve masaya bağlar.
+5. API `DeviceApproved`, `DeviceMapped` ve `DevicesUpdated` eventlerini yayınlar.
+6. DesktopApp realtime event ile menü ekranına geçer.
+7. Cihaz heartbeat göndermeye başlar ve online/offline durumu WebUI'da realtime izlenir.
 
-Admin:
+DesktopApp başlangıçta API henüz hazır değilse retry mekanizması ile kayıt/heartbeat akışını tekrar dener.
 
-- WebUI cihaz listesinde yeni cihazı gorur
-- cihazı onaylar
-- masaya baglar
+## 4. Katalog ve Ürün Yönetimi
 
-Beklenen sonuc:
+### Kiosk Tarafı
 
-- DesktopApp otomatik olarak menu ekranina gecer
+- Kategori pills ile filtreleme yapılır.
+- `Tümü` seçiliyken ürünler kategori sırası ve ürün bilgilerine göre düzenli listelenir.
+- Ürün kartında görsel, ad, açıklama, fiyat ve ekleme aksiyonları bulunur.
+- Ürün görselleri kırpılmadan premium kart görünümünde gösterilir.
 
-## 3.2 Katalog ve Kategori Gezinme
+### WebUI Tarafı
 
-Kiosk tarafinda:
+- Ürün ekleme/düzenleme popup'ı; local dosya, sürükle-bırak ve URL üzerinden görsel kullanımını destekler.
+- Kategori seçim dropdown'u tema uyumlu ve scrollable çalışır.
+- Hızlı Fiyat Girişi popup'ı aktif filtredeki ürünleri tablo halinde getirir.
+- Ürün/kategori değişimi sonrası `CatalogUpdated` event'i yayınlanır.
+- DesktopApp ve WebUI katalog bilgisini realtime yeniler.
 
-- kategori pills uzerinden filtreleme yapilir
-- `Tumu` secildiginde urunler kategori sirasina gore listelenir
-- urun kartlarinda isim, aciklama, fiyat ve gorsel bulunur
+## 5. Sepet ve Minimum Tutar Akışı
 
-Admin tarafinda:
+Kiosk sepetinde:
 
-- kategori ekleme / guncelleme / silme
-- urun ekleme / guncelleme / silme
-- hizli fiyat girisi ile toplu fiyat degisimi
+- Ürün kalemleri görsel, ürün adı, adet kontrolü, silme butonu ve satır tutarı ile gösterilir.
+- Miktar arttırma/azaltma kontrolleri custom WPF tasarımla gösterilir.
+- Sepet toplamı, minimum sepet tutarı ve eksik tutar bilgisi gösterilir.
 
-## 3.3 Sepet ve Siparis
+Minimum tutar davranışı:
 
-Kiosk tarafinda:
+- `AppSettings.MinimumOrderAmount` boşsa her tutardaki sepet siparişe gönderilebilir.
+- Örneğin minimum tutar `100 TL` ise, `100 TL` altındaki siparişlerde onay butonu pasif kalır.
+- Ayar WebUI'dan değiştirildiğinde `AppSettingsUpdated` event'i ile DesktopApp'e realtime yansır.
 
-- kullanici urunu sepete ekler
-- miktar arttirir / azaltir
-- siparisi onaylar
+## 6. Sipariş Akışı
 
-Sistem:
+1. Kiosk kullanıcısı sepeti onaylar.
+2. DesktopApp `POST /api/v1/orders` ile siparişi API'ye gönderir.
+3. API siparişi `Pending` olarak kaydeder.
+4. WebUI admin paneline `OrderCreated` event'i gider.
+5. ServerNotifier bekleyen sipariş sayısını gösterir.
+6. AdminAudioAgent yeni sipariş sesi için playback sahipliği akışına girer.
+7. DesktopApp "Siparişiniz Alındı" ekranına geçer.
 
-- siparisi API'ye kaydeder
-- kiosk ekraninda durum ekranina gecer
+Sipariş durumları:
 
-Durumlar:
+| Durum | Anlam |
+| --- | --- |
+| `Pending` | Sipariş admin onayı bekliyor |
+| `Accepted` | Sipariş kabul edildi, hazırlanıyor |
+| `Rejected` | Sipariş reddedildi/iptal edildi |
+| `Completed` | Sipariş tamamlandı |
 
-- `Siparisiniz Olusturuluyor`
-- `Siparisiniz Alindi`
-- `Siparisiniz Hazirlaniyor`
-- `Siparisiniz Hazir`
-- `Siparisiniz Iptal Edildi`
+## 7. Admin Sipariş Yönetimi
 
-## 3.4 Siparis Yonetimi
+WebUI Orders ekranı tüm siparişleri gösterir:
 
-WebUI uzerinden admin:
+- Bekleyen siparişler en üstte, kendi içinde oluşturulma tarihine göre sıralanır.
+- Tamamlanan/reddedilen/onaylanan siparişler kendi tarih sırasıyla listelenir.
+- Global arama kutusu aktif sayfadaki kayıtları filtreler.
 
-- yeni siparisleri gorur
-- siparisi kabul eder
-- reddeder
-- tamamlar
+Admin aksiyonları:
 
-Beklenen davranis:
+- Siparişi onayla: `OrderAccepted` event'i yayınlanır.
+- Siparişi reddet: `OrderRejected` event'i yayınlanır.
+- Siparişi tamamla: `OrderCompleted` event'i yayınlanır.
 
-- DesktopApp bu durumlari realtime popup / ekran gecisi ile alir
+DesktopApp, menü ekranında veya sipariş durum ekranında olsa bile bu eventleri almalı ve ilgili ekranı göstermelidir.
 
-## 3.5 Duyuru ve Kiosk Bilgi Mesajlari
+## 8. Yeni Sipariş Sesi
 
-Iki temel kaynak vardir:
+Ses playback güvence modeli:
 
-- varsayilan kiosk bilgi metni
-- aktif bilgi/duyuru mesaji
+- WebUI odakta ve tarayıcı izinleri uygunsa yeni sipariş sesini çalabilir.
+- WebUI sesi gerçekten başlatırsa `ReportOrderSoundPlaybackStarted` ve `AcknowledgeOrderSound` akışına katılır.
+- WebUI çalamazsa AdminAudioAgent siparişi queue'ya alır.
+- AdminAudioAgent sistem ses seviyesini kontrol eder, gerekirse yükseltir ve sesi native olarak çalar.
+- Başarılı playback sonrası `POST /api/v1/orders/{orderId}/sound-played` ile sipariş `IsSoundPlayed=true` olur.
 
-Durum tipleri:
+Amaç aynı sipariş için çift ses çalmasını engellemek ve hiç ses çalmama riskini azaltmaktır.
 
-- `Onemli`
-- `Duyuru`
-- `Genel`
+## 9. Duyuru ve Kiosk Bilgi Mesajları
 
-Beklenen sunum dili:
+WebUI Settings ekranından yönetilen alanlar:
 
-- Onemli: kirmizi tonlar
-- Duyuru: altin/sari tema
-- Genel: acik mavi tonlar
+- Varsayılan kiosk bilgi metni.
+- Bilgi tipi: `Önemli`, `Duyuru`, `Genel`.
+- İkon anahtarı.
+- Aktif duyuru mesajı.
 
-Beklenen davranis:
+Renk davranışı:
 
-- admin guncellemesi sonrasinda WebUI ve DesktopApp sunumu canli degismelidir
+| Tip | Sunum |
+| --- | --- |
+| Önemli | Kırmızı tonlar |
+| Duyuru | Tema altın/sarı tonu |
+| Genel | Açık mavi tonlar |
 
-## 3.6 Masa ve Cihaz Takibi
+Bu ayarlar `AppSettingsUpdated` ve `InfoMessageUpdated` eventleriyle DesktopApp ve WebUI'a realtime yansır.
 
-Admin paneli:
+## 10. Bildirimler ve Loglar
 
-- hangi cihaz hangi masaya bagli
-- cihaz online / offline mi
-- masa aktif mi
+WebUI'da:
 
-Sistem:
+- Header notification alanı yeni sipariş ve durum değişikliklerini gösterir.
+- Bildirimlerde ilgili kayda git aksiyonu bulunur.
+- Sistem Logları ekranı API, WebUI, DesktopApp, AdminAudioAgent ve ServerNotifier kaynaklarını izler.
+- Loglar seviye, kaynak ve arama filtresiyle incelenebilir.
 
-- heartbeat ile cihaz varligi izlenir
-- ani disconnect ve timeout senaryolari desteklenir
+Log kaynakları:
 
-## 3.7 Bildirimler
+- `API`
+- `WebUI`
+- `DesktopApp`
+- `AdminAudioAgent`
+- `ServerNotifier`
 
-WebUI tarafinda:
+## 11. ServerNotifier Akışı
 
-- yeni siparis
-- siparis onaylandi
-- siparis reddedildi
-- siparis tamamlandi
+ServerNotifier server PC'de çalışan küçük WPF bildirim uygulamasıdır.
 
-gibi olaylar bildirim listesine duser.
+Davranış:
 
-Bildirimlerde:
+- API ve Hub'a bağlanır.
+- Bekleyen siparişleri realtime ve polling fallback ile izler.
+- Bekleyen sipariş varsa ekranın sağ alt köşesinde taskbar üstünde top-most modal gösterir.
+- Modalda sipariş adedi, masa listesi ve "Siparişleri Görüntüle" butonu bulunur.
+- Bekleyen sipariş kalmadığında modal otomatik kapanır.
 
-- kayda git
-- okunmamis / yeni vurgu
-- siparis ozeti
+## 12. Operasyon Senaryoları
 
-beklenir.
+### Yeni Cihaz Devreye Alma
 
-## 4. Realtime Beklentiler
+1. DesktopApp açılır.
+2. Cihaz bekleme ekranına düşer.
+3. Admin cihazı onaylar ve masaya bağlar.
+4. DesktopApp otomatik menüye geçer.
 
-Sistemde asagidaki degisiklikler canli yansimalidir:
+### Yeni Sipariş
 
-- cihaz onayi
-- masa atamasi
-- online / offline durumu
-- urun gorsel / fiyat / isim degisikligi
-- kategori degisikligi
-- siparis durumu
-- kiosk bilgi mesaji
-- aktif duyuru
-- footer / branding sunumu
+1. Müşteri ürünü sepete ekler.
+2. Minimum tutar sağlanıyorsa siparişi gönderir.
+3. Admin paneli, ServerNotifier ve ses ajanı bilgilendirilir.
+4. Admin siparişi kabul eder veya reddeder.
+5. DesktopApp ilgili durum ekranını realtime gösterir.
 
-## 5. Dosya ve Icerik Yonetimi
+### Ürün Görseli Güncelleme
 
-### Urun gorselleri
+1. Admin ürün görselini WebUI üzerinden yükler.
+2. Görsel `wwwroot/uploads/products` altına kaydedilir.
+3. Ürün kaydı güncellenir.
+4. `CatalogUpdated` event'i yayınlanır.
+5. DesktopApp görseli HTTP veya shared path üzerinden yeniden yükler.
 
-- admin panelinden yuklenir
-- `wwwroot/uploads/products` altinda saklanir
-- DesktopApp ister HTTP ister paylasimli klasor uzerinden gorseli alabilir
+### Acil Duyuru
 
-### Ses dosyalari
+1. Admin duyuru metnini yazar.
+2. Tipi `Önemli` seçer.
+3. İkon anahtarını belirler.
+4. DesktopApp kırmızı uyarı sunumuna realtime geçer.
 
-- admin panelinden yuklenir
-- `wwwroot/uploads/sounds` altinda tutulur
+## 13. Gelecek Gelişim Alanları
 
-## 6. Operasyonel Islevler
-
-Yonetim paneli su operasyonel senaryolari kapsar:
-
-- cihaz kaydi onaylama
-- masa esleme
-- urun ve kategori bakimi
-- toplu fiyat guncelleme
-- kiosk duyurusu ve onem seviyesi ayarlama
-- marka / gelistirici bilgisi guncelleme
-
-## 7. Baslica Kullanici Senaryolari
-
-### Senaryo 1: Yeni cihaz devreye alma
-
-1. DesktopApp acilir
-2. cihaz bekleme ekraninda kalir
-3. admin cihazı onaylar
-4. masa atanir
-5. cihaz otomatik menuye gecer
-
-### Senaryo 2: Musteri siparisi
-
-1. kullanici kategori secer
-2. urunleri sepete ekler
-3. siparisi gonderir
-4. admin siparisi gorur
-5. admin kabul eder
-6. kiosk durum ekraninda hazirlaniyor gorunur
-
-### Senaryo 3: Urun guncelleme
-
-1. admin urun fiyatini veya gorselini gunceller
-2. sistem katalog guncelleme yayini yapar
-3. WebUI ve DesktopApp guncel urunu gosterir
-
-### Senaryo 4: Acil duyuru
-
-1. admin aktif bilgi mesaji tanimlar
-2. tip `Onemli` olarak secilir
-3. kiosk istemciler kirmizi uyarili mesaj kutusuna gecer
-
-## 8. Mevcut Gelisim Alanlari
-
-Fonksiyonel olarak gelecekte genisletilebilecek alanlar:
-
-- detayli raporlama ve satis analitigi
-- kullanici yetki seviyeleri
-- urun stok entegrasyonu
-- siparis mutfak ekran entegrasyonu
-- test ve kabul senaryolari icin yazili SOP dokumani
+- Stok yönetimi.
+- Rol bazlı admin yetkilendirme.
+- Mutfak ekranı.
+- Gün sonu raporu ve satış analitiği.
+- Ürün bazlı kampanya tanımları.
+- Admin aksiyon geçmişi için daha detaylı audit raporu.
