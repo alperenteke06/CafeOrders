@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$ConfigPath,
     [ValidateSet("Install", "Uninstall")]
@@ -622,6 +622,8 @@ function Remove-CafeOrdersTask {
     try {
         $task = Get-ScheduledTask -TaskName "CafeOrders WatchDog" -ErrorAction SilentlyContinue
         if ($task) {
+            Write-Step "Stopping WatchDog scheduled task"
+            Stop-ScheduledTask -TaskName "CafeOrders WatchDog" -ErrorAction SilentlyContinue
             Write-Step "Unregistering WatchDog scheduled task"
             Unregister-ScheduledTask -TaskName "CafeOrders WatchDog" -Confirm:$false
         }
@@ -661,6 +663,75 @@ function Remove-CafeOrdersFirewallRule {
     }
 }
 
+function Stop-CafeOrdersProcess {
+    param(
+        [string]$ProcessName,
+        [string]$ExecutablePath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ProcessName)) {
+        return
+    }
+
+    $expectedPath = $null
+    if (-not [string]::IsNullOrWhiteSpace($ExecutablePath)) {
+        try {
+            $expectedPath = [System.IO.Path]::GetFullPath($ExecutablePath)
+        }
+        catch {
+            $expectedPath = $ExecutablePath
+        }
+    }
+
+    $candidateNames = @($ProcessName)
+    if (-not $ProcessName.EndsWith(".exe", [System.StringComparison]::OrdinalIgnoreCase)) {
+        $candidateNames += "$ProcessName.exe"
+    }
+
+    foreach ($candidateName in $candidateNames | Select-Object -Unique) {
+        $escapedName = $candidateName.Replace("'", "''")
+        $processes = Get-CimInstance Win32_Process -Filter "Name = '$escapedName'" -ErrorAction SilentlyContinue
+        foreach ($process in $processes) {
+            if ($expectedPath -and $process.ExecutablePath) {
+                $processPath = [System.IO.Path]::GetFullPath($process.ExecutablePath)
+                if (-not [string]::Equals($processPath, $expectedPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    continue
+                }
+            }
+
+            try {
+                Write-Step "Stopping process $($process.Name) (PID $($process.ProcessId))"
+                Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
+            }
+            catch {
+                Write-SetupWarning "Process $($process.Name) (PID $($process.ProcessId)) could not be stopped. $($_.Exception.Message)"
+            }
+        }
+    }
+}
+
+function Reset-DirectoryAttributes {
+    param([string]$Path)
+
+    try {
+        Get-ChildItem -LiteralPath $Path -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
+            try {
+                $_.Attributes = [System.IO.FileAttributes]::Normal
+            }
+            catch {
+            }
+        }
+
+        $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+        if ($item) {
+            $item.Attributes = [System.IO.FileAttributes]::Normal
+        }
+    }
+    catch {
+        Write-SetupWarning "Directory attributes could not be normalized for $Path. $($_.Exception.Message)"
+    }
+}
+
 function Remove-CafeOrdersDirectory {
     param([string]$Path)
 
@@ -669,7 +740,23 @@ function Remove-CafeOrdersDirectory {
     }
 
     Write-Step "Removing directory $Path"
-    Remove-Item -LiteralPath $Path -Recurse -Force
+    Reset-DirectoryAttributes -Path $Path
+
+    for ($attempt = 1; $attempt -le 6; $attempt++) {
+        try {
+            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+            return
+        }
+        catch {
+            if ($attempt -eq 6) {
+                Write-SetupWarning "Directory could not be fully removed: $Path. $($_.Exception.Message)"
+                return
+            }
+
+            Write-SetupWarning "Directory removal failed for $Path. Retrying ($attempt/6). $($_.Exception.Message)"
+            Start-Sleep -Milliseconds (450 * $attempt)
+        }
+    }
 }
 
 function Invoke-Uninstall {
@@ -693,6 +780,11 @@ function Invoke-Uninstall {
     Remove-CafeOrdersAppPool -Name $WebUiAppPoolName
     Remove-CafeOrdersFirewallRule -Name "CafeOrders API $ApiPort"
     Remove-CafeOrdersFirewallRule -Name "CafeOrders WebUI $WebUiPort"
+
+    Stop-CafeOrdersProcess -ProcessName "CafeOrders.AdminAudioAgent" -ExecutablePath (Join-Path $AdminAudioAgentPath "CafeOrders.AdminAudioAgent.exe")
+    Stop-CafeOrdersProcess -ProcessName "CafeOrders.ServerNotifier" -ExecutablePath (Join-Path $ServerNotifierPath "CafeOrders.ServerNotifier.exe")
+    Stop-CafeOrdersProcess -ProcessName "CafeOrders.API" -ExecutablePath (Join-Path $IisRootPath "API\CafeOrders.API.exe")
+    Stop-CafeOrdersProcess -ProcessName "CafeOrders.WebUI" -ExecutablePath (Join-Path $IisRootPath "WebUI\CafeOrders.WebUI.exe")
 
     Remove-CafeOrdersDirectory -Path (Join-Path $IisRootPath "API")
     Remove-CafeOrdersDirectory -Path (Join-Path $IisRootPath "WebUI")
@@ -789,3 +881,4 @@ Test-Health -Name "API" -Url "http://$ServerIp`:$ApiPort/api/v1/settings/app"
 Test-Health -Name "WebUI" -Url "http://$ServerIp`:$WebUiPort/"
 
 Write-Step "Setup completed."
+

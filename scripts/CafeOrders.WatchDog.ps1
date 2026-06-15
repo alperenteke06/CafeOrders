@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$ApiAppPoolName = "CafeOrders.API",
     [string]$WebUiAppPoolName = "CafeOrders.WebUI",
     [string]$ApiSiteName = "CafeOrders.API",
@@ -400,3 +400,4 @@ if (Test-CafeOrdersAlreadyOpen) {
 
 Open-CafeOrders
 Write-Log "CafeOrders WatchDog completed."
+

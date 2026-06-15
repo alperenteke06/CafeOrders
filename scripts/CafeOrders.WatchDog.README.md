@@ -1,4 +1,4 @@
-# CafeOrders WatchDog
+﻿# CafeOrders WatchDog
 
 ## Amac
 
@@ -89,3 +89,4 @@ Script su kontrolleri yapar:
 - Chrome tab basliklari UI Automation ile CafeOrders basligi tasiyor mu
 
 Sayfa zaten aciksa yeni sekme acmaz. Sayfa acik degilse URL'yi Windows shell uzerinden acar.
+

@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$TaskName = "CafeOrders WatchDog",
     [string]$ScriptPath = "C:\Scripts\CafeOrders.WatchDog.ps1",
     [string]$HiddenRunnerPath = "C:\Scripts\Run-CafeOrders.WatchDogHidden.vbs",
@@ -69,3 +69,4 @@ Register-ScheduledTask `
     -Force | Out-Null
 
 Write-Output "Task registered: $TaskName"
+

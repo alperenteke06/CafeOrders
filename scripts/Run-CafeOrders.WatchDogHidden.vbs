@@ -1,4 +1,4 @@
-Option Explicit
+﻿Option Explicit
 
 Dim args, scriptPath, apiHealthUrl, webUiUrl, apiAppPoolName, webUiAppPoolName, apiSiteName, webUiSiteName, logPath, adminAudioAgentPath, serverNotifierPath
 Set args = WScript.Arguments
@@ -41,3 +41,4 @@ End Function
 Function Quote(value)
     Quote = """" & Replace(CStr(value), """", """""") & """"
 End Function
+
