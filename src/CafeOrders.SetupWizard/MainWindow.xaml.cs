@@ -982,8 +982,8 @@ public partial class MainWindow : Window
 
     private void AppendLog(string message)
     {
-        LogBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
-        LogBox.ScrollToEnd();
+        LogTextBlock.Text += $"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}";
+        LogScrollViewer.ScrollToEnd();
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

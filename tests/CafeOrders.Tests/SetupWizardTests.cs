@@ -34,6 +34,8 @@ public sealed class SetupWizardTests
         Assert.Contains("SqlTestStatusText", xaml);
         Assert.Contains("DownloadDesktopButton", xaml);
         Assert.Contains("DownloadProgressText", xaml);
+        Assert.Contains("LogScrollViewer", xaml);
+        Assert.Contains("LogTextBlock", xaml);
         Assert.Contains("ValidationButton", xaml);
         Assert.Contains("https://github.com/alperenteke06/CafeOrders/tree/Production", codeBehind);
         Assert.Contains("ConfigPath", codeBehind);
@@ -60,6 +62,8 @@ public sealed class SetupWizardTests
         Assert.Contains("ValidateCurrentStep", codeBehind);
         Assert.Contains("UpdateStepState", codeBehind);
         Assert.Contains("RefreshReviewSummary", codeBehind);
+        Assert.Contains("LogTextBlock.Text +=", codeBehind);
+        Assert.Contains("LogScrollViewer.ScrollToEnd", codeBehind);
     }
 
     [Fact]

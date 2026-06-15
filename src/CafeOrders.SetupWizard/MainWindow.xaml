@@ -743,30 +743,51 @@
                                     </Border>
 
                                     <TextBlock Style="{StaticResource FieldLabel}" Margin="0,20,0,7" Text="Kurulum Logu" />
-                                    <Border Margin="0,0,0,10" Padding="14,10" CornerRadius="14" Background="#111b2d" BorderBrush="#2f3d59" BorderThickness="1">
+                                    <Border CornerRadius="20" Background="#0b1322" BorderBrush="#34435f" BorderThickness="1" ClipToBounds="True">
                                         <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="12" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="↓" FontSize="18" FontWeight="Black" Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
-                                            <TextBlock x:Name="DownloadProgressText"
-                                                       Grid.Column="2"
-                                                       Style="{StaticResource CaptionText}"
-                                                       VerticalAlignment="Center"
-                                                       Text="İndirme bekliyor." />
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+
+                                            <Grid Background="#162038" MinHeight="44" Margin="0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+                                                    <Ellipse Width="10" Height="10" Fill="#ff5f57" Margin="0,0,7,0" />
+                                                    <Ellipse Width="10" Height="10" Fill="#ffbd2e" Margin="0,0,7,0" />
+                                                    <Ellipse Width="10" Height="10" Fill="#28c840" />
+                                                </StackPanel>
+                                                <TextBlock x:Name="DownloadProgressText"
+                                                           Grid.Column="1"
+                                                           Margin="16,0,18,0"
+                                                           VerticalAlignment="Center"
+                                                           TextAlignment="Right"
+                                                           FontSize="12"
+                                                           FontWeight="Bold"
+                                                           Foreground="#ffd37a"
+                                                           Text="İndirme bekliyor." />
+                                            </Grid>
+
+                                            <ScrollViewer x:Name="LogScrollViewer"
+                                                          Grid.Row="1"
+                                                          Height="184"
+                                                          Padding="18,14"
+                                                          Background="#07101f"
+                                                          HorizontalScrollBarVisibility="Disabled"
+                                                          VerticalScrollBarVisibility="Auto">
+                                                <TextBlock x:Name="LogTextBlock"
+                                                           FontFamily="Cascadia Mono, Consolas"
+                                                           FontSize="12.5"
+                                                           FontWeight="SemiBold"
+                                                           LineHeight="18"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="#edf4ff" />
+                                            </ScrollViewer>
                                         </Grid>
                                     </Border>
-                                    <TextBox x:Name="LogBox"
-                                             Height="174"
-                                             Style="{StaticResource InputBox}"
-                                             FontFamily="Consolas"
-                                             FontSize="12"
-                                             TextWrapping="Wrap"
-                                             AcceptsReturn="True"
-                                             VerticalScrollBarVisibility="Auto"
-                                             IsReadOnly="True" />
 
                                     <Button x:Name="DownloadDesktopButton"
                                             Margin="0,18,0,0"
