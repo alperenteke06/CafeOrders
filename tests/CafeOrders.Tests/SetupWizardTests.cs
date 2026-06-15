@@ -19,6 +19,9 @@ public sealed class SetupWizardTests
         Assert.Contains("Loaded=\"Window_Loaded\"", xaml);
         Assert.Contains("SplashOverlay", xaml);
         Assert.Contains("SplashExitStoryboard", xaml);
+        Assert.Contains("ModeSelectionOverlay", xaml);
+        Assert.Contains("Kurulum Yap", xaml);
+        Assert.Contains("AppDialogOverlay", xaml);
         Assert.Contains("OptionCheckBox", xaml);
         Assert.Contains("ComboInput", xaml);
         Assert.Contains("PackageSourceRadio", xaml);
@@ -37,8 +40,9 @@ public sealed class SetupWizardTests
         Assert.Contains("LogScrollViewer", xaml);
         Assert.Contains("LogTextBlock", xaml);
         Assert.Contains("InstallHostingBundleBox", xaml);
-        Assert.Contains("Height=\"260\"", xaml);
-        Assert.Contains("Padding=\"24,18\"", xaml);
+        Assert.Contains("Height=\"330\"", xaml);
+        Assert.Contains("Padding=\"28,22\"", xaml);
+        Assert.Contains("Alperen TEKE", xaml);
         Assert.Contains("ValidationButton", xaml);
         Assert.Contains("https://github.com/alperenteke06/CafeOrders/tree/Production", codeBehind);
         Assert.Contains("ConfigPath", codeBehind);
@@ -65,6 +69,10 @@ public sealed class SetupWizardTests
         Assert.Contains("DiscoverServerIps", codeBehind);
         Assert.Contains("NextButton_Click", codeBehind);
         Assert.Contains("BackButton_Click", codeBehind);
+        Assert.Contains("StartInstallModeButton_Click", codeBehind);
+        Assert.Contains("StartUninstallModeButton_Click", codeBehind);
+        Assert.Contains("ExecuteUninstallAsync", codeBehind);
+        Assert.Contains("ShowAppDialogAsync", codeBehind);
         Assert.Contains("ValidateCurrentStep", codeBehind);
         Assert.Contains("UpdateStepState", codeBehind);
         Assert.Contains("RefreshReviewSummary", codeBehind);
@@ -121,6 +129,10 @@ public sealed class SetupWizardTests
         Assert.Contains("Register-WatchDogTask", script);
         Assert.Contains("Start-ScheduledTask", script);
         Assert.Contains("-RunLevel Highest", registerScript);
+        Assert.Contains("ValidateSet(\"Install\", \"Uninstall\")", script);
+        Assert.Contains("Invoke-Uninstall", script);
+        Assert.Contains("Remove-CafeOrdersWebsite", script);
+        Assert.Contains("Unregister-ScheduledTask", script);
     }
 
     [Fact]

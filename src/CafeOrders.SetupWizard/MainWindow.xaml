@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="CafeOrders Setup Wizard"
         Width="1180"
-        Height="780"
+        Height="860"
         MinWidth="1040"
-        MinHeight="680"
+        MinHeight="760"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="CanResize"
@@ -504,6 +504,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="64" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="82" />
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
@@ -525,14 +526,14 @@
                 </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="1" Margin="28">
+            <Grid Grid.Row="1" Margin="24,20,24,16">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="340" />
+                    <ColumnDefinition Width="320" />
                     <ColumnDefinition Width="24" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0" CornerRadius="26" BorderBrush="#3b2d10" BorderThickness="1" Padding="28">
+                <Border Grid.Column="0" CornerRadius="26" BorderBrush="#3b2d10" BorderThickness="1" Padding="24">
                     <Border.Background>
                         <RadialGradientBrush Center="0.48,0.18" RadiusX="0.9" RadiusY="0.9">
                             <GradientStop Color="#4a2b04" Offset="0" />
@@ -774,16 +775,16 @@
 
                                             <ScrollViewer x:Name="LogScrollViewer"
                                                           Grid.Row="1"
-                                                          Height="260"
-                                                          Padding="24,18"
+                                                          Height="330"
+                                                          Padding="28,22"
                                                           Background="#07101f"
                                                           HorizontalScrollBarVisibility="Disabled"
                                                           VerticalScrollBarVisibility="Auto">
                                                 <TextBlock x:Name="LogTextBlock"
                                                            FontFamily="Cascadia Mono, Consolas"
-                                                           FontSize="13"
+                                                           FontSize="13.5"
                                                            FontWeight="SemiBold"
-                                                           LineHeight="21"
+                                                           LineHeight="23"
                                                            TextWrapping="Wrap"
                                                            Foreground="#edf4ff" />
                                             </ScrollViewer>
@@ -840,8 +841,131 @@
                 </Border>
             </Grid>
 
+            <Border Grid.Row="2"
+                    Margin="24,0,24,18"
+                    Padding="22,14"
+                    CornerRadius="18"
+                    Background="#101928"
+                    BorderBrush="#2d3a55"
+                    BorderThickness="1">
+                <Grid>
+                    <TextBlock Text="CafeOrders @ 2026 Tüm Hakları Saklıdır."
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextMuted}" />
+                    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock Text="YAZILIM GELİŞTİRİCİ"
+                                   HorizontalAlignment="Right"
+                                   FontSize="10"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource TextMuted}" />
+                        <Border Height="1" Width="110" Margin="0,4,0,5" Background="#ffb800" Opacity="0.35" HorizontalAlignment="Right" />
+                        <TextBlock Text="Alperen TEKE"
+                                   HorizontalAlignment="Right"
+                                   FontSize="15"
+                                   FontWeight="Black"
+                                   Foreground="{StaticResource Accent}" />
+                        <TextBlock Text="0 (541) 688 88 06"
+                                   HorizontalAlignment="Right"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimary}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid x:Name="ModeSelectionOverlay"
+                  Grid.RowSpan="3"
+                  Panel.ZIndex="88"
+                  Visibility="Visible">
+                <Grid.Background>
+                    <RadialGradientBrush Center="0.5,0.42" RadiusX="0.82" RadiusY="0.82">
+                        <GradientStop Color="#1e2c49" Offset="0" />
+                        <GradientStop Color="#0b1424" Offset="0.5" />
+                        <GradientStop Color="#050b16" Offset="1" />
+                    </RadialGradientBrush>
+                </Grid.Background>
+                <Border Width="720"
+                        Padding="34"
+                        CornerRadius="30"
+                        Background="#111b2d"
+                        BorderBrush="#3c4d70"
+                        BorderThickness="1.2"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <StackPanel>
+                        <Border Width="92" Height="92" CornerRadius="28" Background="#ffb800" HorizontalAlignment="Center">
+                            <TextBlock Text="⚡" FontSize="48" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#1e1603" />
+                        </Border>
+                        <TextBlock Text="CafeOrders Setup Wizard"
+                                   Margin="0,24,0,8"
+                                   HorizontalAlignment="Center"
+                                   FontSize="34"
+                                   FontWeight="Black" />
+                        <TextBlock Text="Kurulum yapmak ya da bu wizard tarafından kurulan bileşenleri kaldırmak için bir işlem seçin."
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   Style="{StaticResource CaptionText}"
+                                   FontSize="15"
+                                   LineHeight="23" />
+                        <Grid Margin="0,34,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0"
+                                    Height="68"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Content="Kurulum Yap"
+                                    Click="StartInstallModeButton_Click" />
+                            <Button Grid.Column="2"
+                                    Height="68"
+                                    Style="{StaticResource GhostButton}"
+                                    Content="Kaldır"
+                                    Click="StartUninstallModeButton_Click" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Grid x:Name="AppDialogOverlay"
+                  Grid.RowSpan="3"
+                  Panel.ZIndex="120"
+                  Visibility="Collapsed">
+                <Grid Background="#c807101f" />
+                <Border Width="560"
+                        Padding="28"
+                        CornerRadius="26"
+                        Background="#111b2d"
+                        BorderBrush="#3d4d6d"
+                        BorderThickness="1.2"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <StackPanel>
+                        <Border Width="58" Height="58" CornerRadius="18" Background="#ffb800">
+                            <TextBlock x:Name="AppDialogIcon" Text="!" FontSize="28" FontWeight="Black" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#1e1603" />
+                        </Border>
+                        <TextBlock x:Name="AppDialogTitle" Margin="0,18,0,8" FontSize="24" FontWeight="Black" />
+                        <TextBlock x:Name="AppDialogMessage" Style="{StaticResource CaptionText}" FontSize="14" LineHeight="22" />
+                        <Grid Margin="0,26,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="150" />
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="AppDialogCancelButton" Grid.Column="1" Style="{StaticResource GhostButton}" Content="İptal" Click="AppDialogCancelButton_Click" />
+                            <Button x:Name="AppDialogOkButton" Grid.Column="3" Style="{StaticResource PrimaryButton}" Content="Tamam" Click="AppDialogOkButton_Click" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
             <Grid x:Name="SplashOverlay"
-                  Grid.RowSpan="2"
+                  Grid.RowSpan="3"
                   Panel.ZIndex="99"
                   IsHitTestVisible="True"
                   Opacity="1">

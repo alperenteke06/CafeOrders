@@ -54,6 +54,8 @@ public partial class MainWindow : Window
     private TextBlock[] _stepIndicators = [];
     private int _currentStep;
     private bool _isInstalling;
+    private bool _isUninstallMode;
+    private TaskCompletionSource<bool>? _dialogCompletionSource;
 
     public MainWindow()
     {
@@ -94,6 +96,40 @@ public partial class MainWindow : Window
         SqlPasswordBox.Password = string.Empty;
         IisRootPathBox.Text = @"C:\inetpub\wwwroot";
         AppendLog("Wizard hazır. Kurulum için yönetici yetkisi önerilir.");
+    }
+
+    private void StartInstallModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        _isUninstallMode = false;
+        ModeSelectionOverlay.Visibility = Visibility.Collapsed;
+        AppendLog("Kurulum modu seçildi.");
+        UpdateStepState();
+    }
+
+    private async void StartUninstallModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        _isUninstallMode = true;
+        ModeSelectionOverlay.Visibility = Visibility.Collapsed;
+        _currentStep = _stepPages.Length - 1;
+        UpdateStepState();
+
+        var confirmed = await ShowAppDialogAsync(
+            "Kaldırma işlemi",
+            "Bu işlem CafeOrders API/WebUI IIS kayıtlarını, AppPool yapılarını, WatchDog görevini, firewall kurallarını, AdminAudioAgent, ServerNotifier ve Scripts klasörlerini kaldırır. Devam edilsin mi?",
+            "Kaldır",
+            showCancel: true,
+            icon: "!");
+
+        if (confirmed)
+        {
+            await ExecuteUninstallAsync();
+        }
+        else
+        {
+            _isUninstallMode = false;
+            ModeSelectionOverlay.Visibility = Visibility.Visible;
+            AppendLog("Kaldırma işlemi iptal edildi.");
+        }
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -273,7 +309,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppendLog($"Adım doğrulaması başarısız: {ex.Message}");
-            System.Windows.MessageBox.Show(this, ex.Message, "CafeOrders Setup", MessageBoxButton.OK, MessageBoxImage.Warning);
+            _ = ShowAppDialogAsync("Doğrulama uyarısı", ex.Message, "Tamam", showCancel: false, icon: "!");
             return false;
         }
     }
@@ -294,7 +330,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppendLog($"Ön kontrol başarısız: {ex.Message}");
-            System.Windows.MessageBox.Show(this, ex.Message, "Ön Kontrol", MessageBoxButton.OK, MessageBoxImage.Warning);
+            _ = ShowAppDialogAsync("Ön kontrol başarısız", ex.Message, "Tamam", showCancel: false, icon: "!");
         }
     }
 
@@ -331,18 +367,18 @@ public partial class MainWindow : Window
                 AppendLog("Kurulum başarıyla tamamlandı.");
                 DownloadDesktopButton.Visibility = Visibility.Visible;
                 DownloadDesktopButton.IsEnabled = true;
-                System.Windows.MessageBox.Show(this, "CafeOrders kurulumu tamamlandı.", "CafeOrders Setup", MessageBoxButton.OK, MessageBoxImage.Information);
+                await ShowAppDialogAsync("Kurulum tamamlandı", "CafeOrders kurulumu başarıyla tamamlandı.", "Tamam", showCancel: false, icon: "✓");
             }
             else
             {
                 AppendLog($"Kurulum hata kodu ile tamamlandı: {exitCode}");
-                System.Windows.MessageBox.Show(this, $"Kurulum tamamlanamadı. ExitCode={exitCode}", "CafeOrders Setup", MessageBoxButton.OK, MessageBoxImage.Error);
+                await ShowAppDialogAsync("Kurulum tamamlanamadı", $"Kurulum tamamlanamadı. ExitCode={exitCode}", "Tamam", showCancel: false, icon: "!");
             }
         }
         catch (Exception ex)
         {
             AppendLog($"Kurulum hatası: {ex.Message}");
-            System.Windows.MessageBox.Show(this, ex.Message, "CafeOrders Setup", MessageBoxButton.OK, MessageBoxImage.Error);
+            await ShowAppDialogAsync("Kurulum hatası", ex.Message, "Tamam", showCancel: false, icon: "!");
         }
         finally
         {
@@ -395,12 +431,12 @@ public partial class MainWindow : Window
             await WriteDesktopAppSettingsAsync(dialog.SelectedPath, config);
 
             AppendLog($"DesktopApp hazırlandı: {dialog.SelectedPath}");
-            System.Windows.MessageBox.Show(this, "DesktopApp dosyaları seçilen klasöre hazırlandı.", "DesktopApp İndir", MessageBoxButton.OK, MessageBoxImage.Information);
+            await ShowAppDialogAsync("DesktopApp hazır", "DesktopApp dosyaları seçilen klasöre hazırlandı.", "Tamam", showCancel: false, icon: "✓");
         }
         catch (Exception ex)
         {
             AppendLog($"DesktopApp hazırlama hatası: {ex.Message}");
-            System.Windows.MessageBox.Show(this, ex.Message, "DesktopApp İndir", MessageBoxButton.OK, MessageBoxImage.Error);
+            await ShowAppDialogAsync("DesktopApp hazırlama hatası", ex.Message, "Tamam", showCancel: false, icon: "!");
         }
         finally
         {
@@ -409,10 +445,62 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task ExecuteUninstallAsync()
+    {
+        SetBusy(true);
+
+        string? configPath = null;
+        try
+        {
+            var config = BuildConfig();
+            config.Mode = "Uninstall";
+            var script = ResolveInstallerScript();
+            configPath = Path.Combine(Path.GetTempPath(), $"CafeOrdersUninstall_{Guid.NewGuid():N}.json");
+            await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true }));
+
+            AppendLog("Kaldırma işlemi başlatılıyor...");
+            UpdateDownloadProgressText("Kaldırma scripti çalışıyor.");
+            InstallProgress.IsIndeterminate = true;
+            var exitCode = await RunInstallerAsync(script, configPath);
+            if (exitCode == 0)
+            {
+                AppendLog("Kaldırma işlemi başarıyla tamamlandı.");
+                await ShowAppDialogAsync("Kaldırma tamamlandı", "CafeOrders bileşenleri başarıyla kaldırıldı.", "Tamam", showCancel: false, icon: "✓");
+                _isUninstallMode = false;
+                ModeSelectionOverlay.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                AppendLog($"Kaldırma işlemi hata kodu ile tamamlandı: {exitCode}");
+                await ShowAppDialogAsync("Kaldırma tamamlanamadı", $"Kaldırma işlemi tamamlanamadı. ExitCode={exitCode}", "Tamam", showCancel: false, icon: "!");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"Kaldırma hatası: {ex.Message}");
+            await ShowAppDialogAsync("Kaldırma hatası", ex.Message, "Tamam", showCancel: false, icon: "!");
+        }
+        finally
+        {
+            if (!string.IsNullOrWhiteSpace(configPath))
+            {
+                TryDelete(configPath);
+            }
+
+            SetBusy(false);
+        }
+    }
+
     private void UpdateStepState()
     {
         StepTitleText.Text = _stepTitles[_currentStep];
         StepSubtitleText.Text = _stepSubtitles[_currentStep];
+
+        if (_isUninstallMode)
+        {
+            StepTitleText.Text = "Kaldırma Özeti";
+            StepSubtitleText.Text = "CafeOrders Setup Wizard tarafından kurulan bileşenleri kaldırın.";
+        }
 
         for (var index = 0; index < _stepPages.Length; index++)
         {
@@ -424,9 +512,10 @@ public partial class MainWindow : Window
         }
 
         BackButton.IsEnabled = !_isInstalling && _currentStep > 0;
+        BackButton.Visibility = _isUninstallMode ? Visibility.Collapsed : Visibility.Visible;
         NextButton.Visibility = _currentStep == _stepPages.Length - 1 ? Visibility.Collapsed : Visibility.Visible;
-        PrecheckButton.Visibility = _currentStep == _stepPages.Length - 1 ? Visibility.Visible : Visibility.Collapsed;
-        InstallButton.Visibility = _currentStep == _stepPages.Length - 1 ? Visibility.Visible : Visibility.Collapsed;
+        PrecheckButton.Visibility = _isUninstallMode ? Visibility.Collapsed : (_currentStep == _stepPages.Length - 1 ? Visibility.Visible : Visibility.Collapsed);
+        InstallButton.Visibility = _isUninstallMode ? Visibility.Collapsed : (_currentStep == _stepPages.Length - 1 ? Visibility.Visible : Visibility.Collapsed);
 
         if (_currentStep == _stepPages.Length - 1)
         {
@@ -441,7 +530,7 @@ public partial class MainWindow : Window
             : PackageUrlBox.Text.Trim();
 
         ReviewSummaryText.Text =
-            $"SQL: {SqlInstanceBox.Text.Trim()} / {SqlUserBox.Text.Trim()}{Environment.NewLine}" +
+            (_isUninstallMode ? $"İşlem: Kaldırma modu{Environment.NewLine}" : $"SQL: {SqlInstanceBox.Text.Trim()} / {SqlUserBox.Text.Trim()}{Environment.NewLine}") +
             $"API: http://{ServerIpBox.Text.Trim()}:{ApiPortBox.Text.Trim()}{Environment.NewLine}" +
             $"WebUI: http://{ServerIpBox.Text.Trim()}:{WebUiPortBox.Text.Trim()}{Environment.NewLine}" +
             $"IIS Root: {IisRootPathBox.Text.Trim()}{Environment.NewLine}" +
@@ -493,7 +582,7 @@ public partial class MainWindow : Window
             AppendLog($"SQL bağlantı testi başarısız: {ex.Message}");
             if (showMessageOnError)
             {
-                System.Windows.MessageBox.Show(this, ex.Message, "SQL Bağlantı Testi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _ = ShowAppDialogAsync("SQL bağlantı testi", ex.Message, "Tamam", showCancel: false, icon: "!");
             }
 
             return false;
@@ -749,9 +838,15 @@ public partial class MainWindow : Window
     private SetupConfig BuildConfig()
     {
         var serverIp = Required(ServerIpBox.Text, "Server IP");
-        var sqlInstance = Required(SqlInstanceBox.Text, "SQL Instance");
-        var sqlUser = Required(SqlUserBox.Text, "SQL kullanıcı");
-        var sqlPassword = Required(SqlPasswordBox.Password, "SQL şifre");
+        var sqlInstance = _isUninstallMode && string.IsNullOrWhiteSpace(SqlInstanceBox.Text)
+            ? @".\SQLEXPRESS"
+            : Required(SqlInstanceBox.Text, "SQL Instance");
+        var sqlUser = _isUninstallMode && string.IsNullOrWhiteSpace(SqlUserBox.Text)
+            ? "sa"
+            : Required(SqlUserBox.Text, "SQL kullanıcı");
+        var sqlPassword = _isUninstallMode && string.IsNullOrWhiteSpace(SqlPasswordBox.Password)
+            ? "unused"
+            : Required(SqlPasswordBox.Password, "SQL şifre");
         var iisRootPath = Required(IisRootPathBox.Text, "IIS root path");
         var apiPort = ParsePort(ApiPortBox.Text, "API port");
         var webUiPort = ParsePort(WebUiPortBox.Text, "WebUI port");
@@ -767,6 +862,7 @@ public partial class MainWindow : Window
         return new SetupConfig
         {
             PackageUrl = string.IsNullOrWhiteSpace(PackageUrlBox.Text) ? DefaultPackageUrl : PackageUrlBox.Text.Trim(),
+            Mode = _isUninstallMode ? "Uninstall" : "Install",
             PackagePath = packagePath,
             ServerIp = serverIp,
             ApiPort = apiPort,
@@ -1011,6 +1107,33 @@ public partial class MainWindow : Window
         LogScrollViewer.ScrollToEnd();
     }
 
+    private Task<bool> ShowAppDialogAsync(string title, string message, string okText, bool showCancel, string icon)
+    {
+        _dialogCompletionSource?.TrySetResult(false);
+        _dialogCompletionSource = new TaskCompletionSource<bool>();
+
+        AppDialogTitle.Text = title;
+        AppDialogMessage.Text = message;
+        AppDialogOkButton.Content = okText;
+        AppDialogCancelButton.Visibility = showCancel ? Visibility.Visible : Visibility.Collapsed;
+        AppDialogIcon.Text = icon;
+        AppDialogOverlay.Visibility = Visibility.Visible;
+        return _dialogCompletionSource.Task;
+    }
+
+    private void AppDialogOkButton_Click(object sender, RoutedEventArgs e)
+        => CloseAppDialog(true);
+
+    private void AppDialogCancelButton_Click(object sender, RoutedEventArgs e)
+        => CloseAppDialog(false);
+
+    private void CloseAppDialog(bool result)
+    {
+        AppDialogOverlay.Visibility = Visibility.Collapsed;
+        _dialogCompletionSource?.TrySetResult(result);
+        _dialogCompletionSource = null;
+    }
+
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed)
@@ -1028,6 +1151,7 @@ public partial class MainWindow : Window
     private sealed class SetupConfig
     {
         public string PackageUrl { get; set; } = DefaultPackageUrl;
+        public string Mode { get; set; } = "Install";
         public string? PackagePath { get; set; }
         public string ServerIp { get; set; } = string.Empty;
         public int ApiPort { get; set; }
