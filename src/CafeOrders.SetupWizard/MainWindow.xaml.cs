@@ -24,14 +24,18 @@ public partial class MainWindow : Window
     private const string DefaultGitHubRepository = "CafeOrders";
     private const string DefaultGitHubBranch = "Production";
 
-    private static readonly string[] GitHubPackagePrefixes =
+    private static readonly string[] ServerPackagePrefixes =
     [
         "publishes/API/",
         "publishes/WebUI/",
-        "publishes/DesktopApp/",
         "publishes/AdminAudioAgent/",
         "publishes/ServerNotifier/",
         "scripts/"
+    ];
+
+    private static readonly string[] DesktopPackagePrefixes =
+    [
+        "publishes/DesktopApp/"
     ];
 
     private readonly string[] _stepTitles =
@@ -422,7 +426,7 @@ public partial class MainWindow : Window
             var script = ResolveInstallerScript();
             if (string.IsNullOrWhiteSpace(config.PackagePath))
             {
-                downloadedPackage = await ResolvePackageRootAsync();
+                downloadedPackage = await ResolvePackageRootAsync(PackageDownloadScope.Server);
                 config.PackagePath = downloadedPackage.RootPath;
             }
 
@@ -436,19 +440,7 @@ public partial class MainWindow : Window
             if (exitCode == 0)
             {
                 AppendLog("Kurulum başarıyla tamamlandı.");
-                DownloadDesktopButton.Visibility = Visibility.Visible;
-                DownloadDesktopButton.IsEnabled = true;
                 await ShowAppDialogAsync("Kurulum tamamlandı", "CafeOrders kurulumu başarıyla tamamlandı.", "Tamam", showCancel: false, icon: "✓");
-                var downloadDesktop = await ShowAppDialogAsync(
-                    "DesktopApp indirilsin mi?",
-                    "Client bilgisayarlara kurulacak DesktopApp paketini şimdi bir klasöre hazırlamak ister misiniz?",
-                    "İndir",
-                    showCancel: true,
-                    icon: "↓");
-                if (downloadDesktop)
-                {
-                    await DownloadDesktopAppToSelectedFolderAsync();
-                }
             }
             else
             {
@@ -504,7 +496,7 @@ public partial class MainWindow : Window
             var config = BuildConfig();
             AppendLog("DesktopApp paketi hazırlanıyor...");
 
-            using var package = await ResolvePackageRootAsync();
+            using var package = await ResolvePackageRootAsync(PackageDownloadScope.DesktopApp);
             var source = Path.Combine(package.RootPath, "publishes", "DesktopApp");
             if (!Directory.Exists(source))
             {
@@ -714,7 +706,6 @@ public partial class MainWindow : Window
         NextButton.IsEnabled = !isBusy;
         PrecheckButton.IsEnabled = !isBusy;
         InstallButton.IsEnabled = !isBusy;
-        DownloadDesktopButton.IsEnabled = !isBusy && DownloadDesktopButton.Visibility == Visibility.Visible;
     }
 
     private async Task TestSqlConnectionAsync()
@@ -762,7 +753,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<PackageRootHandle> ResolvePackageRootAsync()
+    private async Task<PackageRootHandle> ResolvePackageRootAsync(PackageDownloadScope scope)
     {
         var packagePath = LocalPackageRadio.IsChecked == true && !string.IsNullOrWhiteSpace(PackagePathBox.Text)
             ? PackagePathBox.Text.Trim()
@@ -789,10 +780,10 @@ public partial class MainWindow : Window
             return new PackageRootHandle(zipRoot, tempRoot);
         }
 
-        return await DownloadGitHubPackageAsync();
+        return await DownloadGitHubPackageAsync(scope);
     }
 
-    private async Task<PackageRootHandle> DownloadGitHubPackageAsync()
+    private async Task<PackageRootHandle> DownloadGitHubPackageAsync(PackageDownloadScope scope)
     {
         var source = ResolveGitHubSource(PackageUrlBox.Text);
         var tempRoot = Path.Combine(Path.GetTempPath(), $"CafeOrdersSetupPackage_{Guid.NewGuid():N}");
@@ -802,16 +793,16 @@ public partial class MainWindow : Window
         using var client = CreateGitHubClient();
         var treeUrl = $"https://api.github.com/repos/{source.Owner}/{source.Repository}/git/trees/{Uri.EscapeDataString(source.Branch)}?recursive=1";
 
-        AppendLog($"GitHub paket listesi okunuyor: {source.Owner}/{source.Repository}@{source.Branch}");
+        AppendLog($"GitHub paket listesi okunuyor: {source.Owner}/{source.Repository}@{source.Branch} ({FormatPackageScope(scope)})");
         UpdateDownloadProgressText("Dosya listesi alınıyor...");
         using var treeResponse = await client.GetAsync(treeUrl, HttpCompletionOption.ResponseHeadersRead);
         treeResponse.EnsureSuccessStatusCode();
 
         var treeJson = await treeResponse.Content.ReadAsStringAsync();
-        var files = ParsePackageFiles(treeJson).ToArray();
+        var files = ParsePackageFiles(treeJson, scope).ToArray();
         if (files.Length == 0)
         {
-            throw new InvalidOperationException("GitHub kaynağında publishes ve scripts dosyaları bulunamadı.");
+            throw new InvalidOperationException($"GitHub kaynağında {FormatPackageScope(scope)} dosyaları bulunamadı.");
         }
 
         var totalBytes = files.Sum(file => file.Size);
@@ -864,7 +855,7 @@ public partial class MainWindow : Window
         return new GitHubSource(DefaultGitHubOwner, DefaultGitHubRepository, DefaultGitHubBranch);
     }
 
-    private static IEnumerable<GitHubPackageFile> ParsePackageFiles(string treeJson)
+    private static IEnumerable<GitHubPackageFile> ParsePackageFiles(string treeJson, PackageDownloadScope scope)
     {
         using var document = JsonDocument.Parse(treeJson);
         if (document.RootElement.TryGetProperty("truncated", out var truncated) && truncated.ValueKind == JsonValueKind.True)
@@ -877,6 +868,8 @@ public partial class MainWindow : Window
             yield break;
         }
 
+        var prefixes = GetPackagePrefixes(scope);
+
         foreach (var item in tree.EnumerateArray())
         {
             var itemType = item.TryGetProperty("type", out var type) ? type.GetString() : null;
@@ -888,7 +881,7 @@ public partial class MainWindow : Window
 
             var path = pathProperty.GetString();
             if (string.IsNullOrWhiteSpace(path) ||
-                !GitHubPackagePrefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+                !prefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
             {
                 continue;
             }
@@ -900,6 +893,12 @@ public partial class MainWindow : Window
             yield return new GitHubPackageFile(path, Math.Max(size, 0L));
         }
     }
+
+    private static string[] GetPackagePrefixes(PackageDownloadScope scope)
+        => scope == PackageDownloadScope.DesktopApp ? DesktopPackagePrefixes : ServerPackagePrefixes;
+
+    private static string FormatPackageScope(PackageDownloadScope scope)
+        => scope == PackageDownloadScope.DesktopApp ? "DesktopApp paketi" : "server paketi";
 
     private async Task<long> DownloadGitHubPackageFileAsync(
         HttpClient client,
@@ -1392,6 +1391,12 @@ public partial class MainWindow : Window
     private sealed record GitHubSource(string Owner, string Repository, string Branch);
 
     private sealed record GitHubPackageFile(string Path, long Size);
+
+    private enum PackageDownloadScope
+    {
+        Server,
+        DesktopApp
+    }
 
     private sealed class PackageRootHandle(string rootPath, string? tempPath) : IDisposable
     {

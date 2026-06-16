@@ -64,9 +64,15 @@ public sealed class SetupWizardTests
         Assert.Contains("UpdatePackageSourceVisibility", codeBehind);
         Assert.Contains("DownloadDesktopButton_Click", codeBehind);
         Assert.Contains("DownloadDesktopAppToSelectedFolderAsync", codeBehind);
-        Assert.Contains("DesktopApp indirilsin mi?", codeBehind);
         Assert.Contains("ResolvePackageRootAsync", codeBehind);
         Assert.Contains("DownloadGitHubPackageAsync", codeBehind);
+        Assert.Contains("ServerPackagePrefixes", codeBehind);
+        Assert.Contains("DesktopPackagePrefixes", codeBehind);
+        Assert.Contains("PackageDownloadScope.Server", codeBehind);
+        Assert.Contains("PackageDownloadScope.DesktopApp", codeBehind);
+        Assert.Contains("FormatPackageScope", codeBehind);
+        Assert.Contains("DesktopApp paketi", codeBehind);
+        Assert.Contains("server paketi", codeBehind);
         Assert.Contains("raw.githubusercontent.com", codeBehind);
         Assert.Contains("HttpCompletionOption.ResponseHeadersRead", codeBehind);
         Assert.Contains("UpdateDownloadProgress", codeBehind);
@@ -114,9 +120,9 @@ public sealed class SetupWizardTests
         Assert.Contains("Assert-Package", script);
         Assert.Contains("publishes\\API", script);
         Assert.Contains("publishes\\WebUI", script);
-        Assert.Contains("publishes\\DesktopApp", script);
         Assert.Contains("publishes\\AdminAudioAgent", script);
         Assert.Contains("publishes\\ServerNotifier", script);
+        Assert.DoesNotContain("\"publishes\\DesktopApp\"", script);
         Assert.Contains("Clear-WebUiDirectoryPreservingUploads", script);
         Assert.Contains("wwwroot", script);
         Assert.Contains("uploads", script);
