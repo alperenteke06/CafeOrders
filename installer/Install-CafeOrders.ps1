@@ -289,7 +289,6 @@ function Assert-Package {
     $requiredPaths = @(
         "publishes\API",
         "publishes\WebUI",
-        "publishes\DesktopApp",
         "publishes\AdminAudioAgent",
         "publishes\ServerNotifier",
         "scripts\CafeOrders.WatchDog.ps1",
