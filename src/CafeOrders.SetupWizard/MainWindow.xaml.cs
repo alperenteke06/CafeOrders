@@ -55,6 +55,7 @@ public partial class MainWindow : Window
     private int _currentStep;
     private bool _isInstalling;
     private bool _isUninstallMode;
+    private bool _isDesktopOnlyMode;
     private TaskCompletionSource<bool>? _dialogCompletionSource;
 
     public MainWindow()
@@ -101,6 +102,7 @@ public partial class MainWindow : Window
     private async void StartInstallModeButton_Click(object sender, RoutedEventArgs e)
     {
         _isUninstallMode = false;
+        _isDesktopOnlyMode = false;
         _currentStep = 0;
         if (IsCafeOrdersInstalled())
         {
@@ -128,9 +130,21 @@ public partial class MainWindow : Window
         UpdateStepState();
     }
 
+    private void StartDesktopAppModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        _isUninstallMode = false;
+        _isDesktopOnlyMode = true;
+        _currentStep = 1;
+        ModeSelectionOverlay.Visibility = Visibility.Collapsed;
+        DownloadDesktopButton.Visibility = Visibility.Collapsed;
+        AppendLog("DesktopApp hazırlama modu seçildi. Server kurulumu çalıştırılmayacak.");
+        UpdateStepState();
+    }
+
     private async void StartUninstallModeButton_Click(object sender, RoutedEventArgs e)
     {
         _isUninstallMode = true;
+        _isDesktopOnlyMode = false;
         ModeSelectionOverlay.Visibility = Visibility.Collapsed;
         _currentStep = _stepPages.Length - 1;
         UpdateStepState();
@@ -149,6 +163,7 @@ public partial class MainWindow : Window
         else
         {
             _isUninstallMode = false;
+            _isDesktopOnlyMode = false;
             _currentStep = 0;
             UpdateStepState();
             ModeSelectionOverlay.Visibility = Visibility.Visible;
@@ -260,6 +275,17 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_isDesktopOnlyMode)
+        {
+            if (_currentStep == _stepPages.Length - 1)
+            {
+                _currentStep = 1;
+                UpdateStepState();
+            }
+
+            return;
+        }
+
         _currentStep--;
         UpdateStepState();
     }
@@ -268,6 +294,18 @@ public partial class MainWindow : Window
     {
         if (_isInstalling)
         {
+            return;
+        }
+
+        if (_isDesktopOnlyMode)
+        {
+            if (!ValidateCurrentStep())
+            {
+                return;
+            }
+
+            _currentStep = _stepPages.Length - 1;
+            UpdateStepState();
             return;
         }
 
@@ -305,7 +343,10 @@ public partial class MainWindow : Window
                     _ = Required(ServerIpBox.Text, "Server IP");
                     _ = ParsePort(ApiPortBox.Text, "API port");
                     _ = ParsePort(WebUiPortBox.Text, "WebUI port");
-                    _ = Required(IisRootPathBox.Text, "IIS root path");
+                    if (!_isDesktopOnlyMode)
+                    {
+                        _ = Required(IisRootPathBox.Text, "IIS root path");
+                    }
                     if (LocalPackageRadio.IsChecked == true)
                     {
                         if (string.IsNullOrWhiteSpace(PackagePathBox.Text))
@@ -362,6 +403,12 @@ public partial class MainWindow : Window
     {
         if (!ValidateCurrentStep())
         {
+            return;
+        }
+
+        if (_isDesktopOnlyMode)
+        {
+            await DownloadDesktopAppToSelectedFolderAsync();
             return;
         }
 
@@ -539,6 +586,22 @@ public partial class MainWindow : Window
             StepTitleText.Text = "Kaldırma Özeti";
             StepSubtitleText.Text = "CafeOrders Setup Wizard tarafından kurulan bileşenleri kaldırın.";
         }
+        else if (_isDesktopOnlyMode)
+        {
+            if (_currentStep == 1)
+            {
+                StepTitleText.Text = "DesktopApp Bağlantısı";
+                StepSubtitleText.Text = "Client uygulaması için paket kaynağını ve API/WebUI bağlantı bilgilerini girin.";
+            }
+            else
+            {
+                StepTitleText.Text = "DesktopApp Hazırlama";
+                StepSubtitleText.Text = "Bilgileri kontrol edin ve DesktopApp paketini seçilen klasöre hazırlayın.";
+            }
+        }
+
+        IisRootLabel.Visibility = _isDesktopOnlyMode ? Visibility.Collapsed : Visibility.Visible;
+        IisRootPickerGrid.Visibility = _isDesktopOnlyMode ? Visibility.Collapsed : Visibility.Visible;
 
         for (var index = 0; index < _stepPages.Length; index++)
         {
@@ -549,11 +612,14 @@ public partial class MainWindow : Window
             _stepIndicators[index].Opacity = index <= _currentStep ? 1 : 0.55;
         }
 
-        BackButton.IsEnabled = !_isInstalling && _currentStep > 0;
+        BackButton.IsEnabled = _isDesktopOnlyMode
+            ? !_isInstalling && _currentStep == _stepPages.Length - 1
+            : !_isInstalling && _currentStep > 0;
         BackButton.Visibility = _isUninstallMode ? Visibility.Collapsed : Visibility.Visible;
         NextButton.Visibility = _currentStep == _stepPages.Length - 1 ? Visibility.Collapsed : Visibility.Visible;
-        PrecheckButton.Visibility = _isUninstallMode ? Visibility.Collapsed : (_currentStep == _stepPages.Length - 1 ? Visibility.Visible : Visibility.Collapsed);
+        PrecheckButton.Visibility = _isUninstallMode || _isDesktopOnlyMode ? Visibility.Collapsed : (_currentStep == _stepPages.Length - 1 ? Visibility.Visible : Visibility.Collapsed);
         InstallButton.Visibility = _isUninstallMode ? Visibility.Collapsed : (_currentStep == _stepPages.Length - 1 ? Visibility.Visible : Visibility.Collapsed);
+        InstallButton.Content = _isDesktopOnlyMode ? "DesktopApp'i Hazırla" : "Kurulumu Başlat";
 
         if (_currentStep == _stepPages.Length - 1)
         {
@@ -579,6 +645,28 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_isDesktopOnlyMode)
+        {
+            LeftPanelTitleText.Text = "DesktopApp kurulumu";
+            LeftPanelDescriptionText.Text = "Client bilgisayara sadece DesktopApp dosyalarını hazırlar; IIS, API, WebUI ve WatchDog kurulumu yapmaz.";
+            StepSqlIndicator.Visibility = Visibility.Collapsed;
+            StepIisIndicator.Visibility = Visibility.Visible;
+            StepOptionsIndicator.Visibility = Visibility.Collapsed;
+            StepReviewIndicator.Visibility = Visibility.Visible;
+            StepIisIndicator.Text = "01  Paket ve bağlantı";
+            StepReviewIndicator.Text = "02  DesktopApp hazırlama";
+            LeftPanelInfoTitleText.Text = "Client modu";
+            LeftPanelInfoLine1Text.Text = "Sadece publishes\\DesktopApp kopyalanır";
+            LeftPanelInfoLine2Text.Text = "appsettings.json API adresine göre yazılır";
+            LeftPanelInfoLine3Text.Text = "SQL, IIS ve firewall işlemleri atlanır";
+            LeftPanelInfoLine4Text.Text = "Hedef klasörü kullanıcı seçer";
+            return;
+        }
+
+        StepSqlIndicator.Visibility = Visibility.Visible;
+        StepIisIndicator.Visibility = Visibility.Visible;
+        StepOptionsIndicator.Visibility = Visibility.Visible;
+        StepReviewIndicator.Visibility = Visibility.Visible;
         LeftPanelTitleText.Text = "Adım adım kurulum";
         LeftPanelDescriptionText.Text = "SQL, IIS ve servis seçeneklerini ayrı adımlarda toplayıp Production branch paketini güvenli şekilde kurar.";
         StepSqlIndicator.Text = "01  SQL bağlantısı";
@@ -597,6 +685,17 @@ public partial class MainWindow : Window
         var packageSource = LocalPackageRadio.IsChecked == true
             ? PackagePathBox.Text.Trim()
             : PackageUrlBox.Text.Trim();
+
+        if (_isDesktopOnlyMode)
+        {
+            ReviewSummaryText.Text =
+                $"İşlem: DesktopApp hazırlama{Environment.NewLine}" +
+                $"API: http://{ServerIpBox.Text.Trim()}:{ApiPortBox.Text.Trim()}{Environment.NewLine}" +
+                $"WebUI: http://{ServerIpBox.Text.Trim()}:{WebUiPortBox.Text.Trim()}{Environment.NewLine}" +
+                $"Paket: {packageSource}{Environment.NewLine}" +
+                "Not: Server kurulumu, IIS, SQL, WatchDog ve firewall işlemleri çalıştırılmayacak.";
+            return;
+        }
 
         ReviewSummaryText.Text =
             (_isUninstallMode ? $"İşlem: Kaldırma modu{Environment.NewLine}" : $"SQL: {SqlInstanceBox.Text.Trim()} / {SqlUserBox.Text.Trim()}{Environment.NewLine}") +
@@ -907,16 +1006,18 @@ public partial class MainWindow : Window
     private SetupConfig BuildConfig()
     {
         var serverIp = Required(ServerIpBox.Text, "Server IP");
-        var sqlInstance = _isUninstallMode && string.IsNullOrWhiteSpace(SqlInstanceBox.Text)
+        var sqlInstance = (_isUninstallMode || _isDesktopOnlyMode) && string.IsNullOrWhiteSpace(SqlInstanceBox.Text)
             ? @".\SQLEXPRESS"
             : Required(SqlInstanceBox.Text, "SQL Instance");
-        var sqlUser = _isUninstallMode && string.IsNullOrWhiteSpace(SqlUserBox.Text)
+        var sqlUser = (_isUninstallMode || _isDesktopOnlyMode) && string.IsNullOrWhiteSpace(SqlUserBox.Text)
             ? "sa"
             : Required(SqlUserBox.Text, "SQL kullanıcı");
-        var sqlPassword = _isUninstallMode && string.IsNullOrWhiteSpace(SqlPasswordBox.Password)
+        var sqlPassword = (_isUninstallMode || _isDesktopOnlyMode) && string.IsNullOrWhiteSpace(SqlPasswordBox.Password)
             ? "unused"
             : Required(SqlPasswordBox.Password, "SQL şifre");
-        var iisRootPath = Required(IisRootPathBox.Text, "IIS root path");
+        var iisRootPath = _isDesktopOnlyMode && string.IsNullOrWhiteSpace(IisRootPathBox.Text)
+            ? @"C:\inetpub\wwwroot"
+            : Required(IisRootPathBox.Text, "IIS root path");
         var apiPort = ParsePort(ApiPortBox.Text, "API port");
         var webUiPort = ParsePort(WebUiPortBox.Text, "WebUI port");
         var packagePath = LocalPackageRadio.IsChecked == true && !string.IsNullOrWhiteSpace(PackagePathBox.Text)
@@ -931,7 +1032,7 @@ public partial class MainWindow : Window
         return new SetupConfig
         {
             PackageUrl = string.IsNullOrWhiteSpace(PackageUrlBox.Text) ? DefaultPackageUrl : PackageUrlBox.Text.Trim(),
-            Mode = _isUninstallMode ? "Uninstall" : "Install",
+            Mode = _isUninstallMode ? "Uninstall" : (_isDesktopOnlyMode ? "DesktopApp" : "Install"),
             PackagePath = packagePath,
             ServerIp = serverIp,
             ApiPort = apiPort,

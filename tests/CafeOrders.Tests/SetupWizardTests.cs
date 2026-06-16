@@ -20,7 +20,8 @@ public sealed class SetupWizardTests
         Assert.Contains("SplashOverlay", xaml);
         Assert.Contains("SplashExitStoryboard", xaml);
         Assert.Contains("ModeSelectionOverlay", xaml);
-        Assert.Contains("Kurulum Yap", xaml);
+        Assert.Contains("Server Kur", xaml);
+        Assert.Contains("DesktopApp Kur", xaml);
         Assert.Contains("Kaldır", xaml);
         Assert.Contains("DangerButton", xaml);
         Assert.Contains("AppDialogOverlay", xaml);
@@ -38,6 +39,8 @@ public sealed class SetupWizardTests
         Assert.Contains("TestSqlButton", xaml);
         Assert.Contains("SqlTestStatusText", xaml);
         Assert.Contains("DownloadDesktopButton", xaml);
+        Assert.Contains("IisRootLabel", xaml);
+        Assert.Contains("IisRootPickerGrid", xaml);
         Assert.Contains("DownloadProgressText", xaml);
         Assert.Contains("LogScrollViewer", xaml);
         Assert.Contains("LogTextBlock", xaml);
@@ -79,6 +82,11 @@ public sealed class SetupWizardTests
         Assert.Contains("NextButton_Click", codeBehind);
         Assert.Contains("BackButton_Click", codeBehind);
         Assert.Contains("StartInstallModeButton_Click", codeBehind);
+        Assert.Contains("StartDesktopAppModeButton_Click", codeBehind);
+        Assert.Contains("DesktopApp hazırlama modu seçildi", codeBehind);
+        Assert.Contains("Server kurulumu çalıştırılmayacak", codeBehind);
+        Assert.Contains("DesktopApp'i Hazırla", codeBehind);
+        Assert.Contains("Mode = _isUninstallMode ? \"Uninstall\" : (_isDesktopOnlyMode ? \"DesktopApp\" : \"Install\")", codeBehind);
         Assert.Contains("IsCafeOrdersInstalled", codeBehind);
         Assert.Contains("Güncelleme modu", codeBehind);
         Assert.Contains("StartUninstallModeButton_Click", codeBehind);

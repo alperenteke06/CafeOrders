@@ -789,8 +789,8 @@
                                         </StackPanel>
                                     </Grid>
 
-                                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,22,0,7" Text="IIS Root Path" />
-                                    <Grid>
+                                    <TextBlock x:Name="IisRootLabel" Style="{StaticResource FieldLabel}" Margin="0,22,0,7" Text="IIS Root Path" />
+                                    <Grid x:Name="IisRootPickerGrid">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="14" />
@@ -992,7 +992,7 @@
                                    HorizontalAlignment="Center"
                                    FontSize="34"
                                    FontWeight="Black" />
-                        <TextBlock Text="Kurulum yapmak ya da bu wizard tarafından kurulan bileşenleri kaldırmak için bir işlem seçin."
+                        <TextBlock Text="Server kurulumu, client DesktopApp hazırlama ya da kaldırma işlemi için bir seçenek belirleyin."
                                    HorizontalAlignment="Center"
                                    TextAlignment="Center"
                                    Style="{StaticResource CaptionText}"
@@ -1001,15 +1001,22 @@
                         <Grid Margin="0,34,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="14" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="14" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <Button Grid.Column="0"
                                     Height="68"
                                     Style="{StaticResource PrimaryButton}"
-                                    Content="Kurulum Yap"
+                                    Content="Server Kur"
                                     Click="StartInstallModeButton_Click" />
-                             <Button Grid.Column="2"
+                            <Button Grid.Column="2"
+                                    Height="68"
+                                    Style="{StaticResource ValidationButton}"
+                                    Content="DesktopApp Kur"
+                                    Click="StartDesktopAppModeButton_Click" />
+                             <Button Grid.Column="4"
                                      Height="68"
                                      Style="{StaticResource DangerButton}"
                                      Content="Kaldır"
