@@ -139,6 +139,9 @@ public sealed class SetupWizardTests
         Assert.Contains("New-WebAppPool", script);
         Assert.Contains("New-Website", script);
         Assert.Contains("New-NetFirewallRule", script);
+        Assert.Contains("Recreating firewall rule", script);
+        Assert.Contains("Remove-NetFirewallRule", script);
+        Assert.DoesNotContain("AssociatedNetFirewallRule", script);
         Assert.Contains("Protect-ConfigFile", script);
         Assert.Contains("icacls", script);
         Assert.Contains("Register-WatchDogTask", script);
