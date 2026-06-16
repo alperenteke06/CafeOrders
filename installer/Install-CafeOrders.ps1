@@ -545,9 +545,8 @@ function Ensure-FirewallRule {
 
     $existing = Get-NetFirewallRule -DisplayName $Name -ErrorAction SilentlyContinue
     if ($existing) {
-        Set-NetFirewallRule -DisplayName $Name -Enabled True -Direction Inbound -Action Allow | Out-Null
-        Set-NetFirewallPortFilter -AssociatedNetFirewallRule $existing -Protocol TCP -LocalPort $Port | Out-Null
-        return
+        Write-Step "Recreating firewall rule $Name for TCP $Port"
+        $existing | Remove-NetFirewallRule
     }
 
     Write-Step "Creating firewall rule $Name for TCP $Port"
